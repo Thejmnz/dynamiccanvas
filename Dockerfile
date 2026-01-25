@@ -1,31 +1,33 @@
-FROM node:20-alpine AS base
+FROM node:20-slim AS base
 
 # Install dependencies only when needed
-FROM base AS deps
-# Install runtime dependencies in base so they are available in all stages
-RUN apk add --no-cache \
-    libc6-compat \
+ENV NODE_OPTIONS="--dns-result-order=ipv4first"
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install runtime and build dependencies
+# We use a single layer to keep it clean.
+# These libraries are needed for canvas/fabric to work correctly.
+RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     make \
     g++ \
-    cairo \
-    cairo-dev \
-    pango \
-    pango-dev \
-    jpeg \
-    jpeg-dev \
-    giflib \
-    giflib-dev \
-    librsvg \
-    librsvg-dev
-
-# Fix for Supabase IPv6 connection issues
-ENV NODE_OPTIONS="--dns-result-order=ipv4first"
+    build-essential \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libjpeg-dev \
+    libgif-dev \
+    librsvg2-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
+
+FROM base AS deps
+WORKDIR /app
+COPY --from=base /app/package.json /app/yarn.lock* /app/package-lock.json* /app/pnpm-lock.yaml* ./
+
 RUN \
   if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
   elif [ -f package-lock.json ]; then npm ci --legacy-peer-deps; \
@@ -33,9 +35,8 @@ RUN \
   else echo "Lockfile not found." && exit 1; \
   fi
 
-# Rebuild canvas from source to match Alpine libraries
+# Rebuild canvas to ensure it links against the system libraries we installed
 RUN npm rebuild canvas --build-from-source
-
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -44,13 +45,11 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Next.js collects completely anonymous telemetry data about general usage.
-# Learn more here: https://nextjs.org/telemetry
-# Uncomment the following line in case you want to disable telemetry during the build.
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN \
   if [ -f yarn.lock ]; then yarn run build; \
-  elif [ -f package-lock.json ]; then NEXT_PRIVATE_STANDALONE=true npm run build; \
+  elif [ -f package-lock.json ]; then npm run build; \
   elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm run build; \
   else echo "Lockfile not found." && exit 1; \
   fi
@@ -60,7 +59,6 @@ FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-# Uncomment the following line in case you want to disable telemetry during runtime.
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN addgroup --system --gid 1001 nodejs
@@ -73,7 +71,6 @@ RUN mkdir .next
 RUN chown nextjs:nodejs .next
 
 # Automatically leverage output traces to reduce image size
-# https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
@@ -83,6 +80,4 @@ EXPOSE 5006
 
 ENV PORT=5006
 
-# server.js is created by next build from the standalone output
-# https://nextjs.org/docs/pages/api-reference/next-config-js/output
 CMD ["node", "server.js"]
