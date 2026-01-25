@@ -1,0 +1,174 @@
+{
+    "name": "DynamicCanvas - Upload Directo (Rápido)",
+    "nodes": [
+        {
+            "parameters": {
+                "url": "={{$env.API_URL}}/api/upload-url",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "method": "POST",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "fileName",
+                            "value": "={{$json.fileName || 'image.jpg'}}"
+                        },
+                        {
+                            "name": "expiresIn",
+                            "value": "3600"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "name": "1️⃣ Obtener URL de Upload",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                250,
+                300
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "1",
+                    "name": "DynamicCanvas API Key"
+                }
+            },
+            "notes": "Obtiene una URL firmada para subir la imagen directamente a Supabase Storage sin convertir a base64"
+        },
+        {
+            "parameters": {
+                "url": "={{$node['1️⃣ Obtener URL de Upload'].json.uploadUrl}}",
+                "method": "PUT",
+                "sendBody": true,
+                "contentType": "binaryData",
+                "bodyParameters": {},
+                "options": {
+                    "timeout": 30000
+                }
+            },
+            "name": "2️⃣ Subir Imagen (Binario)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                450,
+                300
+            ],
+            "notes": "Sube la imagen en formato binario (mucho más rápido que base64)"
+        },
+        {
+            "parameters": {
+                "url": "={{$env.API_URL}}/api/render",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "method": "POST",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "templateId",
+                            "value": "={{$json.templateId}}"
+                        },
+                        {
+                            "name": "layers",
+                            "value": "={{{\n  [$json.layerId || 'image-1']: {\n    image_url: $node['1️⃣ Obtener URL de Upload'].json.publicUrl\n  }\n}}}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "name": "3️⃣ Renderizar Template",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                650,
+                300
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "1",
+                    "name": "DynamicCanvas API Key"
+                }
+            },
+            "notes": "Renderiza el template usando la URL pública de la imagen subida"
+        },
+        {
+            "parameters": {
+                "values": {
+                    "string": [
+                        {
+                            "name": "rendered_image_url",
+                            "value": "={{$json.imageUrl}}"
+                        },
+                        {
+                            "name": "cache_entries",
+                            "value": "={{$json.cacheStats.entries}}"
+                        },
+                        {
+                            "name": "cache_size_mb",
+                            "value": "={{$json.cacheStats.sizeMB}}"
+                        },
+                        {
+                            "name": "upload_url",
+                            "value": "={{$node['1️⃣ Obtener URL de Upload'].json.publicUrl}}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "name": "4️⃣ Resultado Final",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.2,
+            "position": [
+                850,
+                300
+            ],
+            "notes": "Formatea el resultado con todas las URLs y estadísticas"
+        }
+    ],
+    "connections": {
+        "1️⃣ Obtener URL de Upload": {
+            "main": [
+                [
+                    {
+                        "node": "2️⃣ Subir Imagen (Binario)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "2️⃣ Subir Imagen (Binario)": {
+            "main": [
+                [
+                    {
+                        "node": "3️⃣ Renderizar Template",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "3️⃣ Renderizar Template": {
+            "main": [
+                [
+                    {
+                        "node": "4️⃣ Resultado Final",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {},
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [],
+    "triggerCount": 0,
+    "updatedAt": "2026-01-20T23:20:00.000Z",
+    "versionId": "1"
+}

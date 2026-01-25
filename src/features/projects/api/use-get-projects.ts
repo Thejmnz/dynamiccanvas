@@ -1,0 +1,53 @@
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/lib/contexts/AuthContext";
+
+export const useGetProjects = () => {
+  const { user } = useAuth();
+  const LIMIT = 5;
+
+  const query = useInfiniteQuery({
+    initialPageParam: 0,
+    getNextPageParam: (lastPage: any) => lastPage.nextPage,
+    queryKey: ["projects"],
+    queryFn: async ({ pageParam = 0 }) => {
+      if (!user) return { data: [], nextPage: null };
+
+      const from = (pageParam as number) * LIMIT;
+      const to = from + LIMIT - 1;
+
+      const { data, error } = await supabase
+        .from('templates')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('lastModified', { ascending: false, nullsFirst: false })
+        .range(from, to);
+
+      if (error) {
+        console.error("Fetch projects error:", error);
+        throw new Error("Failed to fetch projects");
+      }
+
+      const mappedData = (data || []).map((item) => ({
+        ...item,
+        updatedAt: item.updated_at || item.lastModified ? new Date(item.updated_at || item.lastModified) : new Date(),
+        // Ensure standard fields
+        width: item.width || 800,
+        height: item.height || 600,
+        name: item.name || "Untitled Project",
+        id: item.id,
+        // The JSON is in the 'elements' field
+        json: item.elements ? JSON.stringify(item.elements) : "",
+        thumbnailUrl: item.thumbnail_url || null,
+      }));
+
+      return {
+        data: mappedData,
+        nextPage: data && data.length === LIMIT ? (pageParam as number) + 1 : null,
+      };
+    },
+    enabled: !!user,
+  });
+
+  return query;
+};

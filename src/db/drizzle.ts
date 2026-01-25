@@ -1,0 +1,14 @@
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
+
+const dbUrl = process.env.DATABASE_URL;
+
+if (!dbUrl) {
+    console.error("CRITICAL: DATABASE_URL is not defined in environment variables!");
+}
+
+const pool = new Pool({
+    connectionString: dbUrl,
+});
+
+export const db = drizzle(pool);
