@@ -13,6 +13,8 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.
 // @ts-ignore
 import { fabric } from "fabric";
 
+export const dynamic = 'force-dynamic';
+
 let fontsRegistered = false;
 
 function registerServerFonts() {

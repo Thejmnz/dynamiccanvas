@@ -33,6 +33,9 @@ RUN \
   else echo "Lockfile not found." && exit 1; \
   fi
 
+# Rebuild canvas from source to match Alpine libraries
+RUN npm rebuild canvas --build-from-source
+
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -47,7 +50,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN \
   if [ -f yarn.lock ]; then yarn run build; \
-  elif [ -f package-lock.json ]; then npm run build; \
+  elif [ -f package-lock.json ]; then NEXT_PRIVATE_STANDALONE=true npm run build; \
   elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm run build; \
   else echo "Lockfile not found." && exit 1; \
   fi
