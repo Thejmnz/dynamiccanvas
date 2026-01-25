@@ -2,8 +2,25 @@ FROM node:20-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat python3 make g++ cairo-dev pango-dev jpeg-dev giflib-dev librsvg-dev
+# Install runtime dependencies in base so they are available in all stages
+RUN apk add --no-cache \
+    libc6-compat \
+    python3 \
+    make \
+    g++ \
+    cairo \
+    cairo-dev \
+    pango \
+    pango-dev \
+    jpeg \
+    jpeg-dev \
+    giflib \
+    giflib-dev \
+    librsvg \
+    librsvg-dev
+
+# Fix for Supabase IPv6 connection issues
+ENV NODE_OPTIONS="--dns-result-order=ipv4first"
 
 WORKDIR /app
 
