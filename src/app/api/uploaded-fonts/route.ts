@@ -17,7 +17,6 @@ export async function GET() {
       });
 
     if (error) {
-      console.error("Supabase list error:", error);
       return NextResponse.json([], { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } });
     }
 
@@ -39,7 +38,6 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("Error loading uploaded fonts:", error);
     return NextResponse.json([], { status: 500 });
   }
 }

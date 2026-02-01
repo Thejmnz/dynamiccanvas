@@ -57,7 +57,7 @@ export const FontSidebar = ({
                 document.fonts.add(fontFace);
                 loadedFonts.push(fontName);
               } catch (e) {
-                console.error(`Failed to load font ${fontName}:`, e);
+                // Silent fail - font not available
               }
             } else {
               // If already in document.fonts, we still might want it in our list if it's not in 'fonts' constant
@@ -73,7 +73,7 @@ export const FontSidebar = ({
           });
         }
       } catch (error) {
-        console.error("Failed to load local fonts:", error);
+        // Silent fail - local fonts not available
       }
     };
 
@@ -102,7 +102,7 @@ export const FontSidebar = ({
                 document.fonts.add(fontFace);
                 loadedFonts.push(fontName);
               } catch (e) {
-                console.error(`Failed to load uploaded font ${fontName}:`, e);
+                // Silent fail - uploaded font not available
               }
             } else {
               loadedFonts.push(fontName);
@@ -116,7 +116,7 @@ export const FontSidebar = ({
           });
         }
       } catch (error) {
-        console.error("Failed to load uploaded fonts:", error);
+        // Silent fail - uploaded fonts not available
       }
     };
 
@@ -170,7 +170,6 @@ export const FontSidebar = ({
 
       toast.success("Font uploaded successfully!");
     } catch (error) {
-      console.error(error);
       toast.error("Failed to upload font");
     } finally {
       setIsUploading(false);
