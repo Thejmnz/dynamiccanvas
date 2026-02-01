@@ -711,6 +711,35 @@ const buildEditor = ({
 
       return value;
     },
+    centerHorizontally: () => {
+      const workspace = getWorkspace();
+      if (!workspace) return;
+
+      canvas.getActiveObjects().forEach((object) => {
+        const workspaceCenter = workspace.getCenterPoint();
+        const objectCenter = object.getCenterPoint();
+        object.set({
+          left: workspaceCenter.x - (object.width || 0) * (object.scaleX || 1) / 2,
+        });
+        object.setCoords();
+      });
+      canvas.renderAll();
+      save();
+    },
+    centerVertically: () => {
+      const workspace = getWorkspace();
+      if (!workspace) return;
+
+      canvas.getActiveObjects().forEach((object) => {
+        const workspaceCenter = workspace.getCenterPoint();
+        object.set({
+          top: workspaceCenter.y - (object.height || 0) * (object.scaleY || 1) / 2,
+        });
+        object.setCoords();
+      });
+      canvas.renderAll();
+      save();
+    },
     selectedObjects,
   };
 };
@@ -865,6 +894,83 @@ export const useEditor = ({
       initialCanvas.add(initialWorkspace);
       initialCanvas.centerObject(initialWorkspace);
       initialCanvas.clipPath = initialWorkspace;
+
+      // Enable aligning guidelines
+      let lineWidth = 0;
+      let lineColor = "#3b82f6";
+      let lineMargin = 5;
+
+      const drawLine = (x1: number, y1: number, x2: number, y2: number) => {
+        const line = new fabric.Line([x1, y1, x2, y2], {
+          stroke: lineColor,
+          strokeWidth: lineWidth,
+          selectable: false,
+          evented: false,
+          strokeDashArray: [5, 5],
+        });
+        initialCanvas.add(line);
+      };
+
+      const clearLines = () => {
+        const objects = initialCanvas.getObjects();
+        objects.forEach((obj) => {
+          if (obj.type === "line") {
+            initialCanvas.remove(obj);
+          }
+        });
+      };
+
+      initialCanvas.on("object:moving", (e) => {
+        clearLines();
+
+        const activeObj = e.target;
+        if (!activeObj) return;
+
+        const activeObjCenter = activeObj.getCenterPoint();
+        const activeObjBounds = activeObj.getBoundingRect();
+
+        const objects = initialCanvas.getObjects();
+        objects.forEach((obj) => {
+          if (obj === activeObj || obj.type === "line" || (obj as any).name === "clip") return;
+
+          const objCenter = obj.getCenterPoint();
+          const objBounds = obj.getBoundingRect();
+
+          // Vertical center alignment
+          if (Math.abs(activeObjCenter.x - objCenter.x) < lineMargin) {
+            drawLine(objCenter.x, 0, objCenter.x, initialCanvas.height);
+          }
+
+          // Horizontal center alignment
+          if (Math.abs(activeObjCenter.y - objCenter.y) < lineMargin) {
+            drawLine(0, objCenter.y, initialCanvas.width, objCenter.y);
+          }
+
+          // Left edge alignment
+          if (Math.abs(activeObjBounds.left - objBounds.left) < lineMargin) {
+            drawLine(objBounds.left, 0, objBounds.left, initialCanvas.height);
+          }
+
+          // Right edge alignment
+          if (Math.abs(activeObjBounds.left + activeObjBounds.width - objBounds.left - objBounds.width) < lineMargin) {
+            drawLine(objBounds.left + objBounds.width, 0, objBounds.left + objBounds.width, initialCanvas.height);
+          }
+
+          // Top edge alignment
+          if (Math.abs(activeObjBounds.top - objBounds.top) < lineMargin) {
+            drawLine(0, objBounds.top, initialCanvas.width, objBounds.top);
+          }
+
+          // Bottom edge alignment
+          if (Math.abs(activeObjBounds.top + activeObjBounds.height - objBounds.top - objBounds.height) < lineMargin) {
+            drawLine(0, objBounds.top + objBounds.height, initialCanvas.width, objBounds.top + objBounds.height);
+          }
+        });
+      });
+
+      initialCanvas.on("object:modified", clearLines);
+      initialCanvas.on("selection:created", clearLines);
+      initialCanvas.on("selection:cleared", clearLines);
 
       setCanvas(initialCanvas);
       setContainer(initialContainer);

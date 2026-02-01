@@ -52,9 +52,11 @@ const app = new Hono()
     const active = checkIsActive(subscription);
 
     return c.json({
-      data: {
+      data: subscription ? {
         ...subscription,
         active,
+      } : {
+        active: false,
       },
     });
   })

@@ -1,8 +1,6 @@
 import Image from "next/image";
 import { AlertTriangle, Loader, Crown } from "lucide-react";
 
-import { usePaywall } from "@/features/subscriptions/hooks/use-paywall";
-
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 import {
   ActiveTool,
@@ -29,7 +27,6 @@ export const TemplateSidebar = ({
   onChangeActiveTool,
 }: TemplateSidebarProps) => {
   const { t } = useLanguage();
-  const { shouldBlock, triggerPaywall } = usePaywall();
 
   const [ConfirmDialog, confirm] = useConfirm(
     t("confirm_replace_template_title"),
@@ -46,11 +43,6 @@ export const TemplateSidebar = ({
   };
 
   const onClick = async (template: ResponseType["data"][0]) => {
-    if (template.isPro && shouldBlock) {
-      triggerPaywall();
-      return;
-    }
-
     const ok = await confirm();
 
     if (ok) {

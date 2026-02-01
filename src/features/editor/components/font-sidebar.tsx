@@ -77,7 +77,48 @@ export const FontSidebar = ({
       }
     };
 
+    const loadUploadedFonts = async () => {
+      try {
+        const response = await fetch("/api/uploaded-fonts");
+        if (!response.ok) return;
+
+        const uploadedFonts = await response.json();
+
+        if (Array.isArray(uploadedFonts)) {
+          const loadedFonts: string[] = [];
+
+          for (const font of uploadedFonts) {
+            const fontName = font.displayName;
+
+            // Check if font is already loaded/available to avoid errors
+            const isLoaded = Array.from(document.fonts).some(f => f.family === fontName);
+            if (!isLoaded) {
+              try {
+                const fontFace = new FontFace(fontName, `url('${font.publicUrl}')`);
+                await fontFace.load();
+                document.fonts.add(fontFace);
+                loadedFonts.push(fontName);
+              } catch (e) {
+                console.error(`Failed to load uploaded font ${fontName}:`, e);
+              }
+            } else {
+              loadedFonts.push(fontName);
+            }
+          }
+
+          setCustomFonts((prev) => {
+            // Avoid duplicates with existing custom fonts or default fonts
+            const newFonts = loadedFonts.filter(f => !prev.includes(f) && !fonts.includes(f));
+            return [...prev, ...newFonts];
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load uploaded fonts:", error);
+      }
+    };
+
     loadLocalFonts();
+    loadUploadedFonts();
   }, []);
 
   const onClose = () => {

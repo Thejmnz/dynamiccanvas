@@ -270,4 +270,6 @@ export interface Editor {
   getActiveStrokeWidth: () => number;
   getActiveStrokeDashArray: () => number[];
   selectedObjects: fabric.Object[];
+  centerHorizontally: () => void;
+  centerVertically: () => void;
 };
