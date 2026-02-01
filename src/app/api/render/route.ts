@@ -72,7 +72,7 @@ function registerServerFonts() {
 
 export async function POST(req: NextRequest) {
     const isDebug = process.env.DEBUG === "true";
-    const debugLogs: string[] = isDebug ? [] : undefined;
+    const debugLogs: string[] | undefined = isDebug ? [] : undefined;
     const log = (msg: string) => {
         if (isDebug) {
             console.log(`[API Render] ${msg}`);
