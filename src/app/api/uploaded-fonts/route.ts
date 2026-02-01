@@ -18,7 +18,7 @@ export async function GET() {
 
     if (error) {
       console.error("Supabase list error:", error);
-      return NextResponse.json([]);
+      return NextResponse.json([], { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } });
     }
 
     // Extract font information
@@ -31,7 +31,13 @@ export async function GET() {
         publicUrl: `${supabaseUrl}/storage/v1/object/public/media/fonts/${file.name}`,
       }));
 
-    return NextResponse.json(fonts);
+    return NextResponse.json(fonts, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+      },
+    });
   } catch (error) {
     console.error("Error loading uploaded fonts:", error);
     return NextResponse.json([], { status: 500 });

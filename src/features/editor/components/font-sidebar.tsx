@@ -79,7 +79,8 @@ export const FontSidebar = ({
 
     const loadUploadedFonts = async () => {
       try {
-        const response = await fetch("/api/uploaded-fonts");
+        // Add cache-busting parameter
+        const response = await fetch(`/api/uploaded-fonts?_t=${Date.now()}`);
         if (!response.ok) return;
 
         const uploadedFonts = await response.json();
@@ -94,7 +95,9 @@ export const FontSidebar = ({
             const isLoaded = Array.from(document.fonts).some(f => f.family === fontName);
             if (!isLoaded) {
               try {
-                const fontFace = new FontFace(fontName, `url('${font.publicUrl}')`);
+                // Add cache-busting to font URL
+                const fontUrlWithCache = `${font.publicUrl}?_t=${Date.now()}`;
+                const fontFace = new FontFace(fontName, `url('${fontUrlWithCache}')`);
                 await fontFace.load();
                 document.fonts.add(fontFace);
                 loadedFonts.push(fontName);
