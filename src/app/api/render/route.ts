@@ -25,11 +25,15 @@ function registerServerFonts() {
         const rootDir = process.cwd();
         const fontsDir = path.join(rootDir, "public", "fonts");
 
-        console.log(`[API Render] Initializing fonts from: ${fontsDir} (CWD: ${rootDir})`);
+        if (process.env.DEBUG === "true") {
+            console.log(`[API Render] Initializing fonts from: ${fontsDir} (CWD: ${rootDir})`);
+        }
 
         if (fs.existsSync(fontsDir)) {
             const files = fs.readdirSync(fontsDir);
-            console.log(`[API Render] Found ${files.length} files in fonts directory.`);
+            if (process.env.DEBUG === "true") {
+                console.log(`[API Render] Found ${files.length} files in fonts directory.`);
+            }
             files.forEach(file => {
                 if (/\.(ttf|otf|woff|woff2)$/i.test(file)) {
                     const fontFamily = path.parse(file).name;
@@ -37,7 +41,9 @@ function registerServerFonts() {
 
                     // Register the original name
                     canvasModule.registerFont(fontPath, { family: fontFamily });
-                    console.log(`[API Render] Registered font family: "${fontFamily}"`);
+                    if (process.env.DEBUG === "true") {
+                        console.log(`[API Render] Registered font family: "${fontFamily}"`);
+                    }
 
                     // Register aliases (without spaces, with underscores) to be more robust
                     if (fontFamily.includes(" ")) {
@@ -45,23 +51,31 @@ function registerServerFonts() {
                         const underscore = fontFamily.replace(/\s+/g, "_");
                         canvasModule.registerFont(fontPath, { family: noSpace });
                         canvasModule.registerFont(fontPath, { family: underscore });
-                        console.log(`[API Render] Registered aliases: "${noSpace}", "${underscore}"`);
+                        if (process.env.DEBUG === "true") {
+                            console.log(`[API Render] Registered aliases: "${noSpace}", "${underscore}"`);
+                        }
                     }
                 }
             });
         } else {
-            console.warn(`[API Render] Fonts directory NOT FOUND at ${fontsDir}`);
+            if (process.env.DEBUG === "true") {
+                console.warn(`[API Render] Fonts directory NOT FOUND at ${fontsDir}`);
         }
         fontsRegistered = true;
     } catch (err) {
-        console.error("[API Render] Failed to register fonts:", err);
+        if (process.env.DEBUG === "true") {
+            console.error("[API Render] Failed to register fonts:", err);
+        }
     }
 }
 
 export async function POST(req: NextRequest) {
     const debugLogs: string[] = [];
+    const isDebug = process.env.DEBUG === "true";
     const log = (msg: string) => {
-        console.log(`[API Render] ${msg}`);
+        if (isDebug) {
+            console.log(`[API Render] ${msg}`);
+        }
         debugLogs.push(msg);
     };
 
@@ -184,7 +198,9 @@ export async function POST(req: NextRequest) {
                                     const canvasModule = require('canvas');
                                     Image = canvasModule.Image;
                                 } catch (err) {
-                                    console.error("Optional dependency 'canvas' failed to load:", err);
+                                    if (process.env.DEBUG === "true") {
+                                        console.error("Optional dependency 'canvas' failed to load:", err);
+                                    }
                                 }
 
                                 if (Image) {
