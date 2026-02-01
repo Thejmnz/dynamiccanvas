@@ -71,13 +71,13 @@ function registerServerFonts() {
 }
 
 export async function POST(req: NextRequest) {
-    const debugLogs: string[] = [];
     const isDebug = process.env.DEBUG === "true";
+    const debugLogs: string[] = isDebug ? [] : undefined;
     const log = (msg: string) => {
         if (isDebug) {
             console.log(`[API Render] ${msg}`);
+            debugLogs!.push(msg);
         }
-        debugLogs.push(msg);
     };
 
     // Ensure custom fonts are registered for node-canvas
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
         // 1. Validate API Key
         const authHeader = req.headers.get("authorization");
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
-            return NextResponse.json({ error: "Missing/Invalid Authorization header", logs: debugLogs }, { status: 401 });
+            return NextResponse.json({ error: "Missing/Invalid Authorization header", ...(isDebug && { logs: debugLogs }) }, { status: 401 });
         }
 
         const apiKey = authHeader.replace("Bearer ", "");
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (apiKeyError || !apiKeyData) {
-            return NextResponse.json({ error: "Invalid API key", logs: debugLogs }, { status: 401 });
+            return NextResponse.json({ error: "Invalid API key", ...(isDebug && { logs: debugLogs }) }, { status: 401 });
         }
 
         const userId = apiKeyData.user_id;
@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
 
         log(`Received request for Template: ${templateId}`);
 
-        if (!templateId) return NextResponse.json({ error: "Missing templateId", logs: debugLogs }, { status: 400 });
+        if (!templateId) return NextResponse.json({ error: "Missing templateId", ...(isDebug && { logs: debugLogs }) }, { status: 400 });
 
         // 3. Fetch template
         const { data: template, error: templateError } = await supabase
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
             .eq("user_id", userId)
             .single();
 
-        if (templateError || !template) return NextResponse.json({ error: "Template not found", logs: debugLogs }, { status: 404 });
+        if (templateError || !template) return NextResponse.json({ error: "Template not found", ...(isDebug && { logs: debugLogs }) }, { status: 404 });
 
         // 4. Pre-process Elements JSON with Layer Updates
         // This is more reliable than modifying Fabric objects after creation
@@ -364,7 +364,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
             status: "success",
             imageUrl: publicUrl,
-            logs: debugLogs,
+            ...(isDebug && { logs: debugLogs }),
             data: { templateId, elementsCount: objects.length }
         }, { status: 200 });
 
@@ -374,7 +374,7 @@ export async function POST(req: NextRequest) {
             {
                 error: "Internal server error",
                 details: error.message,
-                logs: debugLogs
+                ...(isDebug && { logs: debugLogs })
             },
             { status: 500 }
         );
