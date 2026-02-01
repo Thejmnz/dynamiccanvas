@@ -926,6 +926,9 @@ export const useEditor = ({
         const activeObj = e.target;
         if (!activeObj) return;
 
+        const canvasWidth = initialCanvas.width || 0;
+        const canvasHeight = initialCanvas.height || 0;
+
         const activeObjCenter = activeObj.getCenterPoint();
         const activeObjBounds = activeObj.getBoundingRect();
 
@@ -938,32 +941,32 @@ export const useEditor = ({
 
           // Vertical center alignment
           if (Math.abs(activeObjCenter.x - objCenter.x) < lineMargin) {
-            drawLine(objCenter.x, 0, objCenter.x, initialCanvas.height);
+            drawLine(objCenter.x, 0, objCenter.x, canvasHeight);
           }
 
           // Horizontal center alignment
           if (Math.abs(activeObjCenter.y - objCenter.y) < lineMargin) {
-            drawLine(0, objCenter.y, initialCanvas.width, objCenter.y);
+            drawLine(0, objCenter.y, canvasWidth, objCenter.y);
           }
 
           // Left edge alignment
           if (Math.abs(activeObjBounds.left - objBounds.left) < lineMargin) {
-            drawLine(objBounds.left, 0, objBounds.left, initialCanvas.height);
+            drawLine(objBounds.left, 0, objBounds.left, canvasHeight);
           }
 
           // Right edge alignment
           if (Math.abs(activeObjBounds.left + activeObjBounds.width - objBounds.left - objBounds.width) < lineMargin) {
-            drawLine(objBounds.left + objBounds.width, 0, objBounds.left + objBounds.width, initialCanvas.height);
+            drawLine(objBounds.left + objBounds.width, 0, objBounds.left + objBounds.width, canvasHeight);
           }
 
           // Top edge alignment
           if (Math.abs(activeObjBounds.top - objBounds.top) < lineMargin) {
-            drawLine(0, objBounds.top, initialCanvas.width, objBounds.top);
+            drawLine(0, objBounds.top, canvasWidth, objBounds.top);
           }
 
           // Bottom edge alignment
           if (Math.abs(activeObjBounds.top + activeObjBounds.height - objBounds.top - objBounds.height) < lineMargin) {
-            drawLine(0, objBounds.top + objBounds.height, initialCanvas.width, objBounds.top + objBounds.height);
+            drawLine(0, objBounds.top + objBounds.height, canvasWidth, objBounds.top + objBounds.height);
           }
         });
       });
