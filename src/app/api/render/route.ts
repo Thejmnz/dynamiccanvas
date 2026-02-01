@@ -60,6 +60,7 @@ function registerServerFonts() {
         } else {
             if (process.env.DEBUG === "true") {
                 console.warn(`[API Render] Fonts directory NOT FOUND at ${fontsDir}`);
+            }
         }
         fontsRegistered = true;
     } catch (err) {
