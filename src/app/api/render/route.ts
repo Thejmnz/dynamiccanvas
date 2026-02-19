@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { createCanvas } from 'canvas';
+import { createCanvas, registerFont } from 'canvas';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 
 // Type for canvas elements
 interface CanvasElement {
@@ -20,6 +23,67 @@ interface CanvasElement {
   lineHeight?: number;
   src?: string;
   [key: string]: any;
+}
+
+// Font mapping: Windows/Mac fonts -> Linux equivalents
+// These map common web fonts to their Linux alternatives
+const FONT_FALLBACKS: Record<string, string> = {
+  // Arial family -> Liberation Sans (metric-compatible with Arial)
+  'Arial': 'Liberation Sans',
+  'Arial Black': 'Liberation Sans',
+  'Helvetica': 'Liberation Sans',
+
+  // Times family -> Liberation Serif (metric-compatible with Times New Roman)
+  'Times New Roman': 'Liberation Serif',
+  'Times': 'Liberation Serif',
+  'Georgia': 'Liberation Serif',
+  'Palatino': 'Liberation Serif',
+  'Garamond': 'Liberation Serif',
+  'Bookman': 'DejaVu Serif',
+
+  // Courier family -> Liberation Mono (metric-compatible with Courier New)
+  'Courier New': 'Liberation Mono',
+  'Courier': 'Liberation Mono',
+  'Lucida Console': 'Liberation Mono',
+  'Monaco': 'Liberation Mono',
+
+  // Other common fonts
+  'Verdana': 'DejaVu Sans',
+  'Tahoma': 'DejaVu Sans',
+  'Trebuchet MS': 'DejaVu Sans',
+  'Lucida Sans Unicode': 'DejaVu Sans',
+  'Geneva': 'DejaVu Sans',
+  'Comic Sans MS': 'DejaVu Sans',
+  'Impact': 'DejaVu Sans',
+  'Brush Script MT': 'DejaVu Sans',
+};
+
+// Default system fonts - these don't need to be downloaded
+const DEFAULT_FONTS = [
+  'Arial', 'Helvetica', 'Times New Roman', 'Times', 'Courier New', 'Courier',
+  'Verdana', 'Georgia', 'Palatino', 'Garamond', 'Comic Sans MS', 'Trebuchet MS',
+  'Impact', 'Arial Black', 'Tahoma', 'Lucida Console', 'Monaco', 'sans-serif',
+  'serif', 'monospace', 'cursive', 'fantasy'
+];
+
+// Helper function to get the best available font
+function getBestFont(fontFamily: string | undefined): string {
+  if (!fontFamily) return 'Liberation Sans';
+
+  // Check if we have a fallback for this font
+  const fallback = FONT_FALLBACKS[fontFamily];
+  if (fallback) {
+    return fallback;
+  }
+
+  // If the font is in the default list but not in fallbacks, use Liberation Sans
+  if (DEFAULT_FONTS.some(df => fontFamily.toLowerCase() === df.toLowerCase())) {
+    return 'Liberation Sans';
+  }
+
+  // If no fallback, return the original font name
+  // (it might be a custom font that will be registered separately)
+  return fontFamily;
 }
 
 interface CanvasData {
@@ -48,6 +112,124 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const dynamic = 'force-dynamic';
+
+// Cache for already registered fonts to avoid re-registering
+const registeredFonts = new Set<string>();
+
+// Type for uploaded_fonts table
+interface UploadedFont {
+  id: string;
+  display_name: string;
+  public_url: string;
+  created_at?: string;
+}
+
+// Helper function to download and register a custom font
+async function registerCustomFont(
+  fontName: string,
+  supabase: ReturnType<typeof createClient>,
+  log: (msg: string) => void
+): Promise<boolean> {
+  // Skip if already registered
+  if (registeredFonts.has(fontName)) {
+    log(`Font "${fontName}" already registered, skipping`);
+    return true;
+  }
+
+  // Skip default fonts
+  if (DEFAULT_FONTS.some(df => fontName.toLowerCase() === df.toLowerCase())) {
+    return true;
+  }
+
+  try {
+    // Try to find the font in Supabase storage
+    // First check uploaded-fonts table
+    const { data: uploadedFont, error: fontError } = await supabase
+      .from('uploaded_fonts')
+      .select('*')
+      .ilike('display_name', fontName)
+      .single();
+
+    const font = uploadedFont as UploadedFont | null;
+    if (font && font.public_url) {
+      log(`Found uploaded font "${fontName}" in database, downloading...`);
+
+      // Download font file
+      const fontResponse = await fetch(font.public_url);
+      if (!fontResponse.ok) {
+        log(`Failed to download font from ${font.public_url}`);
+        return false;
+      }
+
+      const fontBuffer = await fontResponse.arrayBuffer();
+
+      // Save to temp file
+      const tempDir = os.tmpdir();
+      const fontExt = font.public_url.split('.').pop() || 'ttf';
+      const tempFontPath = path.join(tempDir, `${fontName.replace(/\s+/g, '_')}_${Date.now()}.${fontExt}`);
+
+      fs.writeFileSync(tempFontPath, Buffer.from(fontBuffer));
+
+      // Register the font with node-canvas
+      registerFont(tempFontPath, { family: fontName });
+      registeredFonts.add(fontName);
+
+      log(`Successfully registered font "${fontName}" from ${tempFontPath}`);
+      return true;
+    }
+
+    // If not in database, try to find in storage folder
+    const { data: files, error: listError } = await supabase.storage
+      .from('media')
+      .list('fonts', {
+        search: fontName
+      });
+
+    if (files && files.length > 0) {
+      // Find exact match (with or without extension)
+      const fontFile = files.find(f =>
+        f.name.replace(/\.[^/.]+$/, '').toLowerCase() === fontName.toLowerCase()
+      );
+
+      if (fontFile) {
+        const { data: { publicUrl } } = supabase.storage
+          .from('media')
+          .getPublicUrl(`fonts/${fontFile.name}`);
+
+        log(`Found font "${fontName}" in storage, downloading from ${publicUrl}...`);
+
+        // Download font file
+        const fontResponse = await fetch(publicUrl);
+        if (!fontResponse.ok) {
+          log(`Failed to download font from ${publicUrl}`);
+          return false;
+        }
+
+        const fontBuffer = await fontResponse.arrayBuffer();
+
+        // Save to temp file
+        const tempDir = os.tmpdir();
+        const fontExt = fontFile.name.split('.').pop() || 'ttf';
+        const tempFontPath = path.join(tempDir, `${fontName.replace(/\s+/g, '_')}_${Date.now()}.${fontExt}`);
+
+        fs.writeFileSync(tempFontPath, Buffer.from(fontBuffer));
+
+        // Register the font with node-canvas
+        registerFont(tempFontPath, { family: fontName });
+        registeredFonts.add(fontName);
+
+        log(`Successfully registered font "${fontName}" from ${tempFontPath}`);
+        return true;
+      }
+    }
+
+    log(`Font "${fontName}" not found in storage or database, will use fallback`);
+    return false;
+  } catch (error: any) {
+    log(`Error registering font "${fontName}": ${error.message}`);
+    return false;
+  }
+}
 
 export async function POST(req: NextRequest) {
   const isDebug = process.env.DEBUG === "true";
@@ -274,12 +456,16 @@ export async function POST(req: NextRequest) {
           break;
 
         case 'text':
+          // Get the best available font for server-side rendering
+          const bestFont = getBestFont(el.fontFamily);
+          log(`Text element "${el.id}": font "${el.fontFamily}" -> "${bestFont}"`);
+
           const textConfig: any = {
             x: el.x || 0,
             y: el.y || 0,
             text: el.text || 'Text',
             fontSize: el.fontSize || 32,
-            fontFamily: el.fontFamily || 'Arial',
+            fontFamily: bestFont,
             fill: el.fill || '#000000',
             opacity: el.opacity !== undefined ? el.opacity : 1,
             rotation: el.rotation || 0,

@@ -7,6 +7,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install runtime and build dependencies
 # We use a single layer to keep it clean.
 # These libraries are needed for canvas/fabric to work correctly.
+# Also installing fonts for server-side rendering
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     make \
@@ -17,6 +18,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libjpeg-dev \
     libgif-dev \
     librsvg2-dev \
+    fonts-liberation \
+    fonts-dejavu-core \
+    fonts-dejavu-extra \
+    fonts-freefont-ttf \
+    fonts-liberation \
+    fonts-noto \
+    fonts-roboto \
+    fontconfig \
+    && fc-cache -f -v \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -61,6 +71,18 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME="0.0.0.0"
+
+# Install runtime fonts for the production image (since base is used for building)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    fonts-liberation \
+    fonts-dejavu-core \
+    fonts-dejavu-extra \
+    fonts-freefont-ttf \
+    fonts-noto \
+    fonts-roboto \
+    fontconfig \
+    && fc-cache -f -v \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
