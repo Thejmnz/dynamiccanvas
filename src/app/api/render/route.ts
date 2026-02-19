@@ -2,6 +2,36 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createCanvas } from 'canvas';
 
+// Type for canvas elements
+interface CanvasElement {
+  id: string;
+  type: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  rotation?: number;
+  scaleX?: number;
+  scaleY?: number;
+  text?: string;
+  fill?: string;
+  fontFamily?: string;
+  fontSize?: number;
+  lineHeight?: number;
+  src?: string;
+  [key: string]: any;
+}
+
+interface CanvasData {
+  version: string;
+  workspace: {
+    width: number;
+    height: number;
+    background: string;
+  };
+  elements: CanvasElement[];
+}
+
 // Helper function to calculate text height based on content
 function calculateTextHeight(element: any): number {
   if (element.type !== 'text') return element.height || 100;
@@ -69,7 +99,7 @@ export async function POST(req: NextRequest) {
     log(`Template found: ${template.name}`);
 
     // 4. Parse template JSON (Konva 2.0 format)
-    let canvasData = { version: "2.0", workspace: { width: 800, height: 600, background: "#ffffff" }, elements: [] };
+    let canvasData: CanvasData = { version: "2.0", workspace: { width: 800, height: 600, background: "#ffffff" }, elements: [] };
 
     if (template.json) {
       try {
