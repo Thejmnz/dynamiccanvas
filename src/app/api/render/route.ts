@@ -242,7 +242,7 @@ async function registerCustomFont(
 
     if (files && files.length > 0) {
       // Find exact match (with or without extension)
-      const fontFile = files.find(f =>
+      const fontFile = files.find((f: { name: string }) =>
         f.name.replace(/\.[^/.]+$/, '').toLowerCase() === fontName.toLowerCase()
       );
 
