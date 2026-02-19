@@ -27,35 +27,41 @@ interface CanvasElement {
 
 // Font mapping: Windows/Mac fonts -> Linux equivalents
 // These map common web fonts to their Linux alternatives
+// IMPORTANT: Font names must match exactly what fontconfig reports
 const FONT_FALLBACKS: Record<string, string> = {
   // Arial family -> Liberation Sans (metric-compatible with Arial)
   'Arial': 'Liberation Sans',
-  'Arial Black': 'Liberation Sans',
+  'Arial Black': 'Liberation Sans Narrow',
+  'Arial Narrow': 'Liberation Sans Narrow',
   'Helvetica': 'Liberation Sans',
 
   // Times family -> Liberation Serif (metric-compatible with Times New Roman)
   'Times New Roman': 'Liberation Serif',
   'Times': 'Liberation Serif',
-  'Georgia': 'Liberation Serif',
-  'Palatino': 'Liberation Serif',
-  'Garamond': 'Liberation Serif',
-  'Bookman': 'DejaVu Serif',
+  'Georgia': 'Century Schoolbook L',  // Better match for Georgia
+  'Palatino': 'URW Palladio L',
+  'Palatino Linotype': 'URW Palladio L',
+  'Garamond': 'EB Garamond',
+  'Bookman': 'URW Bookman L',
+  'Book Antiqua': 'URW Palladio L',
 
   // Courier family -> Liberation Mono (metric-compatible with Courier New)
   'Courier New': 'Liberation Mono',
   'Courier': 'Liberation Mono',
-  'Lucida Console': 'Liberation Mono',
-  'Monaco': 'Liberation Mono',
+  'Lucida Console': 'DejaVu Sans Mono',
+  'Monaco': 'DejaVu Sans Mono',
 
   // Other common fonts
   'Verdana': 'DejaVu Sans',
-  'Tahoma': 'DejaVu Sans',
+  'Tahoma': 'DejaVu Sans Condensed',
   'Trebuchet MS': 'DejaVu Sans',
   'Lucida Sans Unicode': 'DejaVu Sans',
+  'Lucida Grande': 'DejaVu Sans',
   'Geneva': 'DejaVu Sans',
-  'Comic Sans MS': 'DejaVu Sans',
-  'Impact': 'DejaVu Sans',
-  'Brush Script MT': 'DejaVu Sans',
+  'Comic Sans MS': 'Comic Sans MS',  // Try to keep if available
+  'Impact': 'Impact',  // Try to keep if available
+  'Brush Script MT': 'URW Chancery L',
+  'Century Gothic': 'Century Gothic',
 };
 
 // Default system fonts - these don't need to be downloaded
@@ -70,14 +76,22 @@ const DEFAULT_FONTS = [
 function getBestFont(fontFamily: string | undefined): string {
   if (!fontFamily) return 'Liberation Sans';
 
-  // Check if we have a fallback for this font
+  // Check if we have an exact fallback for this font
   const fallback = FONT_FALLBACKS[fontFamily];
   if (fallback) {
     return fallback;
   }
 
+  // Case-insensitive search through fallbacks
+  const lowerFont = fontFamily.toLowerCase();
+  for (const [key, value] of Object.entries(FONT_FALLBACKS)) {
+    if (key.toLowerCase() === lowerFont) {
+      return value;
+    }
+  }
+
   // If the font is in the default list but not in fallbacks, use Liberation Sans
-  if (DEFAULT_FONTS.some(df => fontFamily.toLowerCase() === df.toLowerCase())) {
+  if (DEFAULT_FONTS.some(df => df.toLowerCase() === lowerFont)) {
     return 'Liberation Sans';
   }
 
@@ -458,6 +472,8 @@ export async function POST(req: NextRequest) {
         case 'text':
           // Get the best available font for server-side rendering
           const bestFont = getBestFont(el.fontFamily);
+          // Always log font mapping for debugging
+          console.log(`[API Render] Text element "${el.id}": font "${el.fontFamily}" -> "${bestFont}"`);
           log(`Text element "${el.id}": font "${el.fontFamily}" -> "${bestFont}"`);
 
           const textConfig: any = {
