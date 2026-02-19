@@ -34,10 +34,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Download and install Playfair Display from Google Fonts
 RUN mkdir -p /usr/share/fonts/truetype/google-fonts && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-Regular.ttf" -o /usr/share/fonts/truetype/google-fonts/PlayfairDisplay-Regular.ttf && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-Bold.ttf" -o /usr/share/fonts/truetype/google-fonts/PlayfairDisplay-Bold.ttf && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-Italic.ttf" -o /usr/share/fonts/truetype/google-fonts/PlayfairDisplay-Italic.ttf && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-BoldItalic.ttf" -o /usr/share/fonts/truetype/google-fonts/PlayfairDisplay-BoldItalic.ttf && \
+    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-Regular.ttf" -o "/usr/share/fonts/truetype/google-fonts/Playfair Display.ttf" && \
+    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-Bold.ttf" -o "/usr/share/fonts/truetype/google-fonts/Playfair Display Bold.ttf" && \
+    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-Italic.ttf" -o "/usr/share/fonts/truetype/google-fonts/Playfair Display Italic.ttf" && \
+    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-BoldItalic.ttf" -o "/usr/share/fonts/truetype/google-fonts/Playfair Display Bold Italic.ttf" && \
     fc-cache -f -v
 
 WORKDIR /app
@@ -101,10 +101,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Download and install Playfair Display from Google Fonts
 RUN mkdir -p /usr/share/fonts/truetype/google-fonts && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-Regular.ttf" -o /usr/share/fonts/truetype/google-fonts/PlayfairDisplay-Regular.ttf && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-Bold.ttf" -o /usr/share/fonts/truetype/google-fonts/PlayfairDisplay-Bold.ttf && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-Italic.ttf" -o /usr/share/fonts/truetype/google-fonts/PlayfairDisplay-Italic.ttf && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-BoldItalic.ttf" -o /usr/share/fonts/truetype/google-fonts/PlayfairDisplay-BoldItalic.ttf && \
+    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-Regular.ttf" -o "/usr/share/fonts/truetype/google-fonts/Playfair Display.ttf" && \
+    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-Bold.ttf" -o "/usr/share/fonts/truetype/google-fonts/Playfair Display Bold.ttf" && \
+    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-Italic.ttf" -o "/usr/share/fonts/truetype/google-fonts/Playfair Display Italic.ttf" && \
+    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-BoldItalic.ttf" -o "/usr/share/fonts/truetype/google-fonts/Playfair Display Bold Italic.ttf" && \
     fc-cache -f -v
 
 RUN addgroup --system --gid 1001 nodejs

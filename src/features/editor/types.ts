@@ -79,6 +79,7 @@ export const fonts = [
   "Lucida Sans Unicode",
   "Geneva",
   "Lucida Console",
+  "Playfair Display",
 ];
 
 export const filters = [

@@ -66,6 +66,7 @@ const FONT_FALLBACKS: Record<string, string> = {
   // Google Fonts - installed in Docker
   'Playfair Display': 'Playfair Display',
   'PlayfairDisplay': 'Playfair Display',
+  'Playfair Display Regular': 'Playfair Display',
   'Lato': 'Lato',
   'Open Sans': 'Open Sans',
   'OpenSans': 'Open Sans',
