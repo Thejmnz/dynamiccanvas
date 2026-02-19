@@ -172,7 +172,32 @@ async function registerCustomFont(
   }
 
   try {
-    // Try to find the font in Supabase storage
+    // FIRST: Try to load from local public/fonts folder
+    // In standalone mode, public is at ./public relative to server.js
+    const basePath = process.cwd();
+    const possibleFontPaths = [
+      path.join(basePath, 'public', 'fonts', `${fontName}.ttf`),
+      path.join(basePath, 'public', 'fonts', `${fontName}.otf`),
+      path.join(basePath, 'public', 'fonts', `${fontName}.woff`),
+      path.join(basePath, 'public', 'fonts', `${fontName}.woff2`),
+      // Also try without space replacement
+      path.join(basePath, 'public', 'fonts', `${fontName.replace(/\s+/g, '-')}.ttf`),
+      path.join(basePath, 'public', 'fonts', `${fontName.replace(/\s+/g, '_')}.ttf`),
+    ];
+
+    log(`Looking for font "${fontName}" in paths:`);
+    for (const fontPath of possibleFontPaths) {
+      log(`  Checking: ${fontPath}`);
+      if (fs.existsSync(fontPath)) {
+        log(`  FOUND! Registering font from ${fontPath}`);
+        registerFont(fontPath, { family: fontName });
+        registeredFonts.add(fontName);
+        console.log(`[API Render] Successfully registered local font "${fontName}" from ${fontPath}`);
+        return true;
+      }
+    }
+
+    // SECOND: Try to find the font in Supabase storage
     // First check uploaded-fonts table
     const { data: uploadedFont, error: fontError } = await supabase
       .from('uploaded_fonts')
