@@ -169,7 +169,7 @@ export const Editor = ({ initialData }: EditorProps) => {
     getActiveTextAlign: editor.getActiveTextAlign,
     changeTextVerticalAlign: (align: string) => {
       editor.selectedIds.forEach(id => {
-        editor.onChange(id, { textVerticalAlign: align });
+        editor.onChange(id, { textVerticalAlign: align as 'top' | 'middle' | 'bottom' });
       });
     },
     getActiveTextVerticalAlign: () => {
