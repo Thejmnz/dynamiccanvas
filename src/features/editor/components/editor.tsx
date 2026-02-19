@@ -216,7 +216,7 @@ export const Editor = ({ initialData }: EditorProps) => {
         const isBold = currentFontWeight > 500;
 
         // Combinar fontStyle con fontWeight
-        let newFontStyle = value;
+        let newFontStyle: 'bold' | 'normal' | 'italic' | 'bold italic' = value as 'bold' | 'normal' | 'italic' | 'bold italic';
         if (isBold) {
           newFontStyle = value === 'italic' ? 'bold italic' : 'bold';
         }
