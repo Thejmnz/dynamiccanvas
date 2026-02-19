@@ -1,410 +1,479 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import fs from "fs";
-import path from "path";
+import { createCanvas } from 'canvas';
+
+// Helper function to calculate text height based on content
+function calculateTextHeight(element: any): number {
+  if (element.type !== 'text') return element.height || 100;
+
+  const lines = (element.text || '').split('\n').length;
+  const fontSize = element.fontSize || 32;
+  const lineHeight = element.lineHeight || 1.2;
+  const estimatedHeight = fontSize * lineHeight * lines;
+
+  return Math.max(estimatedHeight, fontSize * lineHeight);
+}
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-// Use Service Role Key if available, otherwise fallback to Anon Key (which might fail RLS)
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-// Import fabric.js for server-side rendering
-// @ts-ignore
-// @ts-ignore
-import { fabric } from "fabric";
 
 export const dynamic = 'force-dynamic';
 
-let fontsRegistered = false;
-
-function registerServerFonts() {
-    if (fontsRegistered) return;
-
-    try {
-        const canvasModule = require('canvas');
-        const rootDir = process.cwd();
-        const fontsDir = path.join(rootDir, "public", "fonts");
-
-        if (process.env.DEBUG === "true") {
-            console.log(`[API Render] Initializing fonts from: ${fontsDir} (CWD: ${rootDir})`);
-        }
-
-        if (fs.existsSync(fontsDir)) {
-            const files = fs.readdirSync(fontsDir);
-            if (process.env.DEBUG === "true") {
-                console.log(`[API Render] Found ${files.length} files in fonts directory.`);
-            }
-            files.forEach(file => {
-                if (/\.(ttf|otf|woff|woff2)$/i.test(file)) {
-                    const fontFamily = path.parse(file).name;
-                    const fontPath = path.join(fontsDir, file);
-
-                    // Register the original name
-                    canvasModule.registerFont(fontPath, { family: fontFamily });
-                    if (process.env.DEBUG === "true") {
-                        console.log(`[API Render] Registered font family: "${fontFamily}"`);
-                    }
-
-                    // Register aliases (without spaces, with underscores) to be more robust
-                    if (fontFamily.includes(" ")) {
-                        const noSpace = fontFamily.replace(/\s+/g, "");
-                        const underscore = fontFamily.replace(/\s+/g, "_");
-                        canvasModule.registerFont(fontPath, { family: noSpace });
-                        canvasModule.registerFont(fontPath, { family: underscore });
-                        if (process.env.DEBUG === "true") {
-                            console.log(`[API Render] Registered aliases: "${noSpace}", "${underscore}"`);
-                        }
-                    }
-                }
-            });
-        } else {
-            if (process.env.DEBUG === "true") {
-                console.warn(`[API Render] Fonts directory NOT FOUND at ${fontsDir}`);
-            }
-        }
-        fontsRegistered = true;
-    } catch (err) {
-        if (process.env.DEBUG === "true") {
-            console.error("[API Render] Failed to register fonts:", err);
-        }
+export async function POST(req: NextRequest) {
+  const isDebug = process.env.DEBUG === "true";
+  const debugLogs: string[] | undefined = isDebug ? [] : undefined;
+  const log = (msg: string) => {
+    if (isDebug) {
+      console.log(`[API Render] ${msg}`);
+      debugLogs!.push(msg);
     }
+  };
+
+  try {
+    // 1. Validate API Key
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Missing/Invalid Authorization header" }, { status: 401 });
+    }
+
+    const apiKey = authHeader.replace("Bearer ", "");
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: apiKeyData, error: apiKeyError } = await supabase
+      .from("user_api_keys")
+      .select("user_id")
+      .eq("api_key", apiKey)
+      .single();
+
+    if (apiKeyError || !apiKeyData) {
+      return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
+    }
+
+    // 2. Parse request
+    const body = await req.json();
+    const { templateId, layers } = body;
+
+    log(`Received request for Template: ${templateId}`);
+
+    if (!templateId) return NextResponse.json({ error: "Missing templateId" }, { status: 400 });
+
+    // 3. Fetch template
+    const { data: template, error: templateError } = await supabase
+      .from("dynamic_canvas_templates")
+      .select("*")
+      .eq("id", templateId)
+      .single();
+
+    if (templateError || !template) return NextResponse.json({ error: "Template not found" }, { status: 404 });
+
+    log(`Template found: ${template.name}`);
+
+    // 4. Parse template JSON (Konva 2.0 format)
+    let canvasData = { version: "2.0", workspace: { width: 800, height: 600, background: "#ffffff" }, elements: [] };
+
+    if (template.json) {
+      try {
+        const parsed = JSON.parse(template.json);
+        if (parsed.version === "2.0") {
+          canvasData = parsed;
+        }
+      } catch (e) {
+        console.error("[API Render] Error parsing JSON field:", e);
+      }
+    }
+
+    log(`Canvas: ${canvasData.workspace.width}x${canvasData.workspace.height}, Elements: ${canvasData.elements.length}`);
+
+    // 5. Apply layer updates
+    if (layers && canvasData.elements.length > 0) {
+      log(`Applying dynamic updates to ${canvasData.elements.length} elements`);
+
+      canvasData.elements = canvasData.elements.map((element: any) => {
+        const layerId = element.id;
+        const update = layers[layerId];
+
+        if (update) {
+          const newElement = { ...element };
+
+          // Text updates
+          if (element.type === 'text') {
+            const oldHeight = element.height || 100;
+            const oldText = element.text || '';
+            const newText = update.text !== undefined ? update.text : oldText;
+
+            if (update.text !== undefined) newElement.text = newText;
+            if (update.color !== undefined) newElement.fill = update.color;
+            if (update.fontFamily !== undefined) newElement.fontFamily = update.fontFamily;
+
+            // Recalculate height if text changed or if fontSize/lineHeight changed
+            if (update.text !== undefined || update.fontSize !== undefined || update.lineHeight !== undefined) {
+              // The new height should include padding
+              const oldHeight = element.height || 100;
+              const newHeight = calculateTextHeight(newElement);
+
+              // Calculate the center of the original bounding box
+              const boxCenter = element.y + oldHeight / 2;
+
+              // Adjust Y to keep the BOUNDING BOX centered at the same position
+              const newY = boxCenter - newHeight / 2;
+
+              newElement.y = newY;
+              newElement.height = newHeight;
+            }
+          }
+
+          // Image updates
+          const targetImageUrl = update.image_url || update.src || update.url || update.image;
+          if (element.type === 'image' && targetImageUrl) {
+            newElement.src = targetImageUrl;
+            // Mark that this image was dynamically updated so we use original dimensions
+            newElement._isDynamicImage = true;
+          }
+
+          return newElement;
+        }
+        return element;
+      });
+    }
+
+    // 6. Render using Konva with canvas-backend (official Node.js support)
+    log("Starting Konva rendering with canvas-backend...");
+
+    // Import canvas backend for Konva
+    await import('konva/canvas-backend');
+    const Konva = await import('konva');
+
+    // Create canvas using node-canvas
+    const canvas = createCanvas(canvasData.workspace.width, canvasData.workspace.height);
+
+    const stage = new Konva.default.Stage({
+      width: canvasData.workspace.width,
+      height: canvasData.workspace.height,
+      canvas: canvas as any,
+    });
+
+    const layer = new Konva.default.Layer();
+    stage.add(layer);
+
+    // Background
+    const background = new Konva.default.Rect({
+      x: 0,
+      y: 0,
+      width: canvasData.workspace.width,
+      height: canvasData.workspace.height,
+      fill: canvasData.workspace.background || '#ffffff',
+    });
+    layer.add(background);
+
+    // Render elements
+    for (const el of canvasData.elements) {
+      let node;
+
+      switch (el.type) {
+        case 'rect':
+          node = new Konva.default.Rect({
+            x: el.x || 0,
+            y: el.y || 0,
+            width: el.width || 100,
+            height: el.height || 100,
+            fill: el.fill || '#000000',
+            stroke: el.stroke || null,
+            strokeWidth: el.strokeWidth || 0,
+            opacity: el.opacity !== undefined ? el.opacity : 1,
+            rotation: el.rotation || 0,
+            scaleX: el.scaleX || 1,
+            scaleY: el.scaleY || 1,
+            cornerRadius: el.rx || 0,
+          });
+          break;
+
+        case 'circle':
+          node = new Konva.default.Circle({
+            x: (el.x || 0) + (el.width || 100) / 2,
+            y: (el.y || 0) + (el.height || 100) / 2,
+            radius: (el.width || 100) / 2,
+            fill: el.fill || '#000000',
+            stroke: el.stroke || null,
+            strokeWidth: el.strokeWidth || 0,
+            opacity: el.opacity !== undefined ? el.opacity : 1,
+            rotation: el.rotation || 0,
+            scaleX: el.scaleX || 1,
+            scaleY: el.scaleY || 1,
+          });
+          break;
+
+        case 'triangle':
+          node = new Konva.default.Line({
+            points: [
+              (el.width || 100) / 2, 0,
+              el.width || 100, el.height || 100,
+              0, el.height || 100
+            ],
+            x: el.x || 0,
+            y: el.y || 0,
+            fill: el.fill || '#000000',
+            stroke: el.stroke || null,
+            strokeWidth: el.strokeWidth || 0,
+            opacity: el.opacity !== undefined ? el.opacity : 1,
+            rotation: el.rotation || 0,
+            scaleX: el.scaleX || 1,
+            scaleY: el.scaleY || 1,
+            closed: true,
+          });
+          break;
+
+        case 'diamond':
+          node = new Konva.default.Line({
+            points: [
+              (el.width || 100) / 2, 0,
+              el.width || 100, (el.height || 100) / 2,
+              (el.width || 100) / 2, el.height || 100,
+              0, (el.height || 100) / 2
+            ],
+            x: el.x || 0,
+            y: el.y || 0,
+            fill: el.fill || '#000000',
+            stroke: el.stroke || null,
+            strokeWidth: el.strokeWidth || 0,
+            opacity: el.opacity !== undefined ? el.opacity : 1,
+            rotation: el.rotation || 0,
+            scaleX: el.scaleX || 1,
+            scaleY: el.scaleY || 1,
+            closed: true,
+          });
+          break;
+
+        case 'text':
+          const textConfig: any = {
+            x: el.x || 0,
+            y: el.y || 0,
+            text: el.text || 'Text',
+            fontSize: el.fontSize || 32,
+            fontFamily: el.fontFamily || 'Arial',
+            fill: el.fill || '#000000',
+            opacity: el.opacity !== undefined ? el.opacity : 1,
+            rotation: el.rotation || 0,
+            scaleX: el.scaleX || 1,
+            scaleY: el.scaleY || 1,
+          };
+
+          // Width es necesario para wrapping
+          if (el.width && el.width > 0) {
+            textConfig.width = el.width;
+          } else {
+            textConfig.width = 500;
+          }
+
+          // Alineación por defecto: centrado horizontalmente
+          textConfig.align = el.textAlign || 'center';
+          textConfig.verticalAlign = el.textVerticalAlign || 'top';
+
+          // NO establecer height - dejar que Konva calcule automáticamente
+          // Solo usar padding para espacio extra
+          textConfig.padding = 10;
+
+          if (el.lineHeight) textConfig.lineHeight = el.lineHeight;
+          if (el.fontStyle) textConfig.fontStyle = el.fontStyle;
+          if (el.textDecoration) textConfig.textDecoration = el.textDecoration;
+
+          node = new Konva.default.Text(textConfig);
+
+          // If height was dynamically updated, adjust Y to keep bounding box centered
+          // Get the actual rendered height from Konva
+          const actualHeight = node.height();
+          const storedHeight = el.height || 100;
+
+          // Only adjust if the actual height differs significantly from stored height
+          if (Math.abs(actualHeight - storedHeight) > 5) {
+            // Calculate the center of the original stored bounding box
+            const originalBoxCenter = textConfig.y + storedHeight / 2;
+            // Adjust Y to keep that same center point with the new height
+            node.y(originalBoxCenter - actualHeight / 2);
+          }
+          break;
+
+        case 'image':
+          if (el.src) {
+            try {
+              const { Image } = await import('canvas');
+              const imageObj = await loadImage(el.src);
+
+              // Get stored dimensions and scale (should be 1 after transformer ends)
+              const scaleX = el.scaleX || 1;
+              const scaleY = el.scaleY || 1;
+              const storedWidth = el.width || imageObj.width;
+              const storedHeight = el.height || imageObj.height;
+
+              // Calculate final dimensions exactly as the editor shows them
+              const finalWidth = storedWidth * scaleX;
+              const finalHeight = storedHeight * scaleY;
+
+              // Debug: log image dimensions
+              log(`Image ${el.id}:`);
+              log(`  - Original image: ${imageObj.width}x${imageObj.height}`);
+              log(`  - Stored in element: ${el.width}x${el.height}`);
+              log(`  - Scale: ${scaleX}x${scaleY}`);
+              log(`  - Final render: ${finalWidth}x${finalHeight}`);
+
+              let imageWidth, imageHeight, posX, posY;
+
+              if (el._isDynamicImage === true) {
+                // For dynamically updated images, fit within template bounds
+                // Maintain aspect ratio while fitting to the template height
+                const templateWidth = storedWidth;
+                const templateHeight = storedHeight;
+
+                // Scale to fit template height while maintaining aspect ratio
+                const fitScale = templateHeight / imageObj.height;
+                imageWidth = imageObj.width * fitScale;
+                imageHeight = templateHeight;
+
+                // Center horizontally within template bounds
+                posX = (el.x || 0) + (templateWidth - imageWidth) / 2;
+                posY = el.y || 0;
+                log(`  - Dynamic image mode: fitting to ${imageWidth}x${imageHeight}`);
+              } else {
+                // For template images, use the exact dimensions from the editor
+                // The editor already applied scale to width/height and reset scale to 1
+                // But we still apply scale just in case to match exactly what's rendered
+                imageWidth = finalWidth;
+                imageHeight = finalHeight;
+                posX = el.x || 0;
+                posY = el.y || 0;
+              }
+
+              node = new Konva.default.Image({
+                x: posX,
+                y: posY,
+                image: imageObj,
+                width: imageWidth,
+                height: imageHeight,
+                opacity: el.opacity !== undefined ? el.opacity : 1,
+                rotation: el.rotation || 0,
+                // Keep scale at 1 since we already applied it to width/height
+                scaleX: 1,
+                scaleY: 1,
+              });
+            } catch (imgError) {
+              log(`Failed to load image: ${el.src} - ${imgError}`);
+            }
+          }
+          break;
+      }
+
+      if (node) {
+        layer.add(node);
+      }
+    }
+
+    // Draw the layer
+    layer.draw();
+
+    // Convert to buffer using stage.toDataURL
+    log("Converting to buffer...");
+    const dataURL = stage.toDataURL({ mimeType: 'image/png', pixelRatio: 1 });
+    const base64Data = dataURL.replace(/^data:image\/png;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    log(`Render complete: ${buffer.length} bytes`);
+
+    // 7. Upload to Supabase
+    const templateName = (template.name || templateId).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const timestamp = Date.now();
+    const fileName = `renders/${templateId}-${templateName}-${timestamp}.png`;
+
+    const { error: uploadError } = await supabase
+      .storage
+      .from('media')
+      .upload(fileName, buffer, {
+        contentType: 'image/png',
+        upsert: false,
+      });
+
+    let publicUrl = "";
+    if (!uploadError) {
+      const { data: publicUrlData } = supabase.storage.from('media').getPublicUrl(fileName);
+      publicUrl = publicUrlData.publicUrl;
+      log(`Image uploaded: ${publicUrl}`);
+    } else {
+      log(`Upload error: ${uploadError?.message}`);
+    }
+
+    return NextResponse.json({
+      status: "success",
+      imageUrl: publicUrl,
+      ...(isDebug && { logs: debugLogs }),
+    }, { status: 200 });
+
+  } catch (error: any) {
+    log(`Fatal Error: ${error.message}`);
+    console.error("[API Render] Error:", error);
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+        details: error.message,
+        stack: error.stack,
+        ...(isDebug && { logs: debugLogs })
+      },
+      { status: 500 }
+    );
+  }
 }
 
-export async function POST(req: NextRequest) {
-    const isDebug = process.env.DEBUG === "true";
-    const debugLogs: string[] | undefined = isDebug ? [] : undefined;
-    const log = (msg: string) => {
-        if (isDebug) {
-            console.log(`[API Render] ${msg}`);
-            debugLogs!.push(msg);
-        }
-    };
+// Helper function to load images from URLs
+async function loadImage(src: string): Promise<any> {
+  const { Image } = await import('canvas');
+  const image = new Image();
 
-    // Ensure custom fonts are registered for node-canvas
-    registerServerFonts();
+  return new Promise((resolve, reject) => {
+    image.onload = () => resolve(image);
+    image.onerror = (err: any) => reject(err);
 
-    try {
-        // 1. Validate API Key
-        const authHeader = req.headers.get("authorization");
-        if (!authHeader || !authHeader.startsWith("Bearer ")) {
-            return NextResponse.json({ error: "Missing/Invalid Authorization header", ...(isDebug && { logs: debugLogs }) }, { status: 401 });
-        }
-
-        const apiKey = authHeader.replace("Bearer ", "");
-        const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-        const { data: apiKeyData, error: apiKeyError } = await supabase
-            .from("user_api_keys")
-            .select("user_id")
-            .eq("api_key", apiKey)
-            .single();
-
-        if (apiKeyError || !apiKeyData) {
-            return NextResponse.json({ error: "Invalid API key", ...(isDebug && { logs: debugLogs }) }, { status: 401 });
-        }
-
-        const userId = apiKeyData.user_id;
-
-        // 2. Parse request
-        const body = await req.json();
-        const { templateId, layers } = body;
-
-        log(`Received request for Template: ${templateId}`);
-
-        if (!templateId) return NextResponse.json({ error: "Missing templateId", ...(isDebug && { logs: debugLogs }) }, { status: 400 });
-
-        // 3. Fetch template
-        const { data: template, error: templateError } = await supabase
-            .from("templates")
-            .select("*")
-            .eq("id", templateId)
-            .eq("user_id", userId)
-            .single();
-
-        if (templateError || !template) return NextResponse.json({ error: "Template not found", ...(isDebug && { logs: debugLogs }) }, { status: 404 });
-
-        // 4. Pre-process Elements JSON with Layer Updates
-        // This is more reliable than modifying Fabric objects after creation
-        let elements = template.elements || [];
-
-        if (layers && elements.length > 0) {
-            log(`Applying dynamic updates to ${elements.length} elements`);
-
-            // Use Promise.all to handle async image fetching
-            elements = await Promise.all(elements.map(async (element: any) => {
-                const layerId = element.id || element.name;
-
-                // LOG THE FONT IN USE
-                if (element.fontFamily) {
-                    log(`Element ${layerId} uses font: "${element.fontFamily}"`);
-                }
-
-                log(`Processing element: ${layerId || 'unknown'} (${element.type})`);
-
-                const update = layers[layerId];
-
-                if (update) {
-                    log(`MATCH: Updating layer ${layerId}. Keys received: [${Object.keys(update).join(', ')}]`);
-
-                    const newElement = { ...element };
-
-                    // Text Updates
-                    if (["text", "i-text", "textbox"].includes(element.type)) {
-                        if (update.text) {
-                            newElement.text = update.text;
-                            delete newElement.path;
-                        }
-                        if (update.color) newElement.fill = update.color;
-                        if (update.fontFamily) {
-                            newElement.fontFamily = update.fontFamily;
-                            log(`Updated font for ${layerId} to: "${update.fontFamily}"`);
-                        }
-                    }
-
-                    // Image Updates
-                    // Check for various common keys for image URL
-                    const targetImageUrl = update.image_url || update.src || update.url || update.image;
-
-                    if (element.type === "image" && targetImageUrl) {
-                        log(`MATCH: Image update for ${layerId}. Target URL: ${targetImageUrl}`);
-                        try {
-                            // Add timeout to prevent hanging on slow images
-                            const controller = new AbortController();
-                            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds timeout
-
-                            log(`Downloading image from: ${targetImageUrl}`);
-                            const imgRes = await fetch(targetImageUrl, {
-                                cache: 'no-store',
-                                headers: { 'User-Agent': 'Mozilla/5.0' },
-                                signal: controller.signal
-                            });
-
-                            clearTimeout(timeoutId);
-
-                            if (!imgRes.ok) throw new Error(`Fetch failed: ${imgRes.status} ${imgRes.statusText}`);
-
-                            const arrayBuffer = await imgRes.arrayBuffer();
-                            const buffer = Buffer.from(arrayBuffer);
-                            const base64 = buffer.toString('base64');
-                            const contentType = imgRes.headers.get("content-type") || "image/png";
-                            const dataUri = `data:${contentType};base64,${base64}`;
-
-                            log(`Image converted to Base64 (Length: ${base64.length}). Starts with: ${base64.substring(0, 20)}...`);
-
-                            try {
-                                // Dynamically require canvas only when needed to verify installation on runtime
-                                let Image;
-                                try {
-                                    // @ts-ignore
-                                    const canvasModule = require('canvas');
-                                    Image = canvasModule.Image;
-                                } catch (err) {
-                                    if (process.env.DEBUG === "true") {
-                                        console.error("Optional dependency 'canvas' failed to load:", err);
-                                    }
-                                }
-
-                                if (Image) {
-                                    const img = new Image();
-                                    img.src = buffer;
-
-                                    const newWidth = img.width;
-                                    const newHeight = img.height;
-
-                                    if (newWidth && newHeight) {
-                                        const originalWidth = element.width || 100;
-                                        const originalHeight = element.height || 100;
-                                        const originalScaleX = element.scaleX || 1;
-                                        const originalScaleY = element.scaleY || 1;
-
-                                        const visualWidth = originalWidth * originalScaleX;
-                                        const visualHeight = originalHeight * originalScaleY;
-
-                                        // Calculate scale to maintain aspect ratio (cover mode)
-                                        const scaleX = visualWidth / newWidth;
-                                        const scaleY = visualHeight / newHeight;
-                                        const scale = Math.max(scaleX, scaleY); // Use max to cover (fill) the area
-
-                                        // Calculate scaled dimensions
-                                        const scaledWidth = newWidth * scale;
-                                        const scaledHeight = newHeight * scale;
-
-                                        // Calculate crop offsets to center the image
-                                        const cropX = scaledWidth > visualWidth ? ((scaledWidth - visualWidth) / 2) / scale : 0;
-                                        const cropY = scaledHeight > visualHeight ? ((scaledHeight - visualHeight) / 2) / scale : 0;
-
-                                        newElement.width = newWidth;
-                                        newElement.height = newHeight;
-                                        newElement.scaleX = scale;
-                                        newElement.scaleY = scale;
-                                        newElement.cropX = cropX;
-                                        newElement.cropY = cropY;
-
-                                        log(`Geometry Adjust (cover): ${newWidth}x${newHeight} -> Scale ${scale.toFixed(2)}, Crop (${cropX.toFixed(2)}, ${cropY.toFixed(2)})`);
-                                    }
-                                } else {
-                                    log("Skipping geometry adjustment because 'canvas' package is missing or failed to load.");
-                                }
-                            } catch (geomError: any) {
-                                log(`Geometry calculation failed: ${geomError.message}. Proceeding without scale adjustment.`);
-                            }
-
-                            // Aggressively overwrite source properties
-                            newElement.src = dataUri;
-                            newElement.type = "image";
-                            delete newElement.crossOrigin;
-                            delete newElement.srcSet;
-                            delete newElement.originalSrc;
-
-                        } catch (e: any) {
-                            log(`ERROR downloading image: ${e.message}. Using URL directly.`);
-                            newElement.src = targetImageUrl;
-                            delete newElement.crossOrigin;
-                        }
-                    } else if (element.type === "image" && !targetImageUrl) {
-                        log(`SKIPPING image update for ${layerId}: No image URL found in update object.`);
-                    }
-
-                    return newElement;
-                }
-                return element;
-            }));
-        }
-
-        // Debug: Log elements being loaded
-        log(`About to load ${elements.length} elements into canvas`);
-        elements.forEach((el: any, idx: number) => {
-            if (el.type === 'image') {
-                const srcPreview = el.src ? el.src.substring(0, 50) : 'NO SRC';
-                log(`Element ${idx} (${el.id || el.name}): type=image, src starts with: ${srcPreview}...`);
-            }
-        });
-
-        // 5. Setup Canvas and Load Modified JSON
-        const canvas = new fabric.StaticCanvas(null, {
-            width: template.width || 800,
-            height: template.height || 600,
-            backgroundColor: template.backgroundColor || "#ffffff"
-        });
-
-        // We wrap loadFromJSON to ensure it completes before we proceed
-        await new Promise<void>((resolve, reject) => {
-            canvas.loadFromJSON({ objects: elements }, () => {
-                resolve();
-            }, (o: any, object: any) => {
-                // Reviver: This runs for every object after it's created but before callback
-                // Good place to ensure specific settings
-                if (object.type === 'image') {
-                    // Ensure generic settings
-                }
-            });
-        });
-
-        const objects = canvas.getObjects();
-
-        // Debug: Log what src the images have after loading into canvas
-        objects.forEach((obj: any, idx: number) => {
-            if (obj.type === 'image') {
-                const srcPreview = obj._element?.src ? obj._element.src.substring(0, 50) : 'NO SRC';
-                log(`Canvas loaded - Image ${idx}: src preview = ${srcPreview}...`);
-            }
-        });
-
-        const workspace = objects.find((obj: any) => obj.name === "clip");
-        let offsetX = 0;
-        let offsetY = 0;
-
-        if (workspace) {
-            offsetX = workspace.left || 0;
-            offsetY = workspace.top || 0;
-            workspace.set({ left: 0, top: 0 });
-        }
-
-        // Fix Offsets
-        for (const obj of objects) {
-            if (obj !== workspace) {
-                obj.set({
-                    left: (obj.left || 0) - offsetX,
-                    top: (obj.top || 0) - offsetY
-                });
-                obj.setCoords();
-            }
-        }
-
-        log(`Rendered ${objects.length} objects`);
-
-        // Render to Data URL
-        const dataUrl = canvas.toDataURL({
-            format: "png",
-            multiplier: 1,
-            enableRetinaScaling: false
-        });
-
-        // 6. Upload to Supabase
-        const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, "");
-        const buffer = Buffer.from(base64Data, 'base64');
-        const fileName = `renders/${templateId}-${Date.now()}.png`;
-
-        const { error: uploadError } = await supabase
-            .storage
-            .from('media')
-            .upload(fileName, buffer, {
-                contentType: 'image/png',
-                upsert: false
-            });
-
-        let publicUrl = "";
-        if (!uploadError) {
-            const { data: publicUrlData } = supabase.storage.from('media').getPublicUrl(fileName);
-            publicUrl = publicUrlData.publicUrl;
-        } else {
-            log(`Upload error: ${uploadError?.message}`);
-        }
-
-        return NextResponse.json({
-            status: "success",
-            imageUrl: publicUrl,
-            ...(isDebug && { logs: debugLogs }),
-            data: { templateId, elementsCount: objects.length }
-        }, { status: 200 });
-
-    } catch (error: any) {
-        log(`Fatal Error: ${error.message}`);
-        return NextResponse.json(
-            {
-                error: "Internal server error",
-                details: error.message,
-                ...(isDebug && { logs: debugLogs })
-            },
-            { status: 500 }
-        );
+    // Handle different URL formats
+    if (src.startsWith('http://') || src.startsWith('https://')) {
+      // Fetch the image data
+      fetch(src)
+        .then(res => {
+          if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`);
+          return res.arrayBuffer();
+        })
+        .then(buffer => {
+          const array = new Uint8Array(buffer);
+          image.src = Buffer.from(array);
+        })
+        .catch(reject);
+    } else if (src.startsWith('data:')) {
+      // Data URL
+      image.src = src;
+    } else {
+      reject(new Error(`Unsupported image source: ${src}`));
     }
+  });
 }
 
 // GET method for documentation/testing
 export async function GET() {
-    return NextResponse.json({
-        endpoint: "/api/render",
-        method: "POST",
-        description: "Generate images from templates with dynamic data",
-        authentication: "Bearer token in Authorization header",
-        requestBody: {
-            templateId: "string (required) - ID of the template to render",
-            layers: "object (optional) - Dynamic data to merge with template elements"
+  return NextResponse.json({
+    endpoint: "/api/render",
+    method: "POST",
+    description: "Generate images from templates with dynamic data using Konva (server-side rendering)",
+    authentication: "Bearer token in Authorization header",
+    requestBody: {
+      templateId: "string (required) - ID of the template to render",
+      layers: "object (optional) - Dynamic data to merge with template elements"
+    },
+    exampleRequest: {
+      templateId: "your-template-id",
+      layers: {
+        "element-id-1": {
+          text: "Custom text",
+          color: "#FF0000"
         },
-        exampleRequest: {
-            templateId: "your-template-id",
-            layers: {
-                "element-id-1": {
-                    text: "Custom text",
-                    color: "#FF0000"
-                },
-                "element-id-2": {
-                    image_url: "https://example.com/image.png"
-                }
-            }
-        },
-        status: "active",
-        note: "Image rendering is currently in development. The endpoint returns processed template data."
-    });
+        "element-id-2": {
+          image_url: "https://example.com/image.png"
+        }
+      }
+    },
+    status: "active",
+  });
 }

@@ -20,14 +20,19 @@ export const useCreateProject = () => {
       // Assuming 'templates' table has columns: user_id, name, width, height, elements (jsonb)
 
       const projectData = {
+        id: crypto.randomUUID(),
         user_id: user.id,
         name: json.name || "Untitled Project",
         width: json.width || 800,
         height: json.height || 600,
         elements: json.json ? JSON.parse(json.json) : [],
+        json: json.json || JSON.stringify({ version: "2.0", objects: [] }),
         backgroundColor: "#ffffff",
         preset: "", // Required field - empty string for custom projects
-        lastModified: new Date().toISOString()
+        lastModified: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isPro: false
       };
 
       // Handle case where json.json is already an object or string
@@ -36,7 +41,7 @@ export const useCreateProject = () => {
       }
 
       const { data, error } = await supabase
-        .from('templates')
+        .from('dynamic_canvas_templates')
         .insert(projectData)
         .select()
         .single();

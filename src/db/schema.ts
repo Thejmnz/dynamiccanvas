@@ -7,6 +7,7 @@ import {
   text,
   primaryKey,
   integer,
+  jsonb,
 } from "drizzle-orm/pg-core"
 import type { AdapterAccountType } from "next-auth/adapters"
  
@@ -120,6 +121,60 @@ export const projectsRelations = relations(projects, ({ one }) => ({
 }));
 
 export const projectsInsertSchema = createInsertSchema(projects);
+
+// Tabla separada para templates de Dynamic Canvas
+export const templates = pgTable("dynamic_canvas_templates", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull(),
+  user_id: text("user_id")
+    .references(() => users.id, {
+      onDelete: "cascade",
+    }),
+  json: text("json").notNull(),
+  elements: jsonb("elements"),
+  height: integer("height").notNull(),
+  width: integer("width").notNull(),
+  backgroundColor: text("backgroundColor").default("#ffffff"),
+  thumbnailUrl: text("thumbnailUrl"),
+  isPro: boolean("isPro").notNull().default(false),
+  preset: text("preset").default(""),
+  category: text("category"),
+  createdAt: timestamp("createdAt", { mode: "date" }).notNull(),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).notNull(),
+  lastModified: timestamp("lastModified", { mode: "date" }),
+});
+
+export const templatesRelations = relations(templates, ({ one }) => ({
+  user: one(users, {
+    fields: [templates.user_id],
+    references: [users.id],
+  }),
+}));
+
+export const templatesInsertSchema = createInsertSchema(templates);
+
+// API Keys para integraciones externas
+export const userApiKeys = pgTable("user_api_keys", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" })
+    .unique(),
+  apiKey: text("api_key").notNull().unique(),
+  createdAt: timestamp("createdAt", { mode: "date" }).notNull(),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).notNull(),
+});
+
+export const userApiKeysRelations = relations(userApiKeys, ({ one }) => ({
+  user: one(users, {
+    fields: [userApiKeys.userId],
+    references: [users.id],
+  }),
+}));
 
 export const subscriptions = pgTable("subscription", {
   id: text("id")

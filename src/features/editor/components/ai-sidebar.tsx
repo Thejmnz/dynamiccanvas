@@ -1,15 +1,12 @@
-import { useState } from "react";
-
 import { ActiveTool, Editor } from "@/features/editor/types";
 import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
 import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-header";
 
-import { useGenerateImage } from "@/features/ai/api/use-generate-image";
-
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
+import { useLanguage } from "@/lib/contexts/LanguageContext";
+import { Sparkles } from "lucide-react";
 
 interface AiSidebarProps {
   editor: Editor | undefined;
@@ -18,25 +15,10 @@ interface AiSidebarProps {
 };
 
 export const AiSidebar = ({
-  editor,
   activeTool,
   onChangeActiveTool,
 }: AiSidebarProps) => {
-  const mutation = useGenerateImage();
-
-  const [value, setValue] = useState("");
-
-  const onSubmit = (
-    e: React.FormEvent<HTMLFormElement>
-  ) => {
-    e.preventDefault();
-
-    mutation.mutate({ prompt: value }, {
-      onSuccess: ({ data }) => {
-        editor?.addImage(data);
-      }
-    });
-  };
+  const { t } = useLanguage();
 
   const onClose = () => {
     onChangeActiveTool("select");
@@ -51,28 +33,18 @@ export const AiSidebar = ({
     >
       <ToolSidebarHeader
         title="AI"
-        description="Generate an image using AI"
+        description={t("ai_description")}
       />
       <ScrollArea>
-        <form onSubmit={onSubmit} className="p-4 space-y-6">
-          <Textarea
-            disabled={mutation.isPending}
-            placeholder="An astronaut riding a horse on mars, hd, dramatic lighting"
-            cols={30}
-            rows={10}
-            required
-            minLength={3}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-          />
-          <Button
-            disabled={mutation.isPending}
-            type="submit"
-            className="w-full"
-          >
-            Generate
-          </Button>
-        </form>
+        <div className="flex flex-col items-center justify-center h-[300px] p-6 text-center">
+          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+            <Sparkles className="size-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-semibold mb-2">{t("coming_soon")}</h3>
+          <p className="text-sm text-muted-foreground">
+            {t("ai_coming_soon_desc")}
+          </p>
+        </div>
       </ScrollArea>
       <ToolSidebarClose onClick={onClose} />
     </aside>

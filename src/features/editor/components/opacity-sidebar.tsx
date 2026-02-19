@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { 
   ActiveTool, 
@@ -22,16 +22,16 @@ export const OpacitySidebar = ({
   activeTool,
   onChangeActiveTool,
 }: OpacitySidebarProps) => {
-  const initialValue = editor?.getActiveOpacity() || 1;
-  const selectedObject = useMemo(() => editor?.selectedObjects[0], [editor?.selectedObjects]);
-
-  const [opacity, setOpacity] = useState(initialValue);
+  const [opacity, setOpacity] = useState(() => editor?.getActiveOpacity() || 1);
 
   useEffect(() => {
+    const selectedObject = editor?.selectedObjects?.[0];
     if (selectedObject) {
-      setOpacity(selectedObject.get("opacity") || 1);
+      // For SVG elements, access opacity property directly
+      const value = (selectedObject as any).opacity ?? editor?.getActiveOpacity() ?? 1;
+      setOpacity(value);
     }
-  }, [selectedObject]);
+  }, [editor?.selectedObjects, editor]);
 
   const onClose = () => {
     onChangeActiveTool("select");

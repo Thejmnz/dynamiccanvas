@@ -53,12 +53,6 @@ export const Sidebar = ({
           onClick={() => onChangeActiveTool("shapes")}
         />
         <SidebarItem
-          icon={Pencil}
-          label={t("tool_draw")}
-          isActive={activeTool === "draw"}
-          onClick={() => onChangeActiveTool("draw")}
-        />
-        <SidebarItem
           icon={Sparkles}
           label={t("tool_ai")}
           isActive={activeTool === "ai"}

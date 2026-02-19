@@ -10,33 +10,6 @@ import { projects, projectsInsertSchema } from "@/db/schema";
 type Project = typeof projects.$inferSelect;
 const MOCK_PROJECTS: Project[] = [];
 const app = new Hono()
-  .get(
-    "/templates",
-    verifyAuth(),
-    zValidator(
-      "query",
-      z.object({
-        page: z.coerce.number(),
-        limit: z.coerce.number(),
-      }),
-    ),
-    async (c) => {
-      const { page, limit } = c.req.valid("query");
-
-      const data = await db
-        .select()
-        .from(projects)
-        .where(eq(projects.isTemplate, true))
-        .limit(limit)
-        .offset((page - 1) * limit)
-        .orderBy(
-          asc(projects.isPro),
-          desc(projects.updatedAt),
-        );
-
-      return c.json({ data });
-    },
-  )
   .delete(
     "/:id",
     verifyAuth(),
@@ -201,7 +174,13 @@ const app = new Hono()
       const { id } = c.req.valid("param");
       const values = c.req.valid("json");
 
+      console.log("💾 PATCH /projects/:id");
+      console.log("  - Project ID:", id);
+      console.log("  - User ID:", auth.token?.id);
+      console.log("  - Values:", JSON.stringify(values).substring(0, 200));
+
       if (!auth.token?.id) {
+        console.log("❌ No auth token");
         return c.json({ error: "Unauthorized" }, 401);
       }
 
@@ -234,7 +213,13 @@ const app = new Hono()
         )
         .returning();
 
+      console.log("  - Updated:", data.length, "rows");
+      if (data.length > 0) {
+        console.log("  - Result:", data[0]);
+      }
+
       if (data.length === 0) {
+        console.log("❌ No rows updated - project not found or wrong user");
         return c.json({ error: "Unauthorized" }, 401);
       }
 

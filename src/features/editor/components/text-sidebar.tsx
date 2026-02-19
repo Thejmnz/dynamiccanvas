@@ -11,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 
 interface TextSidebarProps {
-  editor: Editor | undefined;
+  editor: any;
   activeTool: ActiveTool;
   onChangeActiveTool: (tool: ActiveTool) => void;
 };
@@ -42,7 +42,7 @@ export const TextSidebar = ({
         <div className="p-4 space-y-4 border-b">
           <Button
             className="w-full"
-            onClick={() => editor?.addText("Textbox")}
+            onClick={() => editor?.addText?.("Textbox")}
           >
             {t("add_textbox")}
           </Button>
@@ -50,7 +50,7 @@ export const TextSidebar = ({
             className="w-full h-16"
             variant="secondary"
             size="lg"
-            onClick={() => editor?.addText("Heading", {
+            onClick={() => editor?.addText?.("Heading", {
               fontSize: 80,
               fontWeight: 700,
             })}
@@ -63,7 +63,7 @@ export const TextSidebar = ({
             className="w-full h-16"
             variant="secondary"
             size="lg"
-            onClick={() => editor?.addText("Subheading", {
+            onClick={() => editor?.addText?.("Subheading", {
               fontSize: 44,
               fontWeight: 600,
             })}
@@ -76,7 +76,7 @@ export const TextSidebar = ({
             className="w-full h-16"
             variant="secondary"
             size="lg"
-            onClick={() => editor?.addText("Paragraph", {
+            onClick={() => editor?.addText?.("Paragraph", {
               fontSize: 32,
             })}
           >

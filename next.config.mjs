@@ -1,10 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
-  // Exclude native modules from Webpack bundling
-  experimental: {
-    serverComponentsExternalPackages: ['canvas', 'fabric'],
-  },
   webpack: (config) => {
     config.externals.push({
       "utf-8-validate": "commonjs utf-8-validate",
@@ -34,6 +30,18 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "xsjtlbmaazrhwhoorubk.supabase.co",
+      },
+      {
+        protocol: "https",
+        hostname: "qhfbwqijhefoeebxnota.supabase.co",
+      },
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
+      },
+      {
+        protocol: "https",
+        hostname: "*.ufs.sh",
       },
     ],
   },

@@ -27,26 +27,26 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center bg-muted">
-        <Loader className="animate-spin size-6 text-muted-foreground" />
+      <div className="min-h-screen flex items-center justify-center bg-slate-100">
+        <Loader className="animate-spin size-6 text-[#135bec]" />
       </div>
     )
   }
 
   if (!user) {
     return (
-      <div className="h-full flex items-center justify-center bg-muted">
-        <Loader className="animate-spin size-6 text-muted-foreground" />
+      <div className="min-h-screen flex items-center justify-center bg-slate-100">
+        <Loader className="animate-spin size-6 text-[#135bec]" />
       </div>
     );
   }
 
   return (
-    <div className="bg-muted h-full">
+    <div className="min-h-screen bg-white">
       <Sidebar />
-      <div className="lg:pl-[300px] flex flex-col h-full">
+      <div className="lg:pl-[300px] flex flex-col min-h-screen">
         <Navbar />
-        <main className="bg-white flex-1 overflow-auto p-8 lg:rounded-tl-2xl">
+        <main className="bg-slate-50 flex-1 overflow-auto p-6">
           {children}
         </main>
       </div>

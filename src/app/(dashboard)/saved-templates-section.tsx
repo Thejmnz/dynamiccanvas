@@ -25,7 +25,7 @@ interface Template {
     name: string;
     width: number;
     height: number;
-    thumbnail_url: string | null;
+    thumbnailUrl: string | null;
     created_at: string;
 }
 
@@ -51,7 +51,7 @@ export const SavedTemplatesSection = () => {
             }
 
             const { data, error: fetchError } = await supabase
-                .from('templates')
+                .from('dynamic_canvas_templates')
                 .select('*')
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
@@ -135,9 +135,9 @@ export const SavedTemplatesSection = () => {
                     <Card key={template.id} className="group relative overflow-hidden border-2 hover:border-blue-500 transition-all">
                         {/* Thumbnail */}
                         <div className="aspect-[3/4] bg-gray-100 relative">
-                            {template.thumbnail_url ? (
+                            {template.thumbnailUrl ? (
                                 <img
-                                    src={template.thumbnail_url}
+                                    src={template.thumbnailUrl}
                                     alt={template.name}
                                     className="w-full h-full object-cover"
                                 />

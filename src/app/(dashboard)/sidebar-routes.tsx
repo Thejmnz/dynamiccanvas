@@ -11,9 +11,9 @@ export const SidebarRoutes = () => {
   const pathname = usePathname();
 
   return (
-    <div className="flex flex-col gap-y-4 flex-1">
-      <ul className="flex flex-col gap-y-1 px-3">
-        <SidebarItem href="/" icon={Home} label={t("home")} isActive={pathname === "/"} />
+    <div className="flex flex-col flex-1 px-3 pt-4">
+      <ul className="flex flex-col gap-y-1">
+        <SidebarItem href="/dashboard" icon={Home} label={t("home")} isActive={pathname === "/dashboard"} />
         <SidebarItem href="/api-integration" icon={Code} label={t("api_integration")} isActive={pathname === "/api-integration"} />
       </ul>
     </div>

@@ -8,7 +8,7 @@ export const useDeleteProject = () => {
   const mutation = useMutation({
     mutationFn: async ({ id }: { id: string }) => {
       const { error } = await supabase
-        .from('templates')
+        .from('dynamic_canvas_templates')
         .delete()
         .eq('id', id);
 

@@ -20,7 +20,7 @@ export const useGetProject = (id: string) => {
     queryKey: ["project", { id }],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('templates')
+        .from('dynamic_canvas_templates')
         .select('*')
         .eq('id', id)
         .single();
@@ -33,32 +33,34 @@ export const useGetProject = (id: string) => {
       // Prepare canvas JSON for the editor
       let canvasJson;
 
-      if (!data.elements || data.elements.length === 0) {
-        // Create initial workspace for new/empty projects
+      // Primero intentar usar el campo 'json' (formato Konva 2.0)
+      if (data.json) {
+        try {
+          const parsed = JSON.parse(data.json);
+          // Si ya es formato 2.0, usarlo directamente
+          if (parsed.version === "2.0") {
+            canvasJson = data.json;
+          } else {
+            // Si es formato antiguo, convertir o usar como está
+            canvasJson = data.json;
+          }
+        } catch (e) {
+          console.error("Error parsing json field:", e);
+          canvasJson = JSON.stringify({ version: "2.0", workspace: { width: data.width || 900, height: data.height || 1200, background: data.backgroundColor || "#ffffff" }, elements: [] });
+        }
+      } else if (data.elements && Array.isArray(data.elements) && data.elements.length > 0) {
+        // Fallback: usar campo 'elements' (formato antiguo Fabric.js)
         canvasJson = JSON.stringify({
-          version: "5.3.0",
-          objects: [
-            {
-              type: "rect",
-              version: "5.3.0",
-              name: "clip",
-              left: 0,
-              top: 0,
-              width: data.width || 900,
-              height: data.height || 1200,
-              fill: data.backgroundColor || "#ffffff",
-              stroke: null,
-              strokeWidth: 0,
-              selectable: false,
-              evented: false,
-            }
-          ]
+          version: "2.0",
+          workspace: { width: data.width || 900, height: data.height || 1200, background: data.backgroundColor || "#ffffff" },
+          elements: data.elements
         });
       } else {
-        // Use existing elements
+        // Create initial workspace for new/empty projects
         canvasJson = JSON.stringify({
-          version: "5.3.0",
-          objects: data.elements
+          version: "2.0",
+          workspace: { width: data.width || 900, height: data.height || 1200, background: data.backgroundColor || "#ffffff" },
+          elements: []
         });
       }
 

@@ -7,6 +7,37 @@ body {
   height: 100%;
 }
 
+/* Material Symbols Outlined */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined', sans-serif;
+  font-weight: normal;
+  font-style: normal;
+  font-size: inherit;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'liga';
+}
+
+/* Glass Panel Effect */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Code Gradient */
+.code-gradient {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -90,4 +121,75 @@ body {
   box-shadow: none !important;
   border-radius: 0.5rem !important;
   overflow: hidden !important;
+}
+
+/* Moveable Styles */
+.moveable-control {
+  --moveable-color: #3b82f6;
+  --moveable-handle-size: 10px;
+}
+
+.moveable-control .moveable-line {
+  background: var(--moveable-color);
+  height: 2px !important;
+}
+
+.moveable-control .moveable-handle {
+  background: #fff;
+  border: 2px solid var(--moveable-color);
+  border-radius: 50%;
+  width: var(--moveable-handle-size) !important;
+  height: var(--moveable-handle-size) !important;
+}
+
+.moveable-control .moveable-direction.moveable-n .moveable-handle,
+.moveable-control .moveable-direction.moveable-s .moveable-handle {
+  border-radius: 2px;
+  width: 8px !important;
+  height: 8px !important;
+}
+
+.moveable-control .moveable-guideline {
+  background: #ef4444;
+  height: 1px !important;
+}
+
+.moveable-control .moveable-snap-line {
+  background: #3b82f6 !important;
+}
+
+.moveable-control .moveable-control-box {
+  border: 1px solid var(--moveable-color);
+}
+
+.moveable-target {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* Guides Styles */
+.guides {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.guides-line {
+  position: absolute;
+  background: #3b82f6;
+  opacity: 0.6;
+}
+
+.guides-line.horizontal {
+  height: 1px;
+  width: 100%;
+}
+
+.guides-line.vertical {
+  width: 1px;
+  height: 100%;
 }

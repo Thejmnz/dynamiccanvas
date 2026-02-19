@@ -38,6 +38,11 @@ export const TemplateSidebar = ({
     page: "1",
   });
 
+  // DEBUG: Log para ver qué datos llegan
+  console.log("🎨 Templates loaded:", data);
+  console.log("🎨 Is loading:", isLoading);
+  console.log("🎨 Is error:", isError);
+
   const onClose = () => {
     onChangeActiveTool("select");
   };

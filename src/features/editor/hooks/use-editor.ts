@@ -1,994 +1,730 @@
-import { fabric } from "fabric";
-import { useCallback, useState, useMemo, useRef } from "react";
+"use client";
 
-import {
-  Editor,
-  FILL_COLOR,
-  STROKE_WIDTH,
-  STROKE_COLOR,
-  CIRCLE_OPTIONS,
-  DIAMOND_OPTIONS,
-  TRIANGLE_OPTIONS,
-  BuildEditorProps,
-  RECTANGLE_OPTIONS,
-  EditorHookProps,
-  STROKE_DASH_ARRAY,
-  TEXT_OPTIONS,
-  FONT_FAMILY,
-  FONT_WEIGHT,
-  FONT_SIZE,
-  JSON_KEYS,
-} from "@/features/editor/types";
-import { useHistory } from "@/features/editor/hooks/use-history";
-import {
-  createFilter,
-  downloadFile,
-  isTextType,
-  transformText
-} from "@/features/editor/utils";
-import { useHotkeys } from "@/features/editor/hooks/use-hotkeys";
-import { useClipboard } from "@/features/editor/hooks//use-clipboard";
-import { useAutoResize } from "@/features/editor/hooks/use-auto-resize";
-import { useCanvasEvents } from "@/features/editor/hooks/use-canvas-events";
-import { useWindowEvents } from "@/features/editor/hooks/use-window-events";
-import { useLoadState } from "@/features/editor/hooks/use-load-state";
+import { useCallback, useState, useRef } from "react";
+import { CanvasElement, ElementType } from "../types";
 
-const buildEditor = ({
-  save,
-  undo,
-  redo,
-  canRedo,
-  canUndo,
-  autoZoom,
-  copy,
-  paste,
-  canvas,
-  fillColor,
-  fontFamily,
-  setFontFamily,
-  setFillColor,
-  strokeColor,
-  setStrokeColor,
-  strokeWidth,
-  setStrokeWidth,
-  selectedObjects,
-  strokeDashArray,
-  setStrokeDashArray,
-}: BuildEditorProps): Editor => {
-  const generateSaveOptions = () => {
-    const { width, height, left, top } = getWorkspace() as fabric.Rect;
+const generateId = () => `el_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
-    return {
-      name: "Image",
-      format: "png",
-      quality: 1,
-      width,
-      height,
-      left,
-      top,
-    };
-  };
+interface UseEditorProps {
+  defaultState?: string;
+  defaultWidth?: number;
+  defaultHeight?: number;
+  saveCallback?: (values: {
+    json: string;
+    height: number;
+    width: number;
+  }) => void;
+  clearSelectionCallback?: () => void;
+}
 
-  const savePng = () => {
-    const options = generateSaveOptions();
+export const useEditor = ({
+  defaultWidth = 1080,
+  defaultHeight = 1350,
+  saveCallback,
+  clearSelectionCallback,
+}: UseEditorProps = {}) => {
+  const [elements, setElements] = useState<CanvasElement[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isEditingText, setIsEditingText] = useState(false);
+  const [workspace, setWorkspace] = useState({
+    width: defaultWidth,
+    height: defaultHeight,
+    background: "#ffffff",
+  });
 
-    canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
-    const dataUrl = canvas.toDataURL(options);
+  // Historia para undo/redo
+  const historyRef = useRef<CanvasElement[][]>([[]]);
+  const historyIndexRef = useRef(0);
 
-    downloadFile(dataUrl, "png");
-    autoZoom();
-  };
+  // Referencia al Stage de Konva para exportación
+  const stageRef = useRef<any>(null);
 
-  const saveSvg = () => {
-    const options = generateSaveOptions();
+  // Helper function to calculate text height based on content and font properties
+  const calculateTextHeight = useCallback((element: CanvasElement): number => {
+    if (element.type !== 'text') return element.height || 100;
 
-    canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
-    const dataUrl = canvas.toDataURL(options);
+    const lines = (element.text || '').split('\n').length;
+    const fontSize = element.fontSize || 32;
+    const lineHeight = element.lineHeight || 1.2;
+    const estimatedHeight = fontSize * lineHeight * lines;
 
-    downloadFile(dataUrl, "svg");
-    autoZoom();
-  };
-
-  const saveJpg = () => {
-    const options = generateSaveOptions();
-
-    canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
-    const dataUrl = canvas.toDataURL(options);
-
-    downloadFile(dataUrl, "jpg");
-    autoZoom();
-  };
-
-  const saveJson = async () => {
-    const dataUrl = canvas.toJSON(JSON_KEYS);
-
-    await transformText(dataUrl.objects);
-    const fileString = `data:text/json;charset=utf-8,${encodeURIComponent(
-      JSON.stringify(dataUrl, null, "\t"),
-    )}`;
-    downloadFile(fileString, "json");
-  };
-
-  const loadJson = (json: string) => {
-    const data = JSON.parse(json);
-
-    transformText(data.objects);
-
-    canvas.loadFromJSON(data, () => {
-      const objects = canvas.getObjects();
-      let changed = false;
-      objects.forEach((obj) => {
-        // @ts-ignore
-        if (!obj.id) {
-          // @ts-ignore
-          obj.set({ id: crypto.randomUUID() });
-          changed = true;
-        }
-
-        // Force word wrap for existing texts
-        if (isTextType(obj.type)) {
-          // @ts-ignore
-          obj.set({ splitByGrapheme: false });
-          changed = true;
-        }
-      });
-
-      autoZoom();
-
-      if (changed) {
-        save();
-      }
-    });
-  };
-
-  const getWorkspace = () => {
-    return canvas
-      .getObjects()
-      .find((object) => object.name === "clip");
-  };
-
-  const center = (object: fabric.Object) => {
-    const workspace = getWorkspace();
-    const center = workspace?.getCenterPoint();
-
-    if (!center) return;
-
-    // @ts-ignore
-    canvas._centerObject(object, center);
-  };
-
-  const addToCanvas = (object: fabric.Object) => {
-    center(object);
-
-    // @ts-ignore
-    if (!object.id) {
-      // @ts-ignore
-      object.set({ id: crypto.randomUUID() });
+    // For middle/bottom alignment, use tighter height to avoid text "floating"
+    if (element.textVerticalAlign === 'middle' || element.textVerticalAlign === 'bottom') {
+      return Math.max(estimatedHeight, fontSize * lineHeight * 0.9);
     }
 
-    canvas.add(object);
-    canvas.setActiveObject(object);
+    // For top alignment, add a bit more padding
+    return Math.max(estimatedHeight, fontSize * lineHeight * 1.1);
+  }, []);
+
+  // Funciones de utilidad
+  const updateElement = useCallback((id: string, changes: Partial<CanvasElement>) => {
+    setElements(prev => {
+      const newElements = prev.map(el => {
+        if (el.id === id) {
+          const updatedElement = { ...el, ...changes };
+
+          // NO recalcular height automáticamente - el usuario controla el tamaño del textbox
+          // El height solo se establece al crear el elemento, no se recalcula
+
+          return updatedElement;
+        }
+        return el;
+      });
+
+      // Guardar en historial
+      historyRef.current = [...historyRef.current.slice(0, historyIndexRef.current + 1), newElements];
+      historyIndexRef.current = historyRef.current.length - 1;
+
+      // Auto-guardar
+      saveCallback?.({
+        json: JSON.stringify({ version: "2.0", workspace, elements: newElements }),
+        height: workspace.height,
+        width: workspace.width,
+      });
+
+      return newElements;
+    });
+  }, [workspace, saveCallback, calculateTextHeight]);
+
+  const addElement = useCallback((element: Omit<CanvasElement, "id">) => {
+    const newElement: CanvasElement = {
+      id: generateId(),
+      rotation: 0,
+      scaleX: 1,
+      scaleY: 1,
+      opacity: 1,
+          visible: true,
+      ...element,
+    };
+
+    setElements(prev => {
+      const newElements = [...prev, newElement];
+
+      historyRef.current = [...historyRef.current.slice(0, historyIndexRef.current + 1), newElements];
+      historyIndexRef.current = historyRef.current.length - 1;
+
+      saveCallback?.({
+        json: JSON.stringify({ version: "2.0", workspace, elements: newElements }),
+        height: workspace.height,
+        width: workspace.width,
+      });
+
+      return newElements;
+    });
+
+    return newElement;
+  }, [workspace, saveCallback]);
+
+  const deleteSelected = useCallback(() => {
+    setElements(prev => {
+      const newElements = prev.filter(el => !selectedIds.includes(el.id));
+
+      historyRef.current = [...historyRef.current.slice(0, historyIndexRef.current + 1), newElements];
+      historyIndexRef.current = historyRef.current.length - 1;
+
+      saveCallback?.({
+        json: JSON.stringify({ version: "2.0", workspace, elements: newElements }),
+        height: workspace.height,
+        width: workspace.width,
+      });
+
+      setSelectedIds([]);
+      return newElements;
+    });
+  }, [selectedIds, workspace, saveCallback]);
+
+  // Crear formas
+  const addRect = useCallback((soft = false) => {
+    const newElement = addElement({
+      type: "rect",
+      x: 100,
+      y: 100,
+      width: 400,
+      height: 400,
+      fill: "#000000",
+      stroke: "none",
+      strokeWidth: 0,
+      rx: soft ? 50 : 0,
+      ry: soft ? 50 : 0,
+    });
+    setSelectedIds([newElement.id]);
+    clearSelectionCallback?.();
+  }, [addElement, clearSelectionCallback]);
+
+  const addCircle = useCallback(() => {
+    const newElement = addElement({
+      type: "circle",
+      x: 100,
+      y: 100,
+      width: 450,
+      height: 450,
+      fill: "#000000",
+      stroke: "none",
+      strokeWidth: 0,
+    });
+    setSelectedIds([newElement.id]);
+    clearSelectionCallback?.();
+  }, [addElement, clearSelectionCallback]);
+
+  const addTriangle = useCallback((invert = false) => {
+    const newElement = addElement({
+      type: "triangle",
+      x: 100,
+      y: 100,
+      width: 400,
+      height: 400,
+      fill: "#000000",
+      stroke: "none",
+      strokeWidth: 0,
+      invert,
+    });
+    setSelectedIds([newElement.id]);
+    clearSelectionCallback?.();
+  }, [addElement, clearSelectionCallback]);
+
+  const addDiamond = useCallback(() => {
+    const newElement = addElement({
+      type: "diamond",
+      x: 100,
+      y: 100,
+      width: 600,
+      height: 600,
+      fill: "#000000",
+      stroke: "none",
+      strokeWidth: 0,
+    });
+    setSelectedIds([newElement.id]);
+    clearSelectionCallback?.();
+  }, [addElement, clearSelectionCallback]);
+
+  const addText = useCallback((text: string, options?: Partial<CanvasElement>) => {
+    // Calcular un height inicial aproximado basado en el número de líneas
+    const lines = text.split('\n').length;
+    const estimatedHeight = (options?.fontSize || 32) * (options?.lineHeight || 1) * lines;
+
+    // Calcular un width aproximado basado en el largo del texto
+    // Esto ayuda a que el textbox no sea demasiado grande para textos cortos
+    const estimatedWidth = Math.min(
+      Math.max(text.length * (options?.fontSize || 32) * 0.6, 100), // Mínimo 100px
+      800 // Máximo 800px
+    );
+
+    const newElement = addElement({
+      type: "text",
+      x: 100,
+      y: 100,
+      width: options?.width || estimatedWidth, // Usar width estimado o el proporcionado
+      height: estimatedHeight,
+      text,
+      fontSize: 32,
+      fontFamily: "Arial",
+      fill: "#000000",
+      ...options,
+    });
+    // Seleccionar el nuevo elemento automáticamente
+    setSelectedIds([newElement.id]);
+    clearSelectionCallback?.();
+  }, [addElement, clearSelectionCallback]);
+
+  const addImage = useCallback((src: string) => {
+    // Cargar la imagen para obtener sus dimensiones reales
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const originalWidth = img.width;
+      const originalHeight = img.height;
+
+      // Si la imagen es muy grande, escalarla manteniendo el aspect ratio
+      const MAX_SIZE = 800;
+      let width = originalWidth;
+      let height = originalHeight;
+
+      if (width > MAX_SIZE || height > MAX_SIZE) {
+        const ratio = Math.min(MAX_SIZE / width, MAX_SIZE / height);
+        width = width * ratio;
+        height = height * ratio;
+      }
+
+      const newElement = addElement({
+        type: "image",
+        x: 100,
+        y: 100,
+        width,
+        height,
+        src,
+      });
+      setSelectedIds([newElement.id]);
+      clearSelectionCallback?.();
+    };
+    img.onerror = () => {
+      console.error("Failed to load image:", src);
+    };
+    img.src = src;
+  }, [addElement, clearSelectionCallback]);
+
+  // Funciones de propiedad
+  const changeFillColor = useCallback((color: string) => {
+    selectedIds.forEach(id => {
+      updateElement(id, { fill: color });
+    });
+  }, [selectedIds, updateElement]);
+
+  const changeStrokeColor = useCallback((color: string) => {
+    selectedIds.forEach(id => {
+      updateElement(id, { stroke: color });
+    });
+  }, [selectedIds, updateElement]);
+
+  const changeStrokeWidth = useCallback((width: number) => {
+    selectedIds.forEach(id => {
+      updateElement(id, { strokeWidth: width });
+    });
+  }, [selectedIds, updateElement]);
+
+  const changeOpacity = useCallback((opacity: number) => {
+    selectedIds.forEach(id => {
+      updateElement(id, { opacity });
+    });
+  }, [selectedIds, updateElement]);
+
+  // Funciones de capa
+  const bringForward = useCallback(() => {
+    setElements(prev => {
+      const newElements = [...prev];
+      selectedIds.forEach(id => {
+        const index = newElements.findIndex(el => el.id === id);
+        if (index < newElements.length - 1) {
+          const [removed] = newElements.splice(index, 1);
+          newElements.splice(index + 1, 0, removed);
+        }
+      });
+      return newElements;
+    });
+  }, [selectedIds]);
+
+  const sendBackwards = useCallback(() => {
+    setElements(prev => {
+      const newElements = [...prev];
+      selectedIds.forEach(id => {
+        const index = newElements.findIndex(el => el.id === id);
+        if (index > 0) {
+          const [removed] = newElements.splice(index, 1);
+          newElements.splice(index - 1, 0, removed);
+        }
+      });
+      return newElements;
+    });
+  }, [selectedIds]);
+
+  // Undo/Redo
+  const canUndo = () => historyIndexRef.current > 0;
+  const canRedo = () => historyIndexRef.current < historyRef.current.length - 1;
+
+  const undo = () => {
+    if (canUndo()) {
+      historyIndexRef.current--;
+      setElements([...historyRef.current[historyIndexRef.current]]);
+    }
   };
 
+  const redo = () => {
+    if (canRedo()) {
+      historyIndexRef.current++;
+      setElements([...historyRef.current[historyIndexRef.current]]);
+    }
+  };
+
+  // Exportar
+  const saveJson = useCallback(() => {
+    const data = { version: "2.0", workspace, elements };
+    const fileString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(data, null, "\t"))}`;
+    const link = document.createElement("a");
+    link.href = fileString;
+    link.download = "project.json";
+    link.click();
+  }, [workspace, elements]);
+
+  const savePng = useCallback(() => {
+    // Usar el stage de Konva para exportar en máxima calidad
+    if (!stageRef.current) {
+      console.error('Stage reference not available');
+      return;
+    }
+
+    // El stage tiene scale=0.5, así que usamos pixelRatio=2 para obtener la resolución completa
+    const dataURL = stageRef.current.toDataURL({
+      pixelRatio: 2, // Compensa el scale del stage
+      mimeType: 'image/png',
+      quality: 1,
+    });
+
+    const link = document.createElement('a');
+    link.href = dataURL;
+    link.download = 'project.png';
+    link.click();
+  }, []);
+
+  const saveJpg = useCallback(() => {
+    // Usar el stage de Konva para exportar en máxima calidad
+    if (!stageRef.current) {
+      console.error('Stage reference not available');
+      return;
+    }
+
+    // El stage tiene scale=0.5, así que usamos pixelRatio=2 para obtener la resolución completa
+    const dataURL = stageRef.current.toDataURL({
+      pixelRatio: 2, // Compensa el scale del stage
+      mimeType: 'image/jpeg',
+      quality: 1.0, // Máxima calidad
+    });
+
+    const link = document.createElement('a');
+    link.href = dataURL;
+    link.download = 'project.jpg';
+    link.click();
+  }, []);
+
+  const saveSvg = useCallback(() => {
+    // SVG export no es soportado con Konva (canvas-based)
+    console.warn('SVG export is not supported with Konva canvas rendering');
+    // TODO: Implementar conversión manual de elementos a SVG
+    alert('SVG export is not currently supported with the canvas-based editor.');
+  }, []);
+
+  // Cargar estado
+  const loadJson = useCallback((json: string) => {
+    try {
+      const data = JSON.parse(json);
+      console.log("Loading JSON data:", data);
+
+      // Cargar workspace si existe
+      if (data.workspace) {
+        setWorkspace(data.workspace);
+      }
+
+      // Cargar elementos si existen
+      if (data.elements) {
+        setElements(data.elements);
+        historyRef.current = [data.elements];
+        historyIndexRef.current = 0;
+      }
+    } catch (e) {
+      console.error("Error loading JSON:", e);
+    }
+  }, []);
+
+  const getSelectedElements = useCallback(() => {
+    return elements.filter(el => selectedIds.includes(el.id));
+  }, [elements, selectedIds]);
+
+  const getActiveFillColor = useCallback(() => {
+    const selected = getSelectedElements();
+    return selected[0]?.fill || "#000000";
+  }, [getSelectedElements]);
+
+  const getActiveOpacity = useCallback(() => {
+    const selected = getSelectedElements();
+    return selected[0]?.opacity ?? 1;
+  }, [getSelectedElements]);
+
+  const getActiveStrokeColor = useCallback(() => {
+    const selected = getSelectedElements();
+    return selected[0]?.stroke || "rgba(0,0,0,1)";
+  }, [getSelectedElements]);
+
+  const getActiveStrokeWidth = useCallback(() => {
+    const selected = getSelectedElements();
+    return selected[0]?.strokeWidth ?? 0;
+  }, [getSelectedElements]);
+
+  const getActiveStrokeDashArray = useCallback(() => {
+    const selected = getSelectedElements();
+    return selected[0]?.strokeDashArray || [];
+  }, [getSelectedElements]);
+
+  // Font properties
+  const changeFontSize = useCallback((fontSize: number) => {
+    selectedIds.forEach(id => {
+      updateElement(id, { fontSize });
+    });
+  }, [selectedIds, updateElement]);
+
+  const getActiveFontSize = useCallback(() => {
+    const selected = getSelectedElements();
+    return selected[0]?.fontSize ?? 32;
+  }, [getSelectedElements]);
+
+  const changeFontFamily = useCallback((fontFamily: string) => {
+    selectedIds.forEach(id => {
+      updateElement(id, { fontFamily });
+    });
+  }, [selectedIds, updateElement]);
+
+  const getActiveFontFamily = useCallback(() => {
+    const selected = getSelectedElements();
+    return selected[0]?.fontFamily ?? "Arial";
+  }, [getSelectedElements]);
+
+  const changeTextAlign = useCallback((textAlign: 'left' | 'center' | 'right') => {
+    selectedIds.forEach(id => {
+      updateElement(id, { textAlign });
+    });
+  }, [selectedIds, updateElement]);
+
+  const getActiveTextAlign = useCallback(() => {
+    const selected = getSelectedElements();
+    return selected[0]?.textAlign ?? "left";
+  }, [getSelectedElements]);
+
+  const changeLineHeight = useCallback((lineHeight: number) => {
+    selectedIds.forEach(id => {
+      updateElement(id, { lineHeight });
+    });
+  }, [selectedIds, updateElement]);
+
+  const getActiveLineHeight = useCallback(() => {
+    const selected = getSelectedElements();
+    // Si no hay valor, usar 1.0 en lugar de 1.2 para poder bajar más
+    return selected[0]?.lineHeight ?? 1;
+  }, [getSelectedElements]);
+
+  // Vertical text alignment
+  const changeTextVerticalAlign = useCallback((textVerticalAlign: 'top' | 'middle' | 'bottom') => {
+    selectedIds.forEach(id => {
+      updateElement(id, { textVerticalAlign });
+    });
+  }, [selectedIds, updateElement]);
+
+  const getActiveTextVerticalAlign = useCallback(() => {
+    const selected = getSelectedElements();
+    return selected[0]?.textVerticalAlign ?? "top";
+  }, [getSelectedElements]);
+
+  // Letter spacing
+  const changeLetterSpacing = useCallback((letterSpacing: number) => {
+    selectedIds.forEach(id => {
+      updateElement(id, { letterSpacing });
+    });
+  }, [selectedIds, updateElement]);
+
+  const getActiveLetterSpacing = useCallback(() => {
+    const selected = getSelectedElements();
+    return selected[0]?.letterSpacing ?? 0;
+  }, [getSelectedElements]);
+
+  // Font style (italic, bold)
+  const changeFontStyle = useCallback((fontStyle: 'normal' | 'italic') => {
+    selectedIds.forEach(id => {
+      updateElement(id, { fontStyle });
+    });
+  }, [selectedIds, updateElement]);
+
+  const getActiveFontStyle = useCallback(() => {
+    const selected = getSelectedElements();
+    return selected[0]?.fontStyle ?? "normal";
+  }, [getSelectedElements]);
+
+  // Font weight (bold)
+  const changeFontWeight = useCallback((fontWeight: number) => {
+    selectedIds.forEach(id => {
+      updateElement(id, { fontWeight });
+    });
+  }, [selectedIds, updateElement]);
+
+  const getActiveFontWeight = useCallback(() => {
+    const selected = getSelectedElements();
+    return selected[0]?.fontWeight ?? 400;
+  }, [getSelectedElements]);
+
+  // Text decoration (underline, line-through)
+  const changeFontUnderline = useCallback((underline: boolean) => {
+    selectedIds.forEach(id => {
+      updateElement(id, { textDecoration: underline ? 'underline' : 'none' });
+    });
+  }, [selectedIds, updateElement]);
+
+  const getActiveFontUnderline = useCallback(() => {
+    const selected = getSelectedElements();
+    return selected[0]?.textDecoration === 'underline';
+  }, [getSelectedElements]);
+
+  const changeFontLinethrough = useCallback((linethrough: boolean) => {
+    selectedIds.forEach(id => {
+      updateElement(id, { textDecoration: linethrough ? 'line-through' : 'none' });
+    });
+  }, [selectedIds, updateElement]);
+
+  const getActiveFontLinethrough = useCallback(() => {
+    const selected = getSelectedElements();
+    return selected[0]?.textDecoration === 'line-through';
+  }, [getSelectedElements]);
+
+  // Centering functions
+  const centerHorizontally = useCallback(() => {
+    if (!workspace?.width) return;
+    selectedIds.forEach(id => {
+      const element = elements.find(el => el.id === id);
+      if (element) {
+        const elementWidth = element.width * element.scaleX;
+        // Centrar el CONTENEDOR del elemento en el medio del canvas
+        const centerX = (workspace.width / 2) - (elementWidth / 2);
+        updateElement(id, { x: centerX });
+      }
+    });
+  }, [selectedIds, elements, workspace?.width, updateElement]);
+
+  const centerVertically = useCallback(() => {
+    if (!workspace?.height) return;
+    selectedIds.forEach(id => {
+      const element = elements.find(el => el.id === id);
+      if (element) {
+        const rawHeight = element.height || 100;
+        const elementHeight = rawHeight * element.scaleY;
+        // Centrar el CONTENEDOR del elemento en el medio del canvas
+        const centerY = (workspace.height / 2) - (elementHeight / 2);
+        updateElement(id, { y: centerY });
+      }
+    });
+  }, [selectedIds, elements, workspace?.height, updateElement]);
+
+  // Copy/Paste
+  const onCopy = useCallback(() => {
+    const selected = getSelectedElements();
+    if (selected.length > 0) {
+      localStorage.setItem('clipboard', JSON.stringify(selected));
+    }
+  }, [getSelectedElements]);
+
+  const onPaste = useCallback(() => {
+    const clipboardData = localStorage.getItem('clipboard');
+    if (clipboardData) {
+      const copiedElements: CanvasElement[] = JSON.parse(clipboardData);
+      // Offset pasted elements slightly
+      const newElements = copiedElements.map(el => ({
+        ...el,
+        id: generateId(),
+        x: el.x + 20,
+        y: el.y + 20,
+      }));
+
+      setElements(prev => {
+        const combined = [...prev, ...newElements];
+        historyRef.current = [...historyRef.current.slice(0, historyIndexRef.current + 1), combined];
+        historyIndexRef.current = historyRef.current.length - 1;
+        saveCallback?.({
+          json: JSON.stringify({ version: "2.0", workspace, elements: combined }),
+          height: workspace.height,
+          width: workspace.width,
+        });
+        return combined;
+      });
+
+      // Select pasted elements
+      setSelectedIds(newElements.map(el => el.id));
+    }
+  }, [workspace, saveCallback]);
+
   return {
+    // Estado
+    elements,
+    selectedIds,
+    workspace,
+    isEditingText,
+
+    // Acciones
+    onSelect: (id: string) => setSelectedIds([id]),
+    onMultiSelect: (ids: string[]) => setSelectedIds(ids),
+    onChange: updateElement,
+    setIsEditingText,
+
+    // API pública
+    addRect,
+    addCircle,
+    addTriangle,
+    addDiamond,
+    addText,
+    addImage,
+    delete: deleteSelected,
+    changeFillColor,
+    changeStrokeColor,
+    changeStrokeWidth,
+    changeOpacity,
+    bringForward,
+    sendBackwards,
+
+    // Undo/Redo
+    canUndo,
+    canRedo,
+    undo,
+    redo,
+
+    // Exportar
+    saveJson,
     savePng,
     saveJpg,
     saveSvg,
-    saveJson,
     loadJson,
-    canUndo,
-    canRedo,
-    autoZoom,
-    getWorkspace,
-    zoomIn: () => {
-      let zoomRatio = canvas.getZoom();
-      zoomRatio += 0.05;
-      const center = canvas.getCenter();
-      canvas.zoomToPoint(
-        new fabric.Point(center.left, center.top),
-        zoomRatio > 1 ? 1 : zoomRatio
-      );
-    },
-    zoomOut: () => {
-      let zoomRatio = canvas.getZoom();
-      zoomRatio -= 0.05;
-      const center = canvas.getCenter();
-      canvas.zoomToPoint(
-        new fabric.Point(center.left, center.top),
-        zoomRatio < 0.2 ? 0.2 : zoomRatio,
-      );
-    },
-    changeSize: (value: { width: number; height: number }) => {
-      const workspace = getWorkspace();
 
-      workspace?.set(value);
-      autoZoom();
-      save();
-    },
-    changeBackground: (value: string) => {
-      const workspace = getWorkspace();
-      workspace?.set({ fill: value });
-      canvas.renderAll();
-      save();
-    },
-    enableDrawingMode: () => {
-      canvas.discardActiveObject();
-      canvas.renderAll();
-      canvas.isDrawingMode = true;
-      canvas.freeDrawingBrush.width = strokeWidth;
-      canvas.freeDrawingBrush.color = strokeColor;
-    },
-    disableDrawingMode: () => {
-      canvas.isDrawingMode = false;
-    },
-    onUndo: () => undo(),
-    onRedo: () => redo(),
-    onCopy: () => copy(),
-    onPaste: () => paste(),
-    changeImageFilter: (value: string) => {
-      const objects = canvas.getActiveObjects();
-      objects.forEach((object) => {
-        if (object.type === "image") {
-          const imageObject = object as fabric.Image;
+    // Getters
+    getSelectedElements,
+    getActiveFillColor,
+    getActiveOpacity,
+    getActiveStrokeColor,
+    getActiveStrokeWidth,
+    getActiveStrokeDashArray,
 
-          const effect = createFilter(value);
+    // Font properties
+    changeFontSize,
+    getActiveFontSize,
+    changeFontFamily,
+    getActiveFontFamily,
+    changeTextAlign,
+    getActiveTextAlign,
+    changeTextVerticalAlign,
+    getActiveTextVerticalAlign,
+    changeLineHeight,
+    getActiveLineHeight,
+    changeLetterSpacing,
+    getActiveLetterSpacing,
+    changeFontStyle,
+    getActiveFontStyle,
+    changeFontWeight,
+    getActiveFontWeight,
+    changeFontUnderline,
+    getActiveFontUnderline,
+    changeFontLinethrough,
+    getActiveFontLinethrough,
 
-          imageObject.filters = effect ? [effect] : [];
-          imageObject.applyFilters();
-          canvas.renderAll();
-        }
-      });
-    },
-    addImage: (value: string) => {
-      fabric.Image.fromURL(
-        value,
-        (image) => {
-          const workspace = getWorkspace();
+    // Centering
+    centerHorizontally,
+    centerVertically,
 
-          image.scaleToWidth(workspace?.width || 0);
-          image.scaleToHeight(workspace?.height || 0);
+    // Copy/Paste
+    onCopy,
+    onPaste,
 
-          addToCanvas(image);
-        },
-        {
-          crossOrigin: "anonymous",
-        },
-      );
-    },
-    delete: () => {
-      canvas.getActiveObjects().forEach((object) => canvas.remove(object));
-      canvas.discardActiveObject();
-      canvas.renderAll();
-    },
-    addText: (value, options) => {
-      const object = new fabric.Textbox(value, {
-        ...TEXT_OPTIONS,
-        fill: fillColor,
-        width: 400,
-        // Evita cortar palabras a la mitad
-        splitByGrapheme: false,
-        // CRUCIAL: Evita que el texto se aplaste o estire verticalmente al redimensionar
-        lockScalingY: true,
-        lockScalingFlip: true,
-        ...options,
-      });
-
-      // Asegurar ancho inicial
-      object.set({ width: 400 });
-
-      addToCanvas(object);
-    },
-    getActiveOpacity: () => {
-      const selectedObject = selectedObjects[0];
-
-      if (!selectedObject) {
-        return 1;
+    // Stage reference for export
+    setStageRef: (stage: any) => { stageRef.current = stage; },
+    // Generate thumbnail for dashboard
+    generateThumbnail: () => {
+      if (!stageRef.current) {
+        console.error('Stage reference not available for thumbnail');
+        return null;
       }
-
-      const value = selectedObject.get("opacity") || 1;
-
-      return value;
-    },
-    changeFontSize: (value: number) => {
-      canvas.getActiveObjects().forEach((object) => {
-        if (isTextType(object.type)) {
-          // @ts-ignore
-          // Faulty TS library, fontSize exists.
-          object.set({ fontSize: value });
-        }
-      });
-      canvas.renderAll();
-    },
-    getActiveFontSize: () => {
-      const selectedObject = selectedObjects[0];
-
-      if (!selectedObject) {
-        return FONT_SIZE;
+      if (!workspace?.width) {
+        console.error('Workspace width not available for thumbnail');
+        return null;
       }
-
-      // @ts-ignore
-      // Faulty TS library, fontSize exists.
-      const value = selectedObject.get("fontSize") || FONT_SIZE;
-
-      return value;
-    },
-    changeTextAlign: (value: string) => {
-      canvas.getActiveObjects().forEach((object) => {
-        if (isTextType(object.type)) {
-          // @ts-ignore
-          // Faulty TS library, textAlign exists.
-          object.set({ textAlign: value });
-        }
+      // Generar thumbnail con mayor resolución para mejor calidad
+      // El Stage tiene scale=0.5, así que pixelRatio compensa eso
+      const thumbnailWidth = 600; // Aumentado de 300 a 600 para mejor calidad
+      const pixelRatio = thumbnailWidth / workspace.width;
+      return stageRef.current.toDataURL({
+        pixelRatio: pixelRatio,
+        mimeType: 'image/jpeg',
+        quality: 0.9, // Aumentado de 0.8 a 0.9 para mejor calidad
       });
-      canvas.renderAll();
-      save();
     },
-    getActiveTextAlign: () => {
-      const selectedObject = selectedObjects[0];
-
-      if (!selectedObject) {
-        return "left";
-      }
-
-      // @ts-ignore
-      // Faulty TS library, textAlign exists.
-      const value = selectedObject.get("textAlign") || "left";
-
-      return value;
-    },
-    changeTextVerticalAlign: (value: string) => {
-      canvas.getActiveObjects().forEach((object) => {
-        if (isTextType(object.type)) {
-          // @ts-ignore
-          const centerPoint = object.getCenterPoint();
-          // @ts-ignore
-          object.set({ originY: value });
-          // @ts-ignore
-          object.setPositionByOrigin(centerPoint, 'center', 'center');
-        }
-      });
-      canvas.renderAll();
-      save();
-    },
-    getActiveTextVerticalAlign: () => {
-      const selectedObject = selectedObjects[0];
-
-      if (!selectedObject) {
-        return "top";
-      }
-
-      // @ts-ignore
-      return selectedObject.originY || "top";
-    },
-    changeLetterSpacing: (value: number) => {
-      canvas.getActiveObjects().forEach((object) => {
-        if (isTextType(object.type)) {
-          // @ts-ignore
-          object.set({ charSpacing: value });
-        }
-      });
-      canvas.renderAll();
-      save();
-    },
-    getActiveLetterSpacing: () => {
-      const selectedObject = selectedObjects[0];
-      if (!selectedObject) {
-        return 0;
-      }
-      // @ts-ignore
-      return selectedObject.charSpacing || 0;
-    },
-    changeLineHeight: (value: number) => {
-      canvas.getActiveObjects().forEach((object) => {
-        if (isTextType(object.type)) {
-          // @ts-ignore
-          object.set({ lineHeight: value });
-        }
-      });
-      canvas.renderAll();
-      save();
-    },
-    getActiveLineHeight: () => {
-      const selectedObject = selectedObjects[0];
-      if (!selectedObject) {
-        return 1;
-      }
-      // @ts-ignore
-      return selectedObject.lineHeight || 1;
-    },
-    changeFontUnderline: (value: boolean) => {
-      canvas.getActiveObjects().forEach((object) => {
-        if (isTextType(object.type)) {
-          // @ts-ignore
-          // Faulty TS library, underline exists.
-          object.set({ underline: value });
-        }
-      });
-      canvas.renderAll();
-    },
-    getActiveFontUnderline: () => {
-      const selectedObject = selectedObjects[0];
-
-      if (!selectedObject) {
-        return false;
-      }
-
-      // @ts-ignore
-      // Faulty TS library, underline exists.
-      const value = selectedObject.get("underline") || false;
-
-      return value;
-    },
-    changeFontLinethrough: (value: boolean) => {
-      canvas.getActiveObjects().forEach((object) => {
-        if (isTextType(object.type)) {
-          // @ts-ignore
-          // Faulty TS library, linethrough exists.
-          object.set({ linethrough: value });
-        }
-      });
-      canvas.renderAll();
-      save();
-    },
-    getActiveFontLinethrough: () => {
-      const selectedObject = selectedObjects[0];
-
-      if (!selectedObject) {
-        return false;
-      }
-
-      // @ts-ignore
-      // Faulty TS library, linethrough exists.
-      const value = selectedObject.get("linethrough") || false;
-
-      return value;
-    },
-    changeFontStyle: (value: string) => {
-      canvas.getActiveObjects().forEach((object) => {
-        if (isTextType(object.type)) {
-          // @ts-ignore
-          // Faulty TS library, fontStyle exists.
-          object.set({ fontStyle: value });
-        }
-      });
-      canvas.renderAll();
-    },
-    getActiveFontStyle: () => {
-      const selectedObject = selectedObjects[0];
-
-      if (!selectedObject) {
-        return "normal";
-      }
-
-      // @ts-ignore
-      // Faulty TS library, fontStyle exists.
-      const value = selectedObject.get("fontStyle") || "normal";
-
-      return value;
-    },
-    changeFontWeight: (value: number) => {
-      canvas.getActiveObjects().forEach((object) => {
-        if (isTextType(object.type)) {
-          // @ts-ignore
-          // Faulty TS library, fontWeight exists.
-          object.set({ fontWeight: value });
-        }
-      });
-      canvas.renderAll();
-    },
-    changeOpacity: (value: number) => {
-      canvas.getActiveObjects().forEach((object) => {
-        object.set({ opacity: value });
-      });
-      canvas.renderAll();
-    },
-    bringForward: () => {
-      canvas.getActiveObjects().forEach((object) => {
-        canvas.bringForward(object);
-      });
-
-      canvas.renderAll();
-
-      const workspace = getWorkspace();
-      workspace?.sendToBack();
-    },
-    sendBackwards: () => {
-      canvas.getActiveObjects().forEach((object) => {
-        canvas.sendBackwards(object);
-      });
-
-      canvas.renderAll();
-      const workspace = getWorkspace();
-      workspace?.sendToBack();
-    },
-    changeFontFamily: (value: string) => {
-      setFontFamily(value);
-      canvas.getActiveObjects().forEach((object) => {
-        if (isTextType(object.type)) {
-          // @ts-ignore
-          // Faulty TS library, fontFamily exists.
-          object.set({ fontFamily: value });
-        }
-      });
-      canvas.renderAll();
-    },
-    changeFillColor: (value: string) => {
-      setFillColor(value);
-      canvas.getActiveObjects().forEach((object) => {
-        object.set({ fill: value });
-      });
-      canvas.renderAll();
-    },
-    changeStrokeColor: (value: string) => {
-      setStrokeColor(value);
-      canvas.getActiveObjects().forEach((object) => {
-        // Text types don't have stroke
-        if (isTextType(object.type)) {
-          object.set({ fill: value });
-          return;
-        }
-
-        object.set({ stroke: value });
-      });
-      canvas.freeDrawingBrush.color = value;
-      canvas.renderAll();
-      save();
-    },
-    changeStrokeWidth: (value: number) => {
-      setStrokeWidth(value);
-      canvas.getActiveObjects().forEach((object) => {
-        object.set({ strokeWidth: value });
-      });
-      canvas.freeDrawingBrush.width = value;
-      canvas.renderAll();
-      save();
-    },
-    changeStrokeDashArray: (value: number[]) => {
-      setStrokeDashArray(value);
-      canvas.getActiveObjects().forEach((object) => {
-        object.set({ strokeDashArray: value });
-      });
-      canvas.renderAll();
-      save();
-    },
-    addCircle: () => {
-      const object = new fabric.Circle({
-        ...CIRCLE_OPTIONS,
-        fill: fillColor,
-        stroke: strokeColor,
-        strokeWidth: strokeWidth,
-        strokeDashArray: strokeDashArray,
-      });
-
-      addToCanvas(object);
-    },
-    addSoftRectangle: () => {
-      const object = new fabric.Rect({
-        ...RECTANGLE_OPTIONS,
-        rx: 50,
-        ry: 50,
-        fill: fillColor,
-        stroke: strokeColor,
-        strokeWidth: strokeWidth,
-        strokeDashArray: strokeDashArray,
-      });
-
-      addToCanvas(object);
-    },
-    addRectangle: () => {
-      const object = new fabric.Rect({
-        ...RECTANGLE_OPTIONS,
-        fill: fillColor,
-        stroke: strokeColor,
-        strokeWidth: strokeWidth,
-        strokeDashArray: strokeDashArray,
-      });
-
-      addToCanvas(object);
-    },
-    addTriangle: () => {
-      const object = new fabric.Triangle({
-        ...TRIANGLE_OPTIONS,
-        fill: fillColor,
-        stroke: strokeColor,
-        strokeWidth: strokeWidth,
-        strokeDashArray: strokeDashArray,
-      });
-
-      addToCanvas(object);
-    },
-    addInverseTriangle: () => {
-      const HEIGHT = TRIANGLE_OPTIONS.height;
-      const WIDTH = TRIANGLE_OPTIONS.width;
-
-      const object = new fabric.Polygon(
-        [
-          { x: 0, y: 0 },
-          { x: WIDTH, y: 0 },
-          { x: WIDTH / 2, y: HEIGHT },
-        ],
-        {
-          ...TRIANGLE_OPTIONS,
-          fill: fillColor,
-          stroke: strokeColor,
-          strokeWidth: strokeWidth,
-          strokeDashArray: strokeDashArray,
-        }
-      );
-
-      addToCanvas(object);
-    },
-    addDiamond: () => {
-      const HEIGHT = DIAMOND_OPTIONS.height;
-      const WIDTH = DIAMOND_OPTIONS.width;
-
-      const object = new fabric.Polygon(
-        [
-          { x: WIDTH / 2, y: 0 },
-          { x: WIDTH, y: HEIGHT / 2 },
-          { x: WIDTH / 2, y: HEIGHT },
-          { x: 0, y: HEIGHT / 2 },
-        ],
-        {
-          ...DIAMOND_OPTIONS,
-          fill: fillColor,
-          stroke: strokeColor,
-          strokeWidth: strokeWidth,
-          strokeDashArray: strokeDashArray,
-        }
-      );
-      addToCanvas(object);
-    },
-    canvas,
-    getActiveFontWeight: () => {
-      const selectedObject = selectedObjects[0];
-
-      if (!selectedObject) {
-        return FONT_WEIGHT;
-      }
-
-      // @ts-ignore
-      // Faulty TS library, fontWeight exists.
-      const value = selectedObject.get("fontWeight") || FONT_WEIGHT;
-
-      return value;
-    },
-    getActiveFontFamily: () => {
-      const selectedObject = selectedObjects[0];
-
-      if (!selectedObject) {
-        return fontFamily;
-      }
-
-      // @ts-ignore
-      // Faulty TS library, fontFamily exists.
-      const value = selectedObject.get("fontFamily") || fontFamily;
-
-      return value;
-    },
-    getActiveFillColor: () => {
-      const selectedObject = selectedObjects[0];
-
-      if (!selectedObject) {
-        return fillColor;
-      }
-
-      const value = selectedObject.get("fill") || fillColor;
-
-      // Currently, gradients & patterns are not supported
-      return value as string;
-    },
-    getActiveStrokeColor: () => {
-      const selectedObject = selectedObjects[0];
-
-      if (!selectedObject) {
-        return strokeColor;
-      }
-
-      const value = selectedObject.get("stroke") || strokeColor;
-
-      return value;
-    },
-    getActiveStrokeWidth: () => {
-      const selectedObject = selectedObjects[0];
-
-      if (!selectedObject) {
-        return strokeWidth;
-      }
-
-      const value = selectedObject.get("strokeWidth") || strokeWidth;
-
-      return value;
-    },
-    getActiveStrokeDashArray: () => {
-      const selectedObject = selectedObjects[0];
-
-      if (!selectedObject) {
-        return strokeDashArray;
-      }
-
-      const value = selectedObject.get("strokeDashArray") || strokeDashArray;
-
-      return value;
-    },
-    centerHorizontally: () => {
-      const workspace = getWorkspace();
-      if (!workspace) return;
-
-      canvas.getActiveObjects().forEach((object) => {
-        const workspaceCenter = workspace.getCenterPoint();
-        const objectCenter = object.getCenterPoint();
-        object.set({
-          left: workspaceCenter.x - (object.width || 0) * (object.scaleX || 1) / 2,
-        });
-        object.setCoords();
-      });
-      canvas.renderAll();
-      save();
-    },
-    centerVertically: () => {
-      const workspace = getWorkspace();
-      if (!workspace) return;
-
-      canvas.getActiveObjects().forEach((object) => {
-        const workspaceCenter = workspace.getCenterPoint();
-        object.set({
-          top: workspaceCenter.y - (object.height || 0) * (object.scaleY || 1) / 2,
-        });
-        object.setCoords();
-      });
-      canvas.renderAll();
-      save();
-    },
-    selectedObjects,
   };
-};
-
-export const useEditor = ({
-  defaultState,
-  defaultHeight,
-  defaultWidth,
-  clearSelectionCallback,
-  saveCallback,
-}: EditorHookProps) => {
-  const initialState = useRef(defaultState);
-  const initialWidth = useRef(defaultWidth);
-  const initialHeight = useRef(defaultHeight);
-
-  const [canvas, setCanvas] = useState<fabric.Canvas | null>(null);
-  const [container, setContainer] = useState<HTMLDivElement | null>(null);
-  const [selectedObjects, setSelectedObjects] = useState<fabric.Object[]>([]);
-
-  const [fontFamily, setFontFamily] = useState(FONT_FAMILY);
-  const [fillColor, setFillColor] = useState(FILL_COLOR);
-  const [strokeColor, setStrokeColor] = useState(STROKE_COLOR);
-  const [strokeWidth, setStrokeWidth] = useState(STROKE_WIDTH);
-  const [strokeDashArray, setStrokeDashArray] = useState<number[]>(STROKE_DASH_ARRAY);
-
-  useWindowEvents();
-
-  const {
-    save,
-    canRedo,
-    canUndo,
-    undo,
-    redo,
-    canvasHistory,
-    setHistoryIndex,
-  } = useHistory({
-    canvas,
-    saveCallback
-  });
-
-  const { copy, paste } = useClipboard({ canvas });
-
-  const { autoZoom } = useAutoResize({
-    canvas,
-    container,
-  });
-
-  useCanvasEvents({
-    save,
-    canvas,
-    setSelectedObjects,
-    clearSelectionCallback,
-  });
-
-  useHotkeys({
-    undo,
-    redo,
-    copy,
-    paste,
-    save,
-    canvas,
-  });
-
-  useLoadState({
-    canvas,
-    autoZoom,
-    initialState,
-    canvasHistory,
-    setHistoryIndex,
-  });
-
-  const editor = useMemo(() => {
-    if (canvas) {
-      return buildEditor({
-        save,
-        undo,
-        redo,
-        canUndo,
-        canRedo,
-        autoZoom,
-        copy,
-        paste,
-        canvas,
-        fillColor,
-        strokeWidth,
-        strokeColor,
-        setFillColor,
-        setStrokeColor,
-        setStrokeWidth,
-        strokeDashArray,
-        selectedObjects,
-        setStrokeDashArray,
-        fontFamily,
-        setFontFamily,
-      });
-    }
-
-    return undefined;
-  },
-    [
-      canRedo,
-      canUndo,
-      undo,
-      redo,
-      save,
-      autoZoom,
-      copy,
-      paste,
-      canvas,
-      fillColor,
-      strokeWidth,
-      strokeColor,
-      selectedObjects,
-      strokeDashArray,
-      fontFamily,
-    ]);
-
-  const init = useCallback(
-    ({
-      initialCanvas,
-      initialContainer,
-    }: {
-      initialCanvas: fabric.Canvas;
-      initialContainer: HTMLDivElement;
-    }) => {
-      fabric.Object.prototype.set({
-        cornerColor: "#FFF",
-        cornerStyle: "circle",
-        borderColor: "#3b82f6",
-        borderScaleFactor: 1.5,
-        transparentCorners: false,
-        borderOpacityWhenMoving: 1,
-        cornerStrokeColor: "#3b82f6",
-      });
-
-      const initialWorkspace = new fabric.Rect({
-        width: initialWidth.current,
-        height: initialHeight.current,
-        name: "clip",
-        fill: "white",
-        selectable: false,
-        hasControls: false,
-        shadow: new fabric.Shadow({
-          color: "rgba(0,0,0,0.8)",
-          blur: 5,
-        }),
-      });
-
-      initialCanvas.setWidth(initialContainer.offsetWidth);
-      initialCanvas.setHeight(initialContainer.offsetHeight);
-
-      initialCanvas.add(initialWorkspace);
-      initialCanvas.centerObject(initialWorkspace);
-      initialCanvas.clipPath = initialWorkspace;
-
-      // Enable aligning guidelines
-      let lineWidth = 0;
-      let lineColor = "#3b82f6";
-      let lineMargin = 5;
-
-      const drawLine = (x1: number, y1: number, x2: number, y2: number) => {
-        const line = new fabric.Line([x1, y1, x2, y2], {
-          stroke: lineColor,
-          strokeWidth: lineWidth,
-          selectable: false,
-          evented: false,
-          strokeDashArray: [5, 5],
-        });
-        initialCanvas.add(line);
-      };
-
-      const clearLines = () => {
-        const objects = initialCanvas.getObjects();
-        objects.forEach((obj) => {
-          if (obj.type === "line") {
-            initialCanvas.remove(obj);
-          }
-        });
-      };
-
-      initialCanvas.on("object:moving", (e) => {
-        clearLines();
-
-        const activeObj = e.target;
-        if (!activeObj) return;
-
-        const canvasWidth = initialCanvas.width || 0;
-        const canvasHeight = initialCanvas.height || 0;
-
-        const activeObjCenter = activeObj.getCenterPoint();
-        const activeObjBounds = activeObj.getBoundingRect();
-
-        const objects = initialCanvas.getObjects();
-        objects.forEach((obj) => {
-          if (obj === activeObj || obj.type === "line" || (obj as any).name === "clip") return;
-
-          const objCenter = obj.getCenterPoint();
-          const objBounds = obj.getBoundingRect();
-
-          // Vertical center alignment
-          if (Math.abs(activeObjCenter.x - objCenter.x) < lineMargin) {
-            drawLine(objCenter.x, 0, objCenter.x, canvasHeight);
-          }
-
-          // Horizontal center alignment
-          if (Math.abs(activeObjCenter.y - objCenter.y) < lineMargin) {
-            drawLine(0, objCenter.y, canvasWidth, objCenter.y);
-          }
-
-          // Left edge alignment
-          if (Math.abs(activeObjBounds.left - objBounds.left) < lineMargin) {
-            drawLine(objBounds.left, 0, objBounds.left, canvasHeight);
-          }
-
-          // Right edge alignment
-          if (Math.abs(activeObjBounds.left + activeObjBounds.width - objBounds.left - objBounds.width) < lineMargin) {
-            drawLine(objBounds.left + objBounds.width, 0, objBounds.left + objBounds.width, canvasHeight);
-          }
-
-          // Top edge alignment
-          if (Math.abs(activeObjBounds.top - objBounds.top) < lineMargin) {
-            drawLine(0, objBounds.top, canvasWidth, objBounds.top);
-          }
-
-          // Bottom edge alignment
-          if (Math.abs(activeObjBounds.top + activeObjBounds.height - objBounds.top - objBounds.height) < lineMargin) {
-            drawLine(0, objBounds.top + objBounds.height, canvasWidth, objBounds.top + objBounds.height);
-          }
-        });
-      });
-
-      initialCanvas.on("object:modified", clearLines);
-      initialCanvas.on("selection:created", clearLines);
-      initialCanvas.on("selection:cleared", clearLines);
-
-      setCanvas(initialCanvas);
-      setContainer(initialContainer);
-
-      const currentState = JSON.stringify(
-        initialCanvas.toJSON(JSON_KEYS)
-      );
-      canvasHistory.current = [currentState];
-      setHistoryIndex(0);
-    },
-    [
-      canvasHistory, // No need, this is from useRef
-      setHistoryIndex, // No need, this is from useState
-    ]
-  );
-
-  return { init, editor };
 };

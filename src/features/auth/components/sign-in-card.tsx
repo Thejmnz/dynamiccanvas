@@ -53,7 +53,7 @@ export const SignInCard = () => {
       }
 
       toast.success(t("logged_in"));
-      router.push("/");
+      router.push("/dashboard");
     } catch (err) {
       toast.error(t("invalid_credentials"));
       setLoading(false);

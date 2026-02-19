@@ -11,11 +11,15 @@ import { Providers } from "@/components/providers";
 
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
-  title: "Dynamic Canvas",
-  description: "Build Something Great!",
+  title: "Dynamic Canvas - Crea Diseños a Escala con una Simple API",
+  description: "Automatiza tu flujo de trabajo creativo. Integra herramientas de diseño directamente en tu stack tecnológico y genera visuales dinámicos en segundos.",
 };
 
 export default function RootLayout({
@@ -24,8 +28,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="es">
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className={`${inter.className} ${inter.variable}`}>
         <AuthProvider>
           <LanguageProvider>
             <Providers>

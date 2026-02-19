@@ -4,45 +4,37 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import {
-  AlertTriangle,
-  CopyIcon,
-  Loader,
-  MoreHorizontal,
-  Search,
-  Trash
-} from "lucide-react";
+import { AlertTriangle, Search, MoreHorizontal, CopyIcon, Trash, Loader } from "lucide-react";
 
+import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { useGetProjects } from "@/features/projects/api/use-get-projects";
-import { useDeleteProject } from "@/features/projects/api/use-delete-project";
 import { useDuplicateProject } from "@/features/projects/api/use-duplicate-project";
-
+import { useDeleteProject } from "@/features/projects/api/use-delete-project";
+import { useConfirm } from "@/hooks/use-confirm";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
-  DropdownMenuContent,
   DropdownMenu,
+  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useConfirm } from "@/hooks/use-confirm";
-
-import { useLanguage } from "@/lib/contexts/LanguageContext";
 
 const ProjectThumbnail = ({ project }: { project: any }) => {
   const { t } = useLanguage();
 
+  // Si tiene thumbnailUrl guardado en DB, mostrarlo
   if (project.thumbnailUrl) {
     return <img src={project.thumbnailUrl} alt={project.name} className="absolute inset-0 w-full h-full object-cover object-center" />;
   }
 
+  // Placeholder si no hay thumbnail
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-blue-50 to-purple-50">
       <div className="text-4xl text-blue-200">📐</div>
       <div className="text-center">
         <p className="text-xs text-gray-600 font-medium">{project.width} × {project.height}</p>
         <p className="text-xs text-gray-400">{t("pixels")}</p>
-        <p className="text-xs text-gray-400 mt-1">{t("save_preview")}</p>
       </div>
     </div>
   );

@@ -1,22 +1,13 @@
 import Link from "next/link";
-import Image from "next/image";
-import { Space_Grotesk } from "next/font/google";
-
-import { cn } from "@/lib/utils";
-
-const font = Space_Grotesk({
-  weight: ["700"],
-  subsets: ["latin"],
-});
 
 export const Logo = () => {
   return (
-    <Link href="/">
-      <div className="flex items-center gap-x-2 hover:opacity-75 transition h-[68px] px-4">
-        <div className="size-8 relative">
-          <Image src="/logo.svg" alt="Dynamic Canvas" fill />
+    <Link href="/dashboard">
+      <div className="flex items-center gap-2 hover:opacity-75 transition px-6 py-4">
+        <div className="w-8 h-8 bg-[#135bec] rounded-lg flex items-center justify-center text-white font-bold text-sm">
+          DC
         </div>
-        <h1 className={cn(font.className, "text-xl font-bold")}>Dynamic Canvas</h1>
+        <span className="text-lg font-bold text-slate-900">Dynamic Canvas</span>
       </div>
     </Link>
   );

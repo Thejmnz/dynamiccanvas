@@ -29,7 +29,7 @@ export const SuccessModal = () => {
       <DialogContent>
         <DialogHeader className="flex items-center space-y-4">
           <Image
-            src="/logo.svg"
+            src="https://7rqpfql8ru.ufs.sh/f/UkHcOuNW8p2LQH4aKho0A2liBMKrm5Y894wynJvGa1tFTEpd"
             alt="Logo"
             width={36}
             height={36}

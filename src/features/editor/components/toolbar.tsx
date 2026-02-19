@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import {
   FaBold,
@@ -17,11 +17,14 @@ import {
   AlignCenter,
   AlignRight,
   AlignVerticalJustifyCenter,
+  AlignHorizontalJustifyCenter,
   Trash,
   SquareSplitHorizontal,
   Copy,
   MoveHorizontal,
-  MoveVertical
+  MoveVertical,
+  Crosshair,
+  Minus
 } from "lucide-react";
 
 import { isTextType } from "@/features/editor/utils";
@@ -84,6 +87,25 @@ export const Toolbar = ({
 
   const isText = isTextType(selectedObjectType);
   const isImage = selectedObjectType === "image";
+
+  // Actualizar propiedades cuando cambia la selección
+  useEffect(() => {
+    if (selectedObject) {
+      setProperties({
+        fillColor: editor?.getActiveFillColor(),
+        strokeColor: editor?.getActiveStrokeColor(),
+        fontFamily: editor?.getActiveFontFamily(),
+        fontWeight: editor?.getActiveFontWeight() || FONT_WEIGHT,
+        fontStyle: editor?.getActiveFontStyle(),
+        fontLinethrough: editor?.getActiveFontLinethrough(),
+        fontUnderline: editor?.getActiveFontUnderline(),
+        textAlign: editor?.getActiveTextAlign(),
+        fontSize: editor?.getActiveFontSize() || FONT_SIZE,
+        letterSpacing: editor?.getActiveLetterSpacing() || 0,
+        lineHeight: editor?.getActiveLineHeight() || 1,
+      });
+    }
+  }, [selectedObject, editor]);
 
   const onChangeFontSize = (value: number) => {
     if (!selectedObject) {
@@ -386,25 +408,44 @@ export const Toolbar = ({
         </div>
       )}
       {isText && (
-        <div className="flex items-center h-full justify-center">
-          <Hint label={t("tool_vertical_align")} side="bottom" sideOffset={5}>
+        <div className="flex items-center h-full justify-center gap-0">
+          {/* Vertical Align Top */}
+          <Hint label="Align Top" side="bottom" sideOffset={5}>
             <Button
-              onClick={() => {
-                const current = editor?.getActiveTextVerticalAlign();
-                const newValue = current === "center" ? "bottom" : current === "bottom" ? "top" : "center";
-                editor?.changeTextVerticalAlign(newValue);
-              }}
+              onClick={() => editor?.changeTextVerticalAlign("top")}
               size="icon"
               variant="ghost"
               className={cn(
-                editor?.getActiveTextVerticalAlign() !== "top" && "bg-gray-100"
+                editor?.getActiveTextVerticalAlign() === "top" && "bg-gray-100"
               )}
             >
-              {editor?.getActiveTextVerticalAlign() === "top" && <ArrowUp className="size-4" />}
-              {editor?.getActiveTextVerticalAlign() === "center" && <AlignVerticalJustifyCenter className="size-4" />}
-              {editor?.getActiveTextVerticalAlign() === "bottom" && <ArrowDown className="size-4" />}
-              {/* Fallback */}
-              {!editor?.getActiveTextVerticalAlign() && <ArrowUp className="size-4" />}
+              <ArrowUp className="size-4" />
+            </Button>
+          </Hint>
+          {/* Vertical Align Center */}
+          <Hint label="Align Middle" side="bottom" sideOffset={5}>
+            <Button
+              onClick={() => editor?.changeTextVerticalAlign("middle")}
+              size="icon"
+              variant="ghost"
+              className={cn(
+                editor?.getActiveTextVerticalAlign() === "middle" && "bg-gray-100"
+              )}
+            >
+              <Minus className="size-4" />
+            </Button>
+          </Hint>
+          {/* Vertical Align Bottom */}
+          <Hint label="Align Bottom" side="bottom" sideOffset={5}>
+            <Button
+              onClick={() => editor?.changeTextVerticalAlign("bottom")}
+              size="icon"
+              variant="ghost"
+              className={cn(
+                editor?.getActiveTextVerticalAlign() === "bottom" && "bg-gray-100"
+              )}
+            >
+              <ArrowDown className="size-4" />
             </Button>
           </Hint>
         </div>
@@ -498,7 +539,7 @@ export const Toolbar = ({
             size="icon"
             variant="ghost"
           >
-            <MoveHorizontal className="size-4" />
+            <AlignHorizontalJustifyCenter className="size-4" />
           </Button>
         </Hint>
       </div>
@@ -509,7 +550,7 @@ export const Toolbar = ({
             size="icon"
             variant="ghost"
           >
-            <MoveVertical className="size-4" />
+            <AlignVerticalJustifyCenter className="size-4" />
           </Button>
         </Hint>
       </div>

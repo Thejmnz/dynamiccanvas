@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Render Canvas</title>
+  <!-- Load Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&family=Lato:wght@400;700&family=Montserrat:wght@400;700&family=Oswald:wght@400;700&family=Raleway:wght@400;700&family=Poppins:wght@400;700&family=Merriweather:wght@400;700&family=PT+Sans:wght@400;700&family=Source+Sans+Pro:wght@400;700&family=Noto+Sans:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/konva@10.2.0/konva.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    #container {
+      position: relative;
+      width: fit-content;
+      height: fit-content;
+    }
+    #container canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div id="container"></div>
+
+  <script>
+    const container = document.getElementById('container');
+
+    // Get data from URL parameters
+    const params = new URLSearchParams(window.location.search);
+    const templateId = params.get('templateId');
+    const workspace = JSON.parse(params.get('workspace') || '{"width":800,"height":600,"background":"#ffffff"}');
+    const elements = JSON.parse(params.get('elements') || '[]');
+
+    console.log('Rendering:', { templateId, workspace, elements });
+
+    // Create stage
+    const stage = new Konva.Stage({
+      container: 'container',
+      width: workspace.width || 800,
+      height: workspace.height || 600,
+    });
+
+    const layer = new Konva.Layer();
+    stage.add(layer);
+
+    // Background
+    const background = new Konva.Rect({
+      x: 0,
+      y: 0,
+      width: workspace.width || 800,
+      height: workspace.height || 600,
+      fill: workspace.background || '#ffffff',
+    });
+    layer.add(background);
+
+    // Track images loading
+    let pendingImages = 0;
+
+    // Function to mark render as complete
+    function markComplete() {
+      pendingImages--;
+      console.log(`Images remaining: ${pendingImages}`);
+      if (pendingImages <= 0) {
+        // Final draw and signal completion
+        layer.batchDraw();
+        console.log('Render complete!');
+        document.title = 'Render Complete';
+        document.body.classList.add('render-complete');
+      }
+    }
+
+    // Render elements
+    elements.forEach((el, index) => {
+      let node;
+
+      console.log(`Rendering element ${index}:`, el.type, el);
+
+      switch (el.type) {
+        case 'rect':
+          node = new Konva.Rect({
+            x: el.x || 0,
+            y: el.y || 0,
+            width: el.width || 100,
+            height: el.height || 100,
+            fill: el.fill || '#000000',
+            stroke: el.stroke || null,
+            strokeWidth: el.strokeWidth || 0,
+            opacity: el.opacity !== undefined ? el.opacity : 1,
+            rotation: el.rotation || 0,
+            scaleX: el.scaleX || 1,
+            scaleY: el.scaleY || 1,
+            cornerRadius: el.rx || 0,
+          });
+          break;
+
+        case 'circle':
+          node = new Konva.Circle({
+            x: (el.x || 0) + (el.width || 100) / 2,
+            y: (el.y || 0) + (el.height || 100) / 2,
+            radius: (el.width || 100) / 2,
+            fill: el.fill || '#000000',
+            stroke: el.stroke || null,
+            strokeWidth: el.strokeWidth || 0,
+            opacity: el.opacity !== undefined ? el.opacity : 1,
+            rotation: el.rotation || 0,
+            scaleX: el.scaleX || 1,
+            scaleY: el.scaleY || 1,
+          });
+          break;
+
+        case 'triangle':
+          node = new Konva.Line({
+            points: [
+              (el.width || 100) / 2, 0,
+              el.width || 100, el.height || 100,
+              0, el.height || 100
+            ],
+            x: el.x || 0,
+            y: el.y || 0,
+            fill: el.fill || '#000000',
+            stroke: el.stroke || null,
+            strokeWidth: el.strokeWidth || 0,
+            opacity: el.opacity !== undefined ? el.opacity : 1,
+            rotation: el.rotation || 0,
+            scaleX: el.scaleX || 1,
+            scaleY: el.scaleY || 1,
+            closed: true,
+          });
+          break;
+
+        case 'diamond':
+          node = new Konva.Line({
+            points: [
+              (el.width || 100) / 2, 0,
+              el.width || 100, (el.height || 100) / 2,
+              (el.width || 100) / 2, el.height || 100,
+              0, (el.height || 100) / 2
+            ],
+            x: el.x || 0,
+            y: el.y || 0,
+            fill: el.fill || '#000000',
+            stroke: el.stroke || null,
+            strokeWidth: el.strokeWidth || 0,
+            opacity: el.opacity !== undefined ? el.opacity : 1,
+            rotation: el.rotation || 0,
+            scaleX: el.scaleX || 1,
+            scaleY: el.scaleY || 1,
+            closed: true,
+          });
+          break;
+
+        case 'text':
+          const textConfig: any = {
+            x: el.x || 0,
+            y: el.y || 0,
+            text: el.text || 'Text',
+            fontSize: el.fontSize || 32,
+            fontFamily: el.fontFamily || 'Arial',
+            fill: el.fill || '#000000',
+            opacity: el.opacity !== undefined ? el.opacity : 1,
+            rotation: el.rotation || 0,
+            scaleX: el.scaleX || 1,
+            scaleY: el.scaleY || 1,
+          };
+
+          // Only set width if it exists and is greater than 0
+          if (el.width && el.width > 0) {
+            textConfig.width = el.width;
+          }
+
+          // Only set height if it exists and is greater than 0
+          if (el.height && el.height > 0) {
+            textConfig.height = el.height;
+          }
+
+          // Text alignment
+          if (el.textAlign) {
+            textConfig.align = el.textAlign;
+          }
+          if (el.textVerticalAlign) {
+            textConfig.verticalAlign = el.textVerticalAlign;
+          }
+          if (el.lineHeight) {
+            textConfig.lineHeight = el.lineHeight;
+          }
+          if (el.fontStyle) {
+            textConfig.fontStyle = el.fontStyle;
+          }
+          if (el.textDecoration) {
+            textConfig.textDecoration = el.textDecoration;
+          }
+
+          console.log('Text config:', textConfig);
+
+          node = new Konva.Text(textConfig);
+          break;
+
+        case 'image':
+          if (el.src) {
+            pendingImages++;
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+
+            img.onload = () => {
+              console.log(`Image loaded: ${el.src?.substring(0, 50)}...`);
+              const imageNode = new Konva.Image({
+                x: el.x || 0,
+                y: el.y || 0,
+                image: img,
+                width: el.width || 100,
+                height: el.height || 100,
+                opacity: el.opacity !== undefined ? el.opacity : 1,
+                rotation: el.rotation || 0,
+                scaleX: el.scaleX || 1,
+                scaleY: el.scaleY || 1,
+              });
+              layer.add(imageNode);
+              markComplete();
+            };
+
+            img.onerror = () => {
+              console.error(`Failed to load image: ${el.src}`);
+              markComplete();
+            };
+
+            img.src = el.src;
+          }
+          break;
+      }
+
+      if (node && el.type !== 'image') {
+        layer.add(node);
+      }
+    });
+
+    // Initial draw
+    layer.batchDraw();
+
+    // If no images to load, mark complete immediately after a short delay
+    if (pendingImages === 0) {
+      setTimeout(() => {
+        console.log('Render complete (no images to load)!');
+        document.title = 'Render Complete';
+        document.body.classList.add('render-complete');
+      }, 100);
+    }
+
+    // Fallback: Force completion after 5 seconds regardless of image loading
+    setTimeout(() => {
+      if (!document.body.classList.contains('render-complete')) {
+        console.log('Forcing render complete after timeout');
+        document.title = 'Render Complete';
+        document.body.classList.add('render-complete');
+      }
+    }, 5000);
+  </script>
+</body>
+</html>

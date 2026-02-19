@@ -37,7 +37,7 @@ export const LineHeightInput = ({
             <Input
                 onChange={handleChange}
                 value={value}
-                className="w-[50px] h-8 focus-visible:ring-offset-0 focus-visible:ring-0 rounded-none text-center"
+                className="w-[60px] h-8 focus-visible:ring-offset-0 focus-visible:ring-0 rounded-none text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden [-moz-appearance:textfield]"
                 type="number"
                 step={0.1}
             />

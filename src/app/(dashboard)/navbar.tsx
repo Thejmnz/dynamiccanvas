@@ -13,8 +13,8 @@ export const Navbar = () => {
   const router = useRouter();
 
   return (
-    <nav className="w-full flex items-center p-4 h-[68px]">
-      <div className="ml-auto flex items-center gap-x-2">
+    <nav className="w-full flex items-center justify-end px-6 py-4">
+      <div className="flex items-center gap-x-3">
         <LanguageSwitcher />
         <UserButton />
         {!user && !loading && (

@@ -1,18 +1,16 @@
 "use client";
 
-import { fabric } from "fabric";
+import { useEffect, useRef, useState, useCallback } from "react";
 import debounce from "lodash.debounce";
-import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ResponseType } from "@/features/projects/api/use-get-project";
 import { useUpdateProject } from "@/features/projects/api/use-update-project";
 
-import { 
-  ActiveTool, 
+import {
+  ActiveTool,
   selectionDependentTools
 } from "@/features/editor/types";
 import { Navbar } from "@/features/editor/components/navbar";
-import { Footer } from "@/features/editor/components/footer";
 import { useEditor } from "@/features/editor/hooks/use-editor";
 import { Sidebar } from "@/features/editor/components/sidebar";
 import { Toolbar } from "@/features/editor/components/toolbar";
@@ -25,31 +23,82 @@ import { TextSidebar } from "@/features/editor/components/text-sidebar";
 import { FontSidebar } from "@/features/editor/components/font-sidebar";
 import { ImageSidebar } from "@/features/editor/components/image-sidebar";
 import { FilterSidebar } from "@/features/editor/components/filter-sidebar";
-import { DrawSidebar } from "@/features/editor/components/draw-sidebar";
 import { AiSidebar } from "@/features/editor/components/ai-sidebar";
 import { TemplateSidebar } from "@/features/editor/components/template-sidebar";
 import { RemoveBgSidebar } from "@/features/editor/components/remove-bg-sidebar";
 import { SettingsSidebar } from "@/features/editor/components/settings-sidebar";
+import { DrawSidebar } from "@/features/editor/components/draw-sidebar";
+import { KonvaCanvas } from "@/features/editor/components/KonvaCanvas";
 
 interface EditorProps {
   initialData: ResponseType["data"];
 };
 
+// Adaptador para que los sidebars funcionen con la nueva API Konva
+interface EditorAdapter {
+  canvas?: any; // Placeholder para compatibilidad
+  addRect: () => void;
+  addRectangle?: () => void;
+  addSoftRectangle: () => void;
+  addCircle: () => void;
+  addTriangle: () => void;
+  addInverseTriangle: () => void;
+  addDiamond: () => void;
+  addText: (value: string, options?: any) => void;
+  addImage: (value: string) => void;
+  delete: () => void;
+  changeFillColor: (value: string) => void;
+  changeStrokeColor: (value: string) => void;
+  changeStrokeWidth: (value: number) => void;
+  changeStrokeDashArray?: (value: number[]) => void;
+  changeOpacity: (value: number) => void;
+  changeFontSize: (value: number) => void;
+  getActiveFontSize: () => number;
+  changeTextAlign: (value: string) => void;
+  getActiveTextAlign: () => string;
+  changeTextVerticalAlign: (value: string) => void;
+  getActiveTextVerticalAlign: () => string;
+  changeLetterSpacing: (value: number) => void;
+  getActiveLetterSpacing: () => number;
+  changeLineHeight: (value: number) => void;
+  getActiveLineHeight: () => number;
+  changeFontUnderline: (value: boolean) => void;
+  getActiveFontUnderline: () => boolean;
+  changeFontLinethrough: (value: boolean) => void;
+  getActiveFontLinethrough: () => boolean;
+  changeFontStyle: (value: string) => void;
+  getActiveFontStyle: () => string;
+  changeFontWeight: (value: number) => void;
+  getActiveFontWeight: () => number;
+  getActiveFontFamily: () => string;
+  changeFontFamily: (value: string) => void;
+  changeImageFilter: (value: string) => void;
+  getActiveFillColor: () => string;
+  getActiveStrokeColor: () => string;
+  getActiveStrokeWidth: () => number;
+  getActiveStrokeDashArray?: () => number[];
+  getActiveOpacity: () => number;
+  selectedObjects: any[];
+  getSelectedElements: () => any[];
+  centerHorizontally: () => void;
+  centerVertically: () => void;
+  bringForward: () => void;
+  sendBackwards: () => void;
+  savePng: () => void;
+  saveJpg: () => void;
+  saveSvg: () => void;
+  saveJson: () => void;
+  loadJson: (json: string) => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+  getWorkspace?: () => any;
+  changeBackground?: (value: string) => void;
+}
+
 export const Editor = ({ initialData }: EditorProps) => {
   const { mutate } = useUpdateProject(initialData.id);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const debouncedSave = useCallback(
-    debounce(
-      (values: { 
-        json: string,
-        height: number,
-        width: number,
-      }) => {
-        mutate(values);
-    },
-    500
-  ), [mutate]);
 
   const [activeTool, setActiveTool] = useState<ActiveTool>("select");
 
@@ -59,56 +108,225 @@ export const Editor = ({ initialData }: EditorProps) => {
     }
   }, [activeTool]);
 
-  const { init, editor } = useEditor({
+  const editor = useEditor({
     defaultState: initialData.json,
     defaultWidth: initialData.width,
     defaultHeight: initialData.height,
     clearSelectionCallback: onClearSelection,
-    saveCallback: debouncedSave,
+    // Sin saveCallback - guardado manual
   });
 
+  // Función de guardado manual (sin debounce)
+  const handleManualSave = useCallback(() => {
+    // Generar thumbnail para el dashboard con un pequeño delay para asegurar que el canvas esté listo
+    setTimeout(() => {
+      const json = JSON.stringify({
+        version: "2.0",
+        workspace: editor.workspace,
+        elements: editor.elements,
+      });
+
+      const thumbnailDataUrl = editor.generateThumbnail?.();
+      console.log("🖼️ Generating thumbnail:", thumbnailDataUrl ? `Success (${thumbnailDataUrl.substring(0, 50)}...)` : "Failed - stageRef not ready");
+      console.log("📊 Workspace:", editor.workspace);
+      console.log("📦 Elements count:", editor.elements.length);
+
+      mutate({
+        json,
+        height: editor.workspace.height,
+        width: editor.workspace.width,
+        thumbnailDataUrl,
+      });
+    }, 100);
+  }, [editor, mutate]);
+
+  // Cargar estado inicial si existe
+  useEffect(() => {
+    if (initialData.json && editor.loadJson) {
+      try {
+        console.log("Loading initial JSON:", initialData.json.substring(0, 200));
+        editor.loadJson(initialData.json);
+      } catch (e) {
+        console.error("Error loading initial state:", e);
+      }
+    }
+  }, [initialData.json, editor.loadJson]);
+
+  // Crear adaptador para compatibilidad con sidebars existentes
+  const editorAdapter: EditorAdapter = {
+    ...editor,
+    get selectedObjects() {
+      return editor.getSelectedElements();
+    },
+    getSelectedElements: () => editor.getSelectedElements(),
+    addRect: editor.addRect,
+    addRectangle: editor.addRect,
+    addSoftRectangle: () => editor.addRect(true),
+    addInverseTriangle: () => editor.addTriangle(true),
+    // Use the actual fontSize methods from the hook
+    changeFontSize: editor.changeFontSize,
+    getActiveFontSize: editor.getActiveFontSize,
+    changeTextAlign: (align: string) => editor.changeTextAlign?.(align as 'left' | 'center' | 'right'),
+    getActiveTextAlign: editor.getActiveTextAlign,
+    changeTextVerticalAlign: (align: string) => {
+      editor.selectedIds.forEach(id => {
+        editor.onChange(id, { textVerticalAlign: align });
+      });
+    },
+    getActiveTextVerticalAlign: () => {
+      const firstSelected = editor.getSelectedElements()[0];
+      return firstSelected?.textVerticalAlign || 'top';
+    },
+    changeLetterSpacing: (spacing: number) => {
+      editor.selectedIds.forEach(id => {
+        editor.onChange(id, { letterSpacing: spacing });
+      });
+    },
+    getActiveLetterSpacing: () => 0,
+    changeLineHeight: (height: number) => {
+      editor.selectedIds.forEach(id => {
+        editor.onChange(id, { lineHeight: height });
+      });
+    },
+    getActiveLineHeight: () => {
+      const firstSelected = editor.getSelectedElements()[0];
+      return firstSelected?.lineHeight ?? 1;
+    },
+    changeFontUnderline: (value: boolean) => {
+      editor.selectedIds.forEach(id => {
+        editor.onChange(id, { textDecoration: value ? 'underline' : 'none' });
+      });
+    },
+    getActiveFontUnderline: () => {
+      const firstSelected = editor.getSelectedElements()[0];
+      return firstSelected?.textDecoration === 'underline';
+    },
+    changeFontLinethrough: (value: boolean) => {
+      editor.selectedIds.forEach(id => {
+        editor.onChange(id, { textDecoration: value ? 'line-through' : 'none' });
+      });
+    },
+    getActiveFontLinethrough: () => {
+      const firstSelected = editor.getSelectedElements()[0];
+      return firstSelected?.textDecoration === 'line-through';
+    },
+    changeFontStyle: (value: string) => {
+      editor.selectedIds.forEach(id => {
+        const el = editor.elements.find(e => e.id === id);
+        const currentFontWeight = el?.fontWeight || 400;
+        const isBold = currentFontWeight > 500;
+
+        // Combinar fontStyle con fontWeight
+        let newFontStyle = value;
+        if (isBold) {
+          newFontStyle = value === 'italic' ? 'bold italic' : 'bold';
+        }
+        editor.onChange(id, { fontStyle: newFontStyle });
+      });
+    },
+    getActiveFontStyle: () => {
+      const firstSelected = editor.getSelectedElements()[0];
+      const fontStyle = firstSelected?.fontStyle || 'normal';
+      // Extraer solo italic del fontStyle (que puede ser 'bold', 'italic', 'bold italic')
+      return fontStyle.includes('italic') ? 'italic' : 'normal';
+    },
+    changeFontWeight: (value: number) => {
+      editor.selectedIds.forEach(id => {
+        const el = editor.elements.find(e => e.id === id);
+        const currentFontStyle = el?.fontStyle || 'normal';
+        const isItalic = currentFontStyle.includes('italic');
+
+        // Konva usa fontStyle para bold, no fontWeight numérico
+        let newFontStyle = 'normal';
+        if (value > 500) {
+          newFontStyle = isItalic ? 'bold italic' : 'bold';
+        } else {
+          newFontStyle = isItalic ? 'italic' : 'normal';
+        }
+        editor.onChange(id, { fontStyle: newFontStyle, fontWeight: value });
+      });
+    },
+    getActiveFontWeight: () => {
+      const firstSelected = editor.getSelectedElements()[0];
+      const fontStyle = firstSelected?.fontStyle || 'normal';
+      // Determinar si es bold por el fontStyle
+      return fontStyle.includes('bold') ? 700 : 400;
+    },
+    getActiveFontFamily: () => {
+      const firstSelected = editor.getSelectedElements()[0];
+      return firstSelected?.fontFamily || 'Arial';
+    },
+    changeFontFamily: (font: string) => {
+      editor.selectedIds.forEach(id => {
+        editor.onChange(id, { fontFamily: font });
+      });
+    },
+    changeImageFilter: () => {
+      // TODO: Implementar filtros para imágenes SVG
+      console.warn("Image filters not yet implemented for SVG");
+    },
+    centerHorizontally: () => {
+      const centerX = editor.workspace.width / 2;
+      editor.selectedIds.forEach(id => {
+        const el = editor.elements.find(e => e.id === id);
+        if (el) {
+          // Calcular el ancho real del elemento
+          const elementWidth = el.width * el.scaleX;
+          // Para elementos con originX='left', restamos la mitad del ancho
+          const newX = centerX - elementWidth / 2;
+          editor.onChange(id, { x: newX, originX: 'left' });
+        }
+      });
+    },
+    centerVertically: () => {
+      const centerY = editor.workspace.height / 2;
+      editor.selectedIds.forEach(id => {
+        const el = editor.elements.find(e => e.id === id);
+        if (el) {
+          const elementHeight = (el.height || 100) * el.scaleY;
+          const newY = centerY - elementHeight / 2;
+          editor.onChange(id, { y: newY });
+        }
+      });
+    },
+    // Stroke dash array
+    changeStrokeDashArray: (value: number[]) => {
+      editor.selectedIds.forEach(id => {
+        editor.onChange(id, { strokeDashArray: value });
+      });
+    },
+    getActiveStrokeDashArray: () => editor.getActiveStrokeDashArray?.() || [],
+    canUndo: () => editor.canUndo(),
+    canRedo: () => editor.canRedo(),
+    onUndo: () => editor.undo(),
+    onRedo: () => editor.redo(),
+    getWorkspace: () => editor.workspace,
+    changeBackground: (value: string) => {
+      // Update workspace background - this would need to be implemented in useEditor hook
+      // For now, we'll update it locally
+      editor.workspace.background = value;
+    },
+    // Guardado manual
+    save: handleManualSave,
+  };
+
   const onChangeActiveTool = useCallback((tool: ActiveTool) => {
-    if (tool === "draw") {
-      editor?.enableDrawingMode();
-    }
-
-    if (activeTool === "draw") {
-      editor?.disableDrawingMode();
-    }
-
     if (tool === activeTool) {
       return setActiveTool("select");
     }
-    
     setActiveTool(tool);
-  }, [activeTool, editor]);
+  }, [activeTool]);
 
-  const canvasRef = useRef(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const canvas = new fabric.Canvas(canvasRef.current, {
-      controlsAboveOverlay: true,
-      preserveObjectStacking: true,
-    });
-
-    init({
-      initialCanvas: canvas,
-      initialContainer: containerRef.current!,
-    });
-
-    return () => {
-      canvas.dispose();
-    };
-  }, [init]);
 
   return (
     <div className="h-full flex flex-col">
       <Navbar
         id={initialData.id}
-        editor={editor}
+        editor={editorAdapter as any}
         activeTool={activeTool}
         onChangeActiveTool={onChangeActiveTool}
+        onSave={handleManualSave}
       />
       <div className="absolute h-[calc(100%-68px)] w-full top-[68px] flex">
         <Sidebar
@@ -116,86 +334,103 @@ export const Editor = ({ initialData }: EditorProps) => {
           onChangeActiveTool={onChangeActiveTool}
         />
         <ShapeSidebar
-          editor={editor}
+          editor={editorAdapter as any}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
         <FillColorSidebar
-          editor={editor}
+          editor={editorAdapter as any}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
         <StrokeColorSidebar
-          editor={editor}
+          editor={editorAdapter as any}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
         <StrokeWidthSidebar
-          editor={editor}
+          editor={editorAdapter as any}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
         <OpacitySidebar
-          editor={editor}
+          editor={editorAdapter as any}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
         <TextSidebar
-          editor={editor}
+          editor={editorAdapter as any}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
         <FontSidebar
-          editor={editor}
+          editor={editorAdapter as any}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
         <ImageSidebar
-          editor={editor}
+          editor={editorAdapter as any}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
         <TemplateSidebar
-          editor={editor}
+          editor={editorAdapter as any}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
         <FilterSidebar
-          editor={editor}
+          editor={editorAdapter as any}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
         <AiSidebar
-          editor={editor}
+          editor={editorAdapter as any}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
         <RemoveBgSidebar
-          editor={editor}
+          editor={editorAdapter as any}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
         <DrawSidebar
-          editor={editor}
+          editor={editorAdapter as any}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
         <SettingsSidebar
-          editor={editor}
+          editor={editorAdapter as any}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
         <main className="bg-muted flex-1 overflow-auto relative flex flex-col">
           <Toolbar
-            editor={editor}
+            editor={editorAdapter as any}
             activeTool={activeTool}
             onChangeActiveTool={onChangeActiveTool}
-            key={JSON.stringify(editor?.canvas.getActiveObject())}
+            key={JSON.stringify(editor.selectedIds)}
           />
-          <div className="flex-1 h-[calc(100%-124px)] bg-muted" ref={containerRef}>
-            <canvas ref={canvasRef} />
+          <div
+            className="flex-1 h-[calc(100%-68px)] bg-muted flex items-center justify-center"
+            ref={containerRef}
+            onDoubleClick={(e) => {
+              // Detener doble clic para evitar que seleccione la toolbar
+              e.stopPropagation();
+              e.preventDefault();
+            }}
+          >
+            <KonvaCanvas
+              elements={editor.elements}
+              workspace={editor.workspace || { width: 1080, height: 1350, background: "#ffffff" }}
+              selectedIds={editor.selectedIds}
+              onSelect={editor.onSelect}
+              onMultiSelect={editor.onMultiSelect}
+              onChange={editor.onChange}
+              isEditingText={editor.isEditingText}
+              onEditingChange={editor.setIsEditingText}
+              onStageReady={editor.setStageRef}
+            />
           </div>
-          <Footer editor={editor} />
         </main>
       </div>
     </div>

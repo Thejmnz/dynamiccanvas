@@ -6,6 +6,7 @@ import ai from "./ai";
 import users from "./users";
 import images from "./images";
 import projects from "./projects";
+import templates from "./templates";
 import subscriptions from "./subscriptions";
 
 import authConfig from "@/auth.config";
@@ -15,7 +16,7 @@ export const runtime = "nodejs";
 
 function getAuthConfig(c: Context): AuthConfig {
   return {
-    secret: c.env.AUTH_SECRET,
+    secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
     ...authConfig
   };
 };
@@ -29,6 +30,7 @@ const routes = app
   .route("/users", users)
   .route("/images", images)
   .route("/projects", projects)
+  .route("/templates", templates)
   .route("/subscriptions", subscriptions);
 
 export const GET = handle(app);

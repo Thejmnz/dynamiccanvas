@@ -45,6 +45,7 @@ interface NavbarProps {
   editor: Editor | undefined;
   activeTool: ActiveTool;
   onChangeActiveTool: (tool: ActiveTool) => void;
+  onSave?: () => void;
 }
 
 export const Navbar = ({
@@ -52,6 +53,7 @@ export const Navbar = ({
   editor,
   activeTool,
   onChangeActiveTool,
+  onSave,
 }: NavbarProps) => {
   const { t } = useLanguage(); // Import language hook
   const { user } = useAuth();
@@ -158,6 +160,15 @@ export const Navbar = ({
             onClick={() => editor?.onRedo()}
           >
             <Redo2 className="size-4" />
+          </Button>
+        </Hint>
+        <Hint label={t("tool_save")} side="bottom" sideOffset={10}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onSave}
+          >
+            <BsCloudCheck className="size-4" />
           </Button>
         </Hint>
         <Separator orientation="vertical" className="mx-2" />

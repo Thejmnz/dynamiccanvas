@@ -17,7 +17,7 @@ export const useGetProjects = () => {
       const to = from + LIMIT - 1;
 
       const { data, error } = await supabase
-        .from('templates')
+        .from('dynamic_canvas_templates')
         .select('*')
         .eq('user_id', user.id)
         .order('lastModified', { ascending: false, nullsFirst: false })
@@ -36,9 +36,9 @@ export const useGetProjects = () => {
         height: item.height || 600,
         name: item.name || "Untitled Project",
         id: item.id,
-        // The JSON is in the 'elements' field
-        json: item.elements ? JSON.stringify(item.elements) : "",
-        thumbnailUrl: item.thumbnail_url || null,
+        // The JSON is in the 'json' field (Konva 2.0 format)
+        json: item.json || (item.elements ? JSON.stringify({ version: "2.0", workspace: { width: item.width || 800, height: item.height || 600, background: "#ffffff" }, elements: item.elements }) : ""),
+        thumbnailUrl: item.thumbnailUrl || item.thumbnail_url || null,
       }));
 
       return {
