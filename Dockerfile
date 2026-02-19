@@ -29,6 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-open-sans \
     fontconfig \
     curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and install Playfair Display from Google Fonts
@@ -95,6 +96,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-open-sans \
     fontconfig \
     curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and install Playfair Display from Google Fonts
