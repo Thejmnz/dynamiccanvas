@@ -22,12 +22,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-dejavu-core \
     fonts-dejavu-extra \
     fonts-freefont-ttf \
-    fonts-liberation \
     fonts-noto \
+    fonts-noto-extra \
     fonts-roboto \
+    fonts-roboto-extra \
+    fonts-playfair \
+    fonts-lato \
+    fonts-open-sans \
+    fonts-oswald \
+    fonts-raleway \
+    fonts-ubuntu \
+    fonts-merriweather \
     fontconfig \
-    && fc-cache -f -v \
+    curl \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
+
+# Download and install Playfair Display from Google Fonts
+RUN mkdir -p /usr/share/fonts/truetype/playfair-display && \
+    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplay/PlayfairDisplay%5Bwght%5D.ttf" -o /usr/share/fonts/truetype/playfair-display/PlayfairDisplay.ttf && \
+    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-Bold.ttf" -o /usr/share/fonts/truetype/playfair-display/PlayfairDisplay-Bold.ttf 2>/dev/null || true && \
+    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-Regular.ttf" -o /usr/share/fonts/truetype/playfair-display/PlayfairDisplay-Regular.ttf 2>/dev/null || true && \
+    fc-cache -f -v
 
 WORKDIR /app
 
@@ -79,10 +95,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-dejavu-extra \
     fonts-freefont-ttf \
     fonts-noto \
+    fonts-noto-extra \
     fonts-roboto \
+    fonts-roboto-extra \
+    fonts-playfair \
+    fonts-lato \
+    fonts-open-sans \
+    fonts-oswald \
+    fonts-raleway \
+    fonts-ubuntu \
+    fonts-merriweather \
     fontconfig \
-    && fc-cache -f -v \
+    curl \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
+
+# Download and install Playfair Display from Google Fonts
+RUN mkdir -p /usr/share/fonts/truetype/playfair-display && \
+    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplay/PlayfairDisplay%5Bwght%5D.ttf" -o /usr/share/fonts/truetype/playfair-display/PlayfairDisplay.ttf && \
+    fc-cache -f -v
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs

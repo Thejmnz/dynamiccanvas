@@ -62,6 +62,21 @@ const FONT_FALLBACKS: Record<string, string> = {
   'Impact': 'Impact',  // Try to keep if available
   'Brush Script MT': 'URW Chancery L',
   'Century Gothic': 'Century Gothic',
+
+  // Google Fonts - installed in Docker
+  'Playfair Display': 'Playfair Display',
+  'PlayfairDisplay': 'Playfair Display',
+  'Lato': 'Lato',
+  'Open Sans': 'Open Sans',
+  'OpenSans': 'Open Sans',
+  'Oswald': 'Oswald',
+  'Raleway': 'Raleway',
+  'Ubuntu': 'Ubuntu',
+  'Merriweather': 'Merriweather',
+  'Roboto': 'Roboto',
+  'Roboto Slab': 'Roboto Slab',
+  'Noto Sans': 'Noto Sans',
+  'Noto Serif': 'Noto Serif',
 };
 
 // Default system fonts - these don't need to be downloaded
