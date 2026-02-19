@@ -157,7 +157,7 @@ interface UploadedFont {
 // Helper function to download and register a custom font
 async function registerCustomFont(
   fontName: string,
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   log: (msg: string) => void
 ): Promise<boolean> {
   // Skip if already registered
