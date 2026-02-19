@@ -27,7 +27,6 @@ import { AiSidebar } from "@/features/editor/components/ai-sidebar";
 import { TemplateSidebar } from "@/features/editor/components/template-sidebar";
 import { RemoveBgSidebar } from "@/features/editor/components/remove-bg-sidebar";
 import { SettingsSidebar } from "@/features/editor/components/settings-sidebar";
-import { DrawSidebar } from "@/features/editor/components/draw-sidebar";
 import { KonvaCanvas } from "@/features/editor/components/KonvaCanvas";
 
 interface EditorProps {
@@ -389,11 +388,6 @@ export const Editor = ({ initialData }: EditorProps) => {
           onChangeActiveTool={onChangeActiveTool}
         />
         <RemoveBgSidebar
-          editor={editorAdapter as any}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <DrawSidebar
           editor={editorAdapter as any}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
