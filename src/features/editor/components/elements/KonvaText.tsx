@@ -23,7 +23,7 @@ export const KonvaText: React.FC<KonvaTextProps> = ({
   onDragEnd,
 }) => {
   const textRef = useRef<any>(null);
-  const textareaRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLDivElement | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
   const {

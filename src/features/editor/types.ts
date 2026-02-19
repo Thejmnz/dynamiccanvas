@@ -11,9 +11,9 @@ export interface CanvasElement {
   y: number;
   width: number;
   height: number;
-  rotation: number;
-  scaleX: number;
-  scaleY: number;
+  rotation?: number;
+  scaleX?: number;
+  scaleY?: number;
   fill?: string;
   stroke?: string;
   strokeWidth?: number;
@@ -25,6 +25,7 @@ export interface CanvasElement {
   invert?: boolean; // For inverted triangle
   rx?: number; // Corner radius for rect
   ry?: number; // Corner radius for rect
+  cornerRadius?: number; // Alternative corner radius
   // Origin for centering
   originX?: 'left' | 'center' | 'right';
   originY?: 'top' | 'middle' | 'bottom';
@@ -162,3 +163,71 @@ export const STROKE_DASH_ARRAY = [];
 export const FONT_FAMILY = "Arial";
 export const FONT_SIZE = 32;
 export const FONT_WEIGHT = 400;
+
+// Editor type for compatibility
+export interface Editor {
+  canvas?: any;
+  addRect: () => void;
+  addRectangle: () => void;
+  addSoftRectangle: () => void;
+  addCircle: () => void;
+  addTriangle: () => void;
+  addInverseTriangle: () => void;
+  addDiamond: () => void;
+  addText: (text: string, options?: any) => void;
+  addImage: (src: string) => void;
+  delete: () => void;
+  selectedObjects: any[];
+  getActiveFillColor: () => string;
+  getActiveStrokeColor: () => string;
+  getActiveStrokeWidth: () => number;
+  getActiveStrokeDashArray: () => number[];
+  getActiveOpacity: () => number;
+  getActiveFontFamily: () => string;
+  getActiveFontSize: () => number;
+  getActiveFontWeight: () => number;
+  getActiveFontStyle: () => string;
+  getActiveTextAlign: () => string;
+  getActiveTextVerticalAlign: () => string;
+  getActiveLineHeight: () => number;
+  getActiveLetterSpacing: () => number;
+  getActiveFontUnderline: () => boolean;
+  getActiveFontLinethrough: () => boolean;
+  changeFillColor: (color: string) => void;
+  changeStrokeColor: (color: string) => void;
+  changeStrokeWidth: (width: number) => void;
+  changeStrokeDashArray: (dashArray: number[]) => void;
+  changeOpacity: (opacity: number) => void;
+  changeFontSize: (size: number) => void;
+  changeFontWeight: (weight: number) => void;
+  changeFontStyle: (style: string) => void;
+  changeFontFamily: (family: string) => void;
+  changeTextAlign: (align: string) => void;
+  changeTextVerticalAlign: (align: string) => void;
+  changeLineHeight: (height: number) => void;
+  changeLetterSpacing: (spacing: number) => void;
+  changeFontUnderline: (underline: boolean) => void;
+  changeFontLinethrough: (linethrough: boolean) => void;
+  changeImageFilter: (filter: string) => void;
+  changeSize: (width: number, height: number) => void;
+  changeBackground: (color: string) => void;
+  bringForward: () => void;
+  sendBackwards: () => void;
+  centerHorizontally: () => void;
+  centerVertically: () => void;
+  savePng: () => void;
+  saveJpg: () => void;
+  saveSvg: () => void;
+  saveJson: () => void;
+  loadJson: (json: string) => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+  onCopy: () => void;
+  onPaste: () => void;
+  autoZoom: () => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  getWorkspace: () => any;
+}

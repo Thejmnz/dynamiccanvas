@@ -172,7 +172,6 @@ const translations = {
         "endpoint_url_copied": "Endpoint URL Copied!",
         "api_success": "API Request Successful!",
         "api_failed": "API Request Failed",
-        "copy": "Copy",
 
         // Sidebar
         "home": "Home",
@@ -445,7 +444,6 @@ const translations = {
         "endpoint_url_copied": "¡URL del Endpoint Copiada!",
         "api_success": "¡Petición API Exitosa!",
         "api_failed": "Petición API Fallida",
-        "copy": "Copiar",
 
         // Sidebar
         "home": "Inicio",

@@ -90,12 +90,12 @@ export const useEditor = ({
   const addElement = useCallback((element: Omit<CanvasElement, "id">) => {
     const newElement: CanvasElement = {
       id: generateId(),
-      rotation: 0,
-      scaleX: 1,
-      scaleY: 1,
       opacity: 1,
-          visible: true,
+      visible: true,
       ...element,
+      rotation: element.rotation ?? 0,
+      scaleX: element.scaleX ?? 1,
+      scaleY: element.scaleY ?? 1,
     };
 
     setElements(prev => {
@@ -566,7 +566,7 @@ export const useEditor = ({
     selectedIds.forEach(id => {
       const element = elements.find(el => el.id === id);
       if (element) {
-        const elementWidth = element.width * element.scaleX;
+        const elementWidth = element.width * (element.scaleX ?? 1);
         // Centrar el CONTENEDOR del elemento en el medio del canvas
         const centerX = (workspace.width / 2) - (elementWidth / 2);
         updateElement(id, { x: centerX });
@@ -580,7 +580,7 @@ export const useEditor = ({
       const element = elements.find(el => el.id === id);
       if (element) {
         const rawHeight = element.height || 100;
-        const elementHeight = rawHeight * element.scaleY;
+        const elementHeight = rawHeight * (element.scaleY ?? 1);
         // Centrar el CONTENEDOR del elemento en el medio del canvas
         const centerY = (workspace.height / 2) - (elementHeight / 2);
         updateElement(id, { y: centerY });

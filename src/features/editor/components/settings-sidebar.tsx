@@ -55,10 +55,10 @@ export const SettingsSidebar = ({
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    editor?.changeSize({
-      width: parseInt(width, 10),
-      height: parseInt(height, 10),
-    });
+    editor?.changeSize(
+      parseInt(width, 10),
+      parseInt(height, 10)
+    );
   }
 
   const onClose = () => {

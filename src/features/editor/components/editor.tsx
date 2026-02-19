@@ -92,6 +92,7 @@ interface EditorAdapter {
   canRedo: () => boolean;
   onUndo: () => void;
   onRedo: () => void;
+  save: () => void;
   getWorkspace?: () => any;
   changeBackground?: (value: string) => void;
 }
@@ -270,7 +271,7 @@ export const Editor = ({ initialData }: EditorProps) => {
         const el = editor.elements.find(e => e.id === id);
         if (el) {
           // Calcular el ancho real del elemento
-          const elementWidth = el.width * el.scaleX;
+          const elementWidth = el.width * (el.scaleX ?? 1);
           // Para elementos con originX='left', restamos la mitad del ancho
           const newX = centerX - elementWidth / 2;
           editor.onChange(id, { x: newX, originX: 'left' });
@@ -282,7 +283,7 @@ export const Editor = ({ initialData }: EditorProps) => {
       editor.selectedIds.forEach(id => {
         const el = editor.elements.find(e => e.id === id);
         if (el) {
-          const elementHeight = (el.height || 100) * el.scaleY;
+          const elementHeight = (el.height || 100) * (el.scaleY ?? 1);
           const newY = centerY - elementHeight / 2;
           editor.onChange(id, { y: newY });
         }
@@ -383,7 +384,6 @@ export const Editor = ({ initialData }: EditorProps) => {
           onChangeActiveTool={onChangeActiveTool}
         />
         <AiSidebar
-          editor={editorAdapter as any}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />

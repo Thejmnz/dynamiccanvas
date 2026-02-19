@@ -38,22 +38,22 @@ export const useSnapGuides = (
     const draggingBounds: ElementBounds = {
       id: draggingId,
       left: dragX,
-      right: dragX + draggingElement.width * draggingElement.scaleX,
+      right: dragX + draggingElement.width * (draggingElement.scaleX ?? 1),
       top: dragY,
-      bottom: dragY + draggingElement.height * draggingElement.scaleY,
-      centerX: dragX + (draggingElement.width * draggingElement.scaleX) / 2,
-      centerY: dragY + (draggingElement.height * draggingElement.scaleY) / 2,
+      bottom: dragY + draggingElement.height * (draggingElement.scaleY ?? 1),
+      centerX: dragX + (draggingElement.width * (draggingElement.scaleX ?? 1)) / 2,
+      centerY: dragY + (draggingElement.height * (draggingElement.scaleY ?? 1)) / 2,
     };
 
     // Calcular bounds de los otros elementos
     const otherBounds: ElementBounds[] = otherElements.map(el => ({
       id: el.id,
       left: el.x,
-      right: el.x + el.width * el.scaleX,
+      right: el.x + el.width * (el.scaleX ?? 1),
       top: el.y,
-      bottom: el.y + el.height * el.scaleY,
-      centerX: el.x + (el.width * el.scaleX) / 2,
-      centerY: el.y + (el.height * el.scaleY) / 2,
+      bottom: el.y + el.height * (el.scaleY ?? 1),
+      centerX: el.x + (el.width * (el.scaleX ?? 1)) / 2,
+      centerY: el.y + (el.height * (el.scaleY ?? 1)) / 2,
     }));
 
     // Snap a bordes y centros de otros elementos

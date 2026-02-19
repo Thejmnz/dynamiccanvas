@@ -62,8 +62,8 @@ export const KonvaCanvas: React.FC<KonvaCanvasProps> = ({
     const SNAP_THRESHOLD = 20 / scale;
     const otherElements = elements.filter(e => e.id !== draggingElement.id);
 
-    const dragWidth = draggingElement.width * draggingElement.scaleX;
-    const dragHeight = draggingElement.height * draggingElement.scaleY;
+    const dragWidth = draggingElement.width * (draggingElement.scaleX ?? 1);
+    const dragHeight = draggingElement.height * (draggingElement.scaleY ?? 1);
 
     // Para círculos y triángulos, la posición es desde el centro
     const isDraggingCenterBased = draggingElement.type === 'circle' || draggingElement.type === 'triangle';
@@ -77,8 +77,8 @@ export const KonvaCanvas: React.FC<KonvaCanvasProps> = ({
     };
 
     otherElements.forEach(el => {
-      const elWidth = el.width * el.scaleX;
-      const elHeight = el.height * el.scaleY;
+      const elWidth = el.width * (el.scaleX ?? 1);
+      const elHeight = el.height * (el.scaleY ?? 1);
       const isCenterBased = el.type === 'circle' || el.type === 'triangle';
 
       const bounds = {
