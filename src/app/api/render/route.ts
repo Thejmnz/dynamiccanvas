@@ -25,59 +25,33 @@ interface CanvasElement {
   [key: string]: any;
 }
 
-// Font mapping: Windows/Mac fonts -> Linux equivalents
-// These map common web fonts to their Linux alternatives
-// IMPORTANT: Font names must match exactly what fontconfig reports
+// Font mapping: Editor fonts -> Downloaded/Installed fonts in Docker
+// These map the font names in the editor to the actual installed fonts
 const FONT_FALLBACKS: Record<string, string> = {
-  // Arial family -> Liberation Sans (metric-compatible with Arial)
+  // fonts-liberation covers these
   'Arial': 'Liberation Sans',
   'Arial Black': 'Liberation Sans Narrow',
-  'Arial Narrow': 'Liberation Sans Narrow',
   'Helvetica': 'Liberation Sans',
-
-  // Times family -> Liberation Serif (metric-compatible with Times New Roman)
+  'Verdana': 'Liberation Sans',
   'Times New Roman': 'Liberation Serif',
-  'Times': 'Liberation Serif',
-  'Georgia': 'Century Schoolbook L',  // Better match for Georgia
-  'Palatino': 'URW Palladio L',
-  'Palatino Linotype': 'URW Palladio L',
-  'Garamond': 'EB Garamond',
-  'Bookman': 'URW Bookman L',
-  'Book Antiqua': 'URW Palladio L',
-
-  // Courier family -> Liberation Mono (metric-compatible with Courier New)
   'Courier New': 'Liberation Mono',
-  'Courier': 'Liberation Mono',
-  'Lucida Console': 'DejaVu Sans Mono',
-  'Monaco': 'DejaVu Sans Mono',
+  'Impact': 'Liberation Sans Narrow',
 
-  // Other common fonts
-  'Verdana': 'DejaVu Sans',
-  'Tahoma': 'DejaVu Sans Condensed',
-  'Trebuchet MS': 'DejaVu Sans',
-  'Lucida Sans Unicode': 'DejaVu Sans',
-  'Lucida Grande': 'DejaVu Sans',
-  'Geneva': 'DejaVu Sans',
-  'Comic Sans MS': 'Comic Sans MS',  // Try to keep if available
-  'Impact': 'Impact',  // Try to keep if available
-  'Brush Script MT': 'URW Chancery L',
-  'Century Gothic': 'Century Gothic',
+  // Downloaded from Google Fonts
+  'Comic Sans MS': 'ComicNeue',
+  'Brush Script MT': 'Dancing Script',
+  'Playfair Display': 'PlayfairDisplay',
+  'Georgia': 'Merriweather',
+  'Garamond': 'EB Garamond',
+  'Palatino': 'CrimsonPro',
+  'Bookman': 'Spectral',
+  'Trebuchet MS': 'Roboto Slab',
+  'Lucida Console': 'PT Mono',
 
-  // Google Fonts - installed in Docker
-  'Playfair Display': 'Playfair Display',
-  'PlayfairDisplay': 'Playfair Display',
-  'Playfair Display Regular': 'Playfair Display',
-  'Lato': 'Lato',
-  'Open Sans': 'Open Sans',
-  'OpenSans': 'Open Sans',
-  'Oswald': 'Oswald',
-  'Raleway': 'Raleway',
-  'Ubuntu': 'Ubuntu',
-  'Merriweather': 'Merriweather',
-  'Roboto': 'Roboto',
-  'Roboto Slab': 'Roboto Slab',
-  'Noto Sans': 'Noto Sans',
-  'Noto Serif': 'Noto Serif',
+  // Generic fallbacks
+  'Tahoma': 'Liberation Sans',
+  'Lucida Sans Unicode': 'Liberation Sans',
+  'Geneva': 'Liberation Sans',
 };
 
 // Default system fonts - these don't need to be downloaded
