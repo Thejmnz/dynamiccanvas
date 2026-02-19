@@ -403,7 +403,21 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 6. Render using Konva with canvas-backend (official Node.js support)
+    // 6. Register all fonts needed before rendering
+    log("Registering fonts...");
+    const fontsToRegister = new Set<string>();
+    for (const el of canvasData.elements) {
+      if (el.type === 'text' && el.fontFamily) {
+        fontsToRegister.add(el.fontFamily);
+      }
+    }
+
+    for (const fontName of fontsToRegister) {
+      log(`Registering font: ${fontName}`);
+      await registerCustomFont(fontName, supabase, log);
+    }
+
+    // 7. Render using Konva with canvas-backend (official Node.js support)
     log("Starting Konva rendering with canvas-backend...");
 
     // Import canvas backend for Konva
