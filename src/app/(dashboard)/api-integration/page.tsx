@@ -84,7 +84,7 @@ const generateExampleApiKey = () => (typeof crypto !== 'undefined' && crypto.ran
 
 interface CodeSnippetProps {
     language: string;
-    code: code;
+    code: string;
 }
 
 const CodeSnippet: React.FC<CodeSnippetProps> = ({ language, code }) => {
