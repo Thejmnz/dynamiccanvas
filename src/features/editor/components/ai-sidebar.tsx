@@ -1,4 +1,4 @@
-import { ActiveTool, Editor } from "@/features/editor/types";
+import { ActiveTool } from "@/features/editor/types";
 import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
 import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-header";
 
@@ -9,7 +9,6 @@ import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { Sparkles } from "lucide-react";
 
 interface AiSidebarProps {
-  editor: Editor | undefined;
   activeTool: ActiveTool;
   onChangeActiveTool: (tool: ActiveTool) => void;
 };
