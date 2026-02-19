@@ -25,6 +25,9 @@ export interface CanvasElement {
   invert?: boolean; // For inverted triangle
   rx?: number; // Corner radius for rect
   ry?: number; // Corner radius for rect
+  // Origin for centering
+  originX?: 'left' | 'center' | 'right';
+  originY?: 'top' | 'middle' | 'bottom';
   // Text specific
   text?: string;
   fontSize?: number;
