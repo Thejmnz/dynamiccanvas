@@ -5,9 +5,8 @@ ENV NODE_OPTIONS="--dns-result-order=ipv4first"
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install runtime and build dependencies
-# We use a single layer to keep it clean.
 # These libraries are needed for canvas/fabric to work correctly.
-# Also installing fonts for server-side rendering
+# fonts-liberation covers: Arial, Arial Black, Verdana, Helvetica, Times New Roman, Courier New, Impact
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     make \
@@ -32,22 +31,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Download and install ALL fonts from editor list from Google Fonts
-# Some fonts are covered by fonts-liberation (Arial, Verdana, Helvetica, Times New Roman, Courier New, Impact)
-# Others need to be downloaded
+# Download additional fonts from Google Fonts
 RUN mkdir -p /usr/share/fonts/truetype/google-fonts && \
-    curl -L "https://github.com/google/fonts/raw/main/apache/robotoslab/RobotoSlab-Regular.ttf" -o "/usr/share/fonts/truetype/google-fonts/Trebuchet MS.ttf" && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/merriweather/Merriweather-Regular.ttf" -o "/usr/share/fonts/truetype/google-fonts/Georgia.ttf" && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/ebgaramond/EBGaramond-Regular.ttf" -o "/usr/share/fonts/truetype/google-fonts/Garamond.ttf" && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/dancingscript/DancingScript-Regular.ttf" -o "/usr/share/fonts/truetype/google-fonts/Brush Script MT.ttf" && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/crimsonpro/CrimsonPro-Regular.ttf" -o "/usr/share/fonts/truetype/google-fonts/Palatino.ttf" && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/bookmanoldstyle/BookmanOldStyle-Regular.ttf" -o "/usr/share/fonts/truetype/google-fonts/Bookman.ttf" && \
     curl -L "https://github.com/google/fonts/raw/main/ofl/comicneue/ComicNeue-Regular.ttf" -o "/usr/share/fonts/truetype/google-fonts/Comic Sans MS.ttf" && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/ptmono/PTMono-Regular.ttf" -o "/usr/share/fonts/truetype/google-fonts/Lucida Console.ttf" && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-Regular.ttf" -o "/usr/share/fonts/truetype/google-fonts/Playfair Display.ttf" && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-Bold.ttf" -o "/usr/share/fonts/truetype/google-fonts/Playfair Display Bold.ttf" && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-Italic.ttf" -o "/usr/share/fonts/truetype/google-fonts/Playfair Display Italic.ttf" && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-BoldItalic.ttf" -o "/usr/share/fonts/truetype/google-fonts/Playfair Display Bold Italic.ttf" && \
+    curl -L "https://github.com/google/fonts/raw/main/ofl/comicneue/ComicNeue-Bold.ttf" -o "/usr/share/fonts/truetype/google-fonts/Comic Sans MS Bold.ttf" && \
+    curl -L "https://github.com/google/fonts/raw/main/ofl/dancingscript/DancingScript%5Bwght%5D.ttf" -o "/usr/share/fonts/truetype/google-fonts/Brush Script MT.ttf" && \
+    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplay/PlayfairDisplay%5Bwght%5D.ttf" -o "/usr/share/fonts/truetype/google-fonts/Playfair Display.ttf" && \
+    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplay/PlayfairDisplay-Italic%5Bwght%5D.ttf" -o "/usr/share/fonts/truetype/google-fonts/Playfair Display Italic.ttf" && \
     fc-cache -f -v
 
 WORKDIR /app
@@ -109,20 +99,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Download and install ALL fonts from editor list
+# Download additional fonts from Google Fonts
 RUN mkdir -p /usr/share/fonts/truetype/google-fonts && \
-    curl -L "https://github.com/google/fonts/raw/main/apache/robotoslab/RobotoSlab-Regular.ttf" -o "/usr/share/fonts/truetype/google-fonts/Trebuchet MS.ttf" && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/merriweather/Merriweather-Regular.ttf" -o "/usr/share/fonts/truetype/google-fonts/Georgia.ttf" && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/ebgaramond/EBGaramond-Regular.ttf" -o "/usr/share/fonts/truetype/google-fonts/Garamond.ttf" && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/dancingscript/DancingScript-Regular.ttf" -o "/usr/share/fonts/truetype/google-fonts/Brush Script MT.ttf" && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/crimsonpro/CrimsonPro-Regular.ttf" -o "/usr/share/fonts/truetype/google-fonts/Palatino.ttf" && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/bookmanoldstyle/BookmanOldStyle-Regular.ttf" -o "/usr/share/fonts/truetype/google-fonts/Bookman.ttf" && \
     curl -L "https://github.com/google/fonts/raw/main/ofl/comicneue/ComicNeue-Regular.ttf" -o "/usr/share/fonts/truetype/google-fonts/Comic Sans MS.ttf" && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/ptmono/PTMono-Regular.ttf" -o "/usr/share/fonts/truetype/google-fonts/Lucida Console.ttf" && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-Regular.ttf" -o "/usr/share/fonts/truetype/google-fonts/Playfair Display.ttf" && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-Bold.ttf" -o "/usr/share/fonts/truetype/google-fonts/Playfair Display Bold.ttf" && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-Italic.ttf" -o "/usr/share/fonts/truetype/google-fonts/Playfair Display Italic.ttf" && \
-    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplaystatic/PlayfairDisplay-BoldItalic.ttf" -o "/usr/share/fonts/truetype/google-fonts/Playfair Display Bold Italic.ttf" && \
+    curl -L "https://github.com/google/fonts/raw/main/ofl/comicneue/ComicNeue-Bold.ttf" -o "/usr/share/fonts/truetype/google-fonts/Comic Sans MS Bold.ttf" && \
+    curl -L "https://github.com/google/fonts/raw/main/ofl/dancingscript/DancingScript%5Bwght%5D.ttf" -o "/usr/share/fonts/truetype/google-fonts/Brush Script MT.ttf" && \
+    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplay/PlayfairDisplay%5Bwght%5D.ttf" -o "/usr/share/fonts/truetype/google-fonts/Playfair Display.ttf" && \
+    curl -L "https://github.com/google/fonts/raw/main/ofl/playfairdisplay/PlayfairDisplay-Italic%5Bwght%5D.ttf" -o "/usr/share/fonts/truetype/google-fonts/Playfair Display Italic.ttf" && \
     fc-cache -f -v
 
 RUN addgroup --system --gid 1001 nodejs
