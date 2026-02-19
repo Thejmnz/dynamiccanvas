@@ -236,7 +236,7 @@ export const Editor = ({ initialData }: EditorProps) => {
         const isItalic = currentFontStyle.includes('italic');
 
         // Konva usa fontStyle para bold, no fontWeight numérico
-        let newFontStyle = 'normal';
+        let newFontStyle: 'bold' | 'normal' | 'italic' | 'bold italic' = 'normal';
         if (value > 500) {
           newFontStyle = isItalic ? 'bold italic' : 'bold';
         } else {
