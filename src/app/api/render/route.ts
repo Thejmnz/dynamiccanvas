@@ -92,6 +92,12 @@ const DEFAULT_FONTS = [
 function getBestFont(fontFamily: string | undefined): string {
   if (!fontFamily) return 'Liberation Sans';
 
+  // On Windows, trust the system to have common fonts like Arial, Georgia, etc.
+  // Do not use Linux fallbacks as they might not be installed on Windows.
+  if (os.platform() === 'win32') {
+    return fontFamily;
+  }
+
   // Check if we have an exact fallback for this font
   const fallback = FONT_FALLBACKS[fontFamily];
   if (fallback) {
@@ -106,9 +112,9 @@ function getBestFont(fontFamily: string | undefined): string {
     }
   }
 
-  // If the font is in the default list but not in fallbacks, use Liberation Sans
+  // If the font is in the default list but not in fallbacks, use Liberation Sans only on Linux
   if (DEFAULT_FONTS.some(df => df.toLowerCase() === lowerFont)) {
-    return 'Liberation Sans';
+    return 'Liberation Sans'; // Default fallback for Linux
   }
 
   // If no fallback, return the original font name
@@ -166,10 +172,10 @@ async function registerCustomFont(
     return true;
   }
 
-  // Skip default fonts
-  if (DEFAULT_FONTS.some(df => fontName.toLowerCase() === df.toLowerCase())) {
-    return true;
-  }
+  // Skip default fonts check removed to allow overriding with uploads
+  // if (DEFAULT_FONTS.some(df => fontName.toLowerCase() === df.toLowerCase())) {
+  //   return true;
+  // }
 
   try {
     // FIRST: Try to load from local public/fonts folder
@@ -415,6 +421,14 @@ export async function POST(req: NextRequest) {
     for (const fontName of fontsToRegister) {
       log(`Registering font: ${fontName}`);
       await registerCustomFont(fontName, supabase, log);
+
+      // Also try to register the normalized name (e.g. PlayfairDisplay -> Playfair Display)
+      // This ensures that if getBestFont renames the font, we have registered the target name if possible
+      const normalized = getBestFont(fontName);
+      if (normalized !== fontName) {
+        log(`Also checking normalized font: ${normalized}`);
+        await registerCustomFont(normalized, supabase, log);
+      }
     }
 
     // 7. Render using Konva with canvas-backend (official Node.js support)
@@ -525,18 +539,31 @@ export async function POST(req: NextRequest) {
           break;
 
         case 'text':
-          // Get the best available font for server-side rendering
-          const bestFont = getBestFont(el.fontFamily);
-          // Always log font mapping for debugging
-          console.log(`[API Render] Text element "${el.id}": font "${el.fontFamily}" -> "${bestFont}"`);
-          log(`Text element "${el.id}": font "${el.fontFamily}" -> "${bestFont}"`);
+          // Determine font to use
+          let fontToUse = el.fontFamily;
+
+          // Logic:
+          // 1. If we successfully registered the exact font family (e.g. uploaded custom font), use it.
+          // 2. If not, try the normalized/fallback version (e.g. "PlayfairDisplay" -> "Playfair Display").
+          if (el.fontFamily && !registeredFonts.has(el.fontFamily)) {
+            fontToUse = getBestFont(el.fontFamily);
+          }
+
+          // Provide default if missing
+          if (!fontToUse) fontToUse = 'Liberation Sans';
+
+          // Log if normalized/mapped
+          if (el.fontFamily && fontToUse !== el.fontFamily) {
+            console.log(`[API Render] Text element "${el.id}": font "${el.fontFamily}" -> "${fontToUse}"`);
+            log(`Text element "${el.id}": font "${el.fontFamily}" -> "${fontToUse}"`);
+          }
 
           const textConfig: any = {
             x: el.x || 0,
             y: el.y || 0,
             text: el.text || 'Text',
             fontSize: el.fontSize || 32,
-            fontFamily: bestFont,
+            fontFamily: fontToUse,
             fill: el.fill || '#000000',
             opacity: el.opacity !== undefined ? el.opacity : 1,
             rotation: el.rotation || 0,
