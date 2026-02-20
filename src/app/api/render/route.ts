@@ -552,45 +552,78 @@ export async function POST(req: NextRequest) {
               log(`  - Scale: ${scaleX}x${scaleY}`);
               log(`  - Final render: ${finalWidth}x${finalHeight}`);
 
-              let imageWidth, imageHeight, posX, posY;
+              let imageWidth, imageHeight, posX, posY, cropX, cropY, cropWidth, cropHeight;
 
               if (el._isDynamicImage === true) {
-                // For dynamically updated images, fit within template bounds
-                // Maintain aspect ratio while fitting to the template height
-                const templateWidth = storedWidth;
-                const templateHeight = storedHeight;
+                // For dynamically updated images, use object-fit: cover
+                // Scale to cover the entire container, cropping if necessary
+                const containerWidth = storedWidth;
+                const containerHeight = storedHeight;
 
-                // Scale to fit template height while maintaining aspect ratio
-                const fitScale = templateHeight / imageObj.height;
-                imageWidth = imageObj.width * fitScale;
-                imageHeight = templateHeight;
+                // Calculate scale to cover container (take the larger scale)
+                const scaleByWidth = containerWidth / imageObj.width;
+                const scaleByHeight = containerHeight / imageObj.height;
+                const coverScale = Math.max(scaleByWidth, scaleByHeight);
 
-                // Center horizontally within template bounds
-                posX = (el.x || 0) + (templateWidth - imageWidth) / 2;
-                posY = el.y || 0;
-                log(`  - Dynamic image mode: fitting to ${imageWidth}x${imageHeight}`);
+                // Image dimensions when scaled to cover
+                imageWidth = imageObj.width * coverScale;
+                imageHeight = imageObj.height * coverScale;
+
+                // Position to center the image (will be cropped by Konva)
+                posX = (el.x || 0) - (imageWidth - containerWidth) / 2;
+                posY = (el.y || 0) - (imageHeight - containerHeight) / 2;
+
+                // Use a clip to crop the image to container bounds
+                // We'll create a group with clip for this
+                log(`  - Dynamic image mode: cover ${containerWidth}x${containerHeight}, scaled to ${imageWidth}x${imageHeight}`);
               } else {
                 // For template images, use the exact dimensions from the editor
-                // The editor already applied scale to width/height and reset scale to 1
-                // But we still apply scale just in case to match exactly what's rendered
                 imageWidth = finalWidth;
                 imageHeight = finalHeight;
                 posX = el.x || 0;
                 posY = el.y || 0;
               }
 
-              node = new Konva.default.Image({
-                x: posX,
-                y: posY,
-                image: imageObj,
-                width: imageWidth,
-                height: imageHeight,
-                opacity: el.opacity !== undefined ? el.opacity : 1,
-                rotation: el.rotation || 0,
-                // Keep scale at 1 since we already applied it to width/height
-                scaleX: 1,
-                scaleY: 1,
-              });
+              if (el._isDynamicImage === true) {
+                // Create a group with clip for cover effect
+                const containerWidth = el.width || 100;
+                const containerHeight = el.height || 100;
+
+                const group = new Konva.default.Group({
+                  x: el.x || 0,
+                  y: el.y || 0,
+                  width: containerWidth,
+                  height: containerHeight,
+                  clipFunc: (ctx: any) => {
+                    ctx.rect(0, 0, containerWidth, containerHeight);
+                  },
+                  opacity: el.opacity !== undefined ? el.opacity : 1,
+                  rotation: el.rotation || 0,
+                });
+
+                const imageNode = new Konva.default.Image({
+                  x: posX - (el.x || 0),
+                  y: posY - (el.y || 0),
+                  image: imageObj,
+                  width: imageWidth,
+                  height: imageHeight,
+                });
+
+                group.add(imageNode);
+                node = group;
+              } else {
+                node = new Konva.default.Image({
+                  x: posX,
+                  y: posY,
+                  image: imageObj,
+                  width: imageWidth,
+                  height: imageHeight,
+                  opacity: el.opacity !== undefined ? el.opacity : 1,
+                  rotation: el.rotation || 0,
+                  scaleX: 1,
+                  scaleY: 1,
+                });
+              }
             } catch (imgError) {
               log(`Failed to load image: ${el.src} - ${imgError}`);
             }
