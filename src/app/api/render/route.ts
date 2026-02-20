@@ -25,100 +25,23 @@ interface CanvasElement {
   [key: string]: any;
 }
 
-// Font mapping: Windows/Mac fonts -> Linux equivalents
-// These map common web fonts to their Linux alternatives
-// IMPORTANT: Font names must match exactly what fontconfig reports
-const FONT_FALLBACKS: Record<string, string> = {
-  // Arial family -> Liberation Sans (metric-compatible with Arial)
-  'Arial': 'Liberation Sans',
-  'Arial Black': 'Liberation Sans Narrow',
-  'Arial Narrow': 'Liberation Sans Narrow',
-  'Helvetica': 'Liberation Sans',
-
-  // Times family -> Liberation Serif (metric-compatible with Times New Roman)
-  'Times New Roman': 'Liberation Serif',
-  'Times': 'Liberation Serif',
-  'Georgia': 'Century Schoolbook L',
-  'Palatino': 'URW Palladio L',
-  'Palatino Linotype': 'URW Palladio L',
-  'Garamond': 'EB Garamond',
-  'Bookman': 'URW Bookman L',
-  'Book Antiqua': 'URW Palladio L',
-
-  // Courier family -> Liberation Mono (metric-compatible with Courier New)
-  'Courier New': 'Liberation Mono',
-  'Courier': 'Liberation Mono',
-  'Lucida Console': 'DejaVu Sans Mono',
-  'Monaco': 'DejaVu Sans Mono',
-
-  // Other common fonts
-  'Verdana': 'DejaVu Sans',
-  'Tahoma': 'DejaVu Sans Condensed',
-  'Trebuchet MS': 'DejaVu Sans',
-  'Lucida Sans Unicode': 'DejaVu Sans',
-  'Lucida Grande': 'DejaVu Sans',
-  'Geneva': 'DejaVu Sans',
-  'Comic Sans MS': 'Comic Sans MS',
-  'Impact': 'Impact',
-  'Brush Script MT': 'URW Chancery L',
-  'Century Gothic': 'Century Gothic',
-
-  // Google Fonts - installed in Docker
-  'Playfair Display': 'Playfair Display',
-  'PlayfairDisplay': 'Playfair Display',
-  'Playfair Display Regular': 'Playfair Display',
-  'Lato': 'Lato',
-  'Open Sans': 'Open Sans',
-  'OpenSans': 'Open Sans',
-  'Oswald': 'Oswald',
-  'Raleway': 'Raleway',
-  'Ubuntu': 'Ubuntu',
-  'Merriweather': 'Merriweather',
-  'Roboto': 'Roboto',
-  'Roboto Slab': 'Roboto Slab',
-  'Noto Sans': 'Noto Sans',
-  'Noto Serif': 'Noto Serif',
-};
-
-// Default system fonts - these don't need to be downloaded
+// All fonts are loaded from public/fonts folder or Supabase storage
+// Font names match the filenames in public/fonts (without extension)
 const DEFAULT_FONTS = [
-  'Arial', 'Helvetica', 'Times New Roman', 'Times', 'Courier New', 'Courier',
-  'Verdana', 'Georgia', 'Palatino', 'Garamond', 'Comic Sans MS', 'Trebuchet MS',
-  'Impact', 'Arial Black', 'Tahoma', 'Lucida Console', 'Monaco', 'sans-serif',
-  'serif', 'monospace', 'cursive', 'fantasy'
+  // Fonts in public/fonts
+  'Arial', 'Arial Black', 'Verdana', 'Tahoma', 'Trebuchet MS',
+  'Times New Roman', 'Georgia', 'Garamond', 'Courier New',
+  'Palatino', 'Bookman', 'Comic Sans MS', 'Impact', 'Lucida Console',
+  'Playfair Display',
+  // Google Fonts in public/fonts
+  'Lato', 'Open Sans', 'Oswald', 'Raleway', 'Ubuntu',
+  'Merriweather', 'Roboto', 'Roboto Slab', 'Noto Sans', 'Noto Serif',
 ];
 
 // Helper function to get the best available font
+// Since we load all fonts from public/fonts, just return the font name
 function getBestFont(fontFamily: string | undefined): string {
   if (!fontFamily) return 'Liberation Sans';
-
-  // On Windows, trust the system to have common fonts like Arial, Georgia, etc.
-  // Do not use Linux fallbacks as they might not be installed on Windows.
-  if (os.platform() === 'win32') {
-    return fontFamily;
-  }
-
-  // Check if we have an exact fallback for this font
-  const fallback = FONT_FALLBACKS[fontFamily];
-  if (fallback) {
-    return fallback;
-  }
-
-  // Case-insensitive search through fallbacks
-  const lowerFont = fontFamily.toLowerCase();
-  for (const [key, value] of Object.entries(FONT_FALLBACKS)) {
-    if (key.toLowerCase() === lowerFont) {
-      return value;
-    }
-  }
-
-  // If the font is in the default list but not in fallbacks, use Liberation Sans only on Linux
-  if (DEFAULT_FONTS.some(df => df.toLowerCase() === lowerFont)) {
-    return 'Liberation Sans'; // Default fallback for Linux
-  }
-
-  // If no fallback, return the original font name
-  // (it might be a custom font that will be registered separately)
   return fontFamily;
 }
 

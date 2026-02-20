@@ -61,25 +61,33 @@ export interface CanvasState {
 // ============ Constants ============
 
 export const fonts = [
+  // Fonts in public/fonts folder
   "Arial",
   "Arial Black",
   "Verdana",
-  "Helvetica",
   "Tahoma",
   "Trebuchet MS",
   "Times New Roman",
   "Georgia",
   "Garamond",
   "Courier New",
-  "Brush Script MT",
   "Palatino",
   "Bookman",
   "Comic Sans MS",
   "Impact",
-  "Lucida Sans Unicode",
-  "Geneva",
   "Lucida Console",
   "Playfair Display",
+  // Google Fonts in public/fonts
+  "Lato",
+  "Open Sans",
+  "Oswald",
+  "Raleway",
+  "Ubuntu",
+  "Merriweather",
+  "Roboto",
+  "Roboto Slab",
+  "Noto Sans",
+  "Noto Serif",
 ];
 
 export const filters = [
