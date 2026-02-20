@@ -1,25 +1,22 @@
-import { Space_Grotesk } from "next/font/google";
-import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 interface AuthLayoutProps {
   children: React.ReactNode;
 };
 
-const font = Space_Grotesk({
-  weight: ["700"],
-  subsets: ["latin"],
-});
-
 const AuthLayout = ({ children }: AuthLayoutProps) => {
   return (
-    <div className="bg-[url(https://xsjtlbmaazrhwhoorubk.supabase.co/storage/v1/object/public/media/uploads/colors-hd-backgrounds.jpg)] bg-top bg-cover h-full flex flex-col">
-      <div className="z-[4] h-full w-full flex flex-col items-center justify-center">
-        <h1 className={cn(font.className, "text-4xl font-bold text-white mb-6")}>Dynamic Canvas</h1>
-        <div className="h-full w-full md:h-auto md:w-[420px]">
-          {children}
-        </div>
+    <div className="dark min-h-screen bg-[#101622] text-slate-100 antialiased selection:bg-[#135bec]/30 flex flex-col items-center justify-center relative overflow-hidden">
+      {/* Background Effects */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full pointer-events-none opacity-20">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#135bec]/40 blur-[120px] rounded-full"></div>
+        <div className="absolute bottom-0 right-0 w-[30%] h-[30%] bg-blue-600/30 blur-[100px] rounded-full"></div>
       </div>
-      <div className="fixed inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.8),rgba(0,0,0,.4),rgba(0,0,0,.8))] z-[1]" />
+
+      {/* Content */}
+      <div className="relative z-10 w-full max-w-[420px] px-4">
+        {children}
+      </div>
     </div>
   );
 };
