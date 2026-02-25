@@ -2,7 +2,7 @@ import * as material from "material-colors";
 
 // ============ Konva Canvas Types ============
 
-export type ElementType = 'text' | 'rect' | 'circle' | 'triangle' | 'diamond' | 'image' | 'path';
+export type ElementType = 'text' | 'rect' | 'circle' | 'triangle' | 'diamond' | 'pentagon' | 'hexagon' | 'star' | 'heart' | 'arrow' | 'line' | 'image' | 'path';
 
 export interface CanvasElement {
   id: string;
@@ -42,11 +42,42 @@ export interface CanvasElement {
   textDecoration?: 'underline' | 'line-through' | 'none';
   // Image specific
   src?: string;
+  flipX?: boolean;
+  flipY?: boolean;
+  maskType?: MaskType;
+  // Filters and effects
+  filterType?: string;
+  brightness?: number;
+  contrast?: number;
+  saturation?: number;
+  blur?: number;
+  shadowColor?: string;
+  shadowBlur?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  shadowOpacity?: number;
+  // Crop
+  cropX?: number;
+  cropY?: number;
+  cropWidth?: number;
+  cropHeight?: number;
   // Common
   locked?: boolean;
   visible?: boolean;
   name?: string;
 }
+
+export type MaskType =
+  | "none"
+  | "star"
+  | "triangle"
+  | "diamond"
+  | "circle"
+  | "pentagon"
+  | "hexagon"
+  | "octagon"
+  | "quarter-circle"
+  | "rounded-rect";
 
 export interface CanvasState {
   version: string;
@@ -151,8 +182,10 @@ export const colors = [
 export type ActiveTool =
   | "select"
   | "shapes"
+  | "vectors"
   | "text"
   | "images"
+  | "uploads"
   | "draw"
   | "fill"
   | "stroke-color"
@@ -160,10 +193,13 @@ export type ActiveTool =
   | "font"
   | "opacity"
   | "filter"
+  | "effects"
   | "settings"
-  | "ai"
+  | "qrcode"
+  | "barcode"
   | "remove-bg"
-  | "templates";
+  | "templates"
+  | "ai";
 
 export const FILL_COLOR = "rgba(0,0,0,1)";
 export const STROKE_COLOR = "rgba(0,0,0,1)";
@@ -183,10 +219,17 @@ export interface Editor {
   addTriangle: () => void;
   addInverseTriangle: () => void;
   addDiamond: () => void;
+  addPentagon: () => void;
+  addHexagon: () => void;
+  addStar: () => void;
+  addHeart: () => void;
+  addArrow: () => void;
+  addLine: () => void;
   addText: (text: string, options?: any) => void;
   addImage: (src: string) => void;
   delete: () => void;
   selectedObjects: any[];
+  getSelectedElements: () => CanvasElement[];
   getActiveFillColor: () => string;
   getActiveStrokeColor: () => string;
   getActiveStrokeWidth: () => number;

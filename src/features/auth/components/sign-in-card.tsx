@@ -56,11 +56,6 @@ export const SignInCard = () => {
 
   return (
     <div className="w-full">
-      {/* Language Switcher */}
-      <div className="flex justify-end mb-4">
-        <LanguageSwitcher />
-      </div>
-
       {/* Logo */}
       <Link href="/" className="flex items-center justify-center gap-2 mb-8 cursor-pointer">
         <div className="w-10 h-10 bg-[#135bec] rounded-lg flex items-center justify-center text-white font-bold text-base">
@@ -71,10 +66,13 @@ export const SignInCard = () => {
 
       {/* Card */}
       <div className="bg-slate-800/40 border border-white/10 rounded-2xl p-8">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-xl font-bold text-white mb-1">{t("login_title")}</h1>
-          <p className="text-slate-400 text-sm">{t("login_subtitle")}</p>
+        {/* Header with Language Switcher */}
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h1 className="text-xl font-bold text-white mb-1">{t("login_title")}</h1>
+            <p className="text-slate-400 text-sm">{t("login_subtitle")}</p>
+          </div>
+          <LanguageSwitcher />
         </div>
 
         {/* Error Message */}
@@ -125,9 +123,9 @@ export const SignInCard = () => {
 
         {/* Sign Up Link */}
         <p className="text-sm text-slate-400 mt-6 text-center">
-          Don&apos;t have an account?{" "}
+          {t("no_account")}{" "}
           <Link href="/sign-up" onClick={() => setLoading(true)}>
-            <span className="text-[#135bec] hover:underline font-semibold">Sign up</span>
+            <span className="text-[#135bec] hover:underline font-semibold">{t("sign_up")}</span>
           </Link>
         </p>
       </div>

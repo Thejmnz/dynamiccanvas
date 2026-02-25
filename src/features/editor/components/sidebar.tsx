@@ -3,11 +3,12 @@
 import {
   LayoutTemplate,
   ImageIcon,
-  Pencil,
-  Settings,
   Shapes,
-  Sparkles,
+  QrCode,
+  Barcode,
   Type,
+  Upload,
+  Hexagon,
 } from "lucide-react";
 
 import { useLanguage } from "@/lib/contexts/LanguageContext";
@@ -41,6 +42,12 @@ export const Sidebar = ({
           onClick={() => onChangeActiveTool("images")}
         />
         <SidebarItem
+          icon={Upload}
+          label={t("tool_uploads")}
+          isActive={activeTool === "uploads"}
+          onClick={() => onChangeActiveTool("uploads")}
+        />
+        <SidebarItem
           icon={Type}
           label={t("tool_text")}
           isActive={activeTool === "text"}
@@ -53,16 +60,22 @@ export const Sidebar = ({
           onClick={() => onChangeActiveTool("shapes")}
         />
         <SidebarItem
-          icon={Sparkles}
-          label={t("tool_ai")}
-          isActive={activeTool === "ai"}
-          onClick={() => onChangeActiveTool("ai")}
+          icon={Hexagon}
+          label={t("tool_vectors")}
+          isActive={activeTool === "vectors"}
+          onClick={() => onChangeActiveTool("vectors")}
         />
         <SidebarItem
-          icon={Settings}
-          label={t("tool_settings")}
-          isActive={activeTool === "settings"}
-          onClick={() => onChangeActiveTool("settings")}
+          icon={QrCode}
+          label={t("tool_qrcode")}
+          isActive={activeTool === "qrcode"}
+          onClick={() => onChangeActiveTool("qrcode")}
+        />
+        <SidebarItem
+          icon={Barcode}
+          label={t("tool_barcode")}
+          isActive={activeTool === "barcode"}
+          onClick={() => onChangeActiveTool("barcode")}
         />
       </ul>
     </aside>

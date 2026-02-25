@@ -33,6 +33,7 @@ export const KonvaTriangle: React.FC<KonvaTriangleProps> = ({
     stroke,
     strokeWidth = 0,
     opacity = 1,
+    locked = false,
   } = element;
 
   // Puntos del triángulo (relativos a x, y)
@@ -56,12 +57,18 @@ export const KonvaTriangle: React.FC<KonvaTriangleProps> = ({
       stroke={stroke}
       strokeWidth={strokeWidth}
       opacity={opacity}
-      draggable
-      onDragStart={onSelect}
+      visible={element.visible !== false}
+      draggable={!locked}
+      onDragStart={() => {
+        if (locked) return;
+        onSelect();
+      }}
       onDragMove={(e) => {
+        if (locked) return;
         onDragMove?.(id, e.target.x(), e.target.y());
       }}
       onDragEnd={(e) => {
+        if (locked) return;
         onChange(id, { x: e.target.x(), y: e.target.y() });
         onDragEnd?.();
       }}

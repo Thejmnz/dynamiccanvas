@@ -34,6 +34,7 @@ export const KonvaRect: React.FC<KonvaRectProps> = ({
     strokeWidth = 0,
     opacity = 1,
     cornerRadius = 0,
+    locked = false,
   } = element;
 
   return (
@@ -51,12 +52,18 @@ export const KonvaRect: React.FC<KonvaRectProps> = ({
       strokeWidth={strokeWidth}
       opacity={opacity}
       cornerRadius={cornerRadius}
-      draggable
-      onDragStart={onSelect}
+      visible={element.visible !== false}
+      draggable={!locked}
+      onDragStart={() => {
+        if (locked) return;
+        onSelect();
+      }}
       onDragMove={(e) => {
+        if (locked) return;
         onDragMove?.(id, e.target.x(), e.target.y());
       }}
       onDragEnd={(e) => {
+        if (locked) return;
         onChange(id, { x: e.target.x(), y: e.target.y() });
         onDragEnd?.();
       }}

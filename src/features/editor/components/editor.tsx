@@ -15,6 +15,7 @@ import { useEditor } from "@/features/editor/hooks/use-editor";
 import { Sidebar } from "@/features/editor/components/sidebar";
 import { Toolbar } from "@/features/editor/components/toolbar";
 import { ShapeSidebar } from "@/features/editor/components/shape-sidebar";
+import { VectorSidebar } from "@/features/editor/components/vector-sidebar";
 import { FillColorSidebar } from "@/features/editor/components/fill-color-sidebar";
 import { StrokeColorSidebar } from "@/features/editor/components/stroke-color-sidebar";
 import { StrokeWidthSidebar } from "@/features/editor/components/stroke-width-sidebar";
@@ -22,12 +23,16 @@ import { OpacitySidebar } from "@/features/editor/components/opacity-sidebar";
 import { TextSidebar } from "@/features/editor/components/text-sidebar";
 import { FontSidebar } from "@/features/editor/components/font-sidebar";
 import { ImageSidebar } from "@/features/editor/components/image-sidebar";
+import { UploadsSidebar } from "@/features/editor/components/uploads-sidebar";
 import { FilterSidebar } from "@/features/editor/components/filter-sidebar";
-import { AiSidebar } from "@/features/editor/components/ai-sidebar";
+import { EffectsSidebar } from "@/features/editor/components/effects-sidebar";
+import { QRCodeSidebar } from "@/features/editor/components/qrcode-sidebar";
+import { BarcodeSidebar } from "@/features/editor/components/barcode-sidebar";
 import { TemplateSidebar } from "@/features/editor/components/template-sidebar";
 import { RemoveBgSidebar } from "@/features/editor/components/remove-bg-sidebar";
 import { SettingsSidebar } from "@/features/editor/components/settings-sidebar";
 import { KonvaCanvas } from "@/features/editor/components/KonvaCanvas";
+import { LayersPanel } from "@/features/editor/components/layers-panel";
 
 interface EditorProps {
   initialData: ResponseType["data"];
@@ -43,6 +48,12 @@ interface EditorAdapter {
   addTriangle: () => void;
   addInverseTriangle: () => void;
   addDiamond: () => void;
+  addPentagon: () => void;
+  addHexagon: () => void;
+  addStar: () => void;
+  addHeart: () => void;
+  addArrow: () => void;
+  addLine: () => void;
   addText: (value: string, options?: any) => void;
   addImage: (value: string) => void;
   delete: () => void;
@@ -101,6 +112,8 @@ export const Editor = ({ initialData }: EditorProps) => {
   const { mutate } = useUpdateProject(initialData.id);
 
   const [activeTool, setActiveTool] = useState<ActiveTool>("select");
+  const [showGrid, setShowGrid] = useState(false);
+  const [showPrintSafeZone, setShowPrintSafeZone] = useState(false);
 
   const onClearSelection = useCallback(() => {
     if (selectionDependentTools.includes(activeTool)) {
@@ -116,9 +129,29 @@ export const Editor = ({ initialData }: EditorProps) => {
     // Sin saveCallback - guardado manual
   });
 
-  // Función de guardado manual (sin debounce)
+  // Función de guardado silencioso (para auto-save, sin notificaciones)
+  const handleAutoSave = useCallback(() => {
+    setTimeout(() => {
+      const json = JSON.stringify({
+        version: "2.0",
+        workspace: editor.workspace,
+        elements: editor.elements,
+      });
+
+      const thumbnailDataUrl = editor.generateThumbnail?.();
+
+      mutate({
+        json,
+        height: editor.workspace.height,
+        width: editor.workspace.width,
+        thumbnailDataUrl,
+        silent: true, // No mostrar toast
+      });
+    }, 100);
+  }, [editor, mutate]);
+
+  // Función de guardado manual (con notificación)
   const handleManualSave = useCallback(() => {
-    // Generar thumbnail para el dashboard con un pequeño delay para asegurar que el canvas esté listo
     setTimeout(() => {
       const json = JSON.stringify({
         version: "2.0",
@@ -160,9 +193,18 @@ export const Editor = ({ initialData }: EditorProps) => {
     },
     getSelectedElements: () => editor.getSelectedElements(),
     addRect: editor.addRect,
-    addRectangle: editor.addRect,
+    addRectangle: editor.addRectangle,
     addSoftRectangle: () => editor.addRect(true),
+    addCircle: editor.addCircle,
+    addTriangle: editor.addTriangle,
     addInverseTriangle: () => editor.addTriangle(true),
+    addDiamond: editor.addDiamond,
+    addPentagon: editor.addPentagon,
+    addHexagon: editor.addHexagon,
+    addStar: editor.addStar,
+    addHeart: editor.addHeart,
+    addArrow: editor.addArrow,
+    addLine: editor.addLine,
     // Use the actual fontSize methods from the hook
     changeFontSize: editor.changeFontSize,
     getActiveFontSize: editor.getActiveFontSize,
@@ -182,7 +224,10 @@ export const Editor = ({ initialData }: EditorProps) => {
         editor.onChange(id, { letterSpacing: spacing });
       });
     },
-    getActiveLetterSpacing: () => 0,
+    getActiveLetterSpacing: () => {
+      const firstSelected = editor.getSelectedElements()[0];
+      return firstSelected?.letterSpacing ?? 0;
+    },
     changeLineHeight: (height: number) => {
       editor.selectedIds.forEach(id => {
         editor.onChange(id, { lineHeight: height });
@@ -261,9 +306,13 @@ export const Editor = ({ initialData }: EditorProps) => {
         editor.onChange(id, { fontFamily: font });
       });
     },
-    changeImageFilter: () => {
-      // TODO: Implementar filtros para imágenes SVG
-      console.warn("Image filters not yet implemented for SVG");
+    changeImageFilter: (filter: string) => {
+      editor.selectedIds.forEach(id => {
+        const element = editor.elements.find(e => e.id === id);
+        if (element?.type === 'image') {
+          editor.onChange(id, { filterType: filter });
+        }
+      });
     },
     centerHorizontally: () => {
       const centerX = editor.workspace.width / 2;
@@ -327,85 +376,124 @@ export const Editor = ({ initialData }: EditorProps) => {
         activeTool={activeTool}
         onChangeActiveTool={onChangeActiveTool}
         onSave={handleManualSave}
+        onAutoSave={handleAutoSave}
+        showGrid={showGrid}
+        onShowGridChange={setShowGrid}
+        showPrintSafeZone={showPrintSafeZone}
+        onShowPrintSafeZoneChange={setShowPrintSafeZone}
       />
       <div className="absolute h-[calc(100%-68px)] w-full top-[68px] flex">
         <Sidebar
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
-        <ShapeSidebar
-          editor={editorAdapter as any}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <FillColorSidebar
-          editor={editorAdapter as any}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <StrokeColorSidebar
-          editor={editorAdapter as any}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <StrokeWidthSidebar
-          editor={editorAdapter as any}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <OpacitySidebar
-          editor={editorAdapter as any}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <TextSidebar
-          editor={editorAdapter as any}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <FontSidebar
-          editor={editorAdapter as any}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <ImageSidebar
-          editor={editorAdapter as any}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <TemplateSidebar
-          editor={editorAdapter as any}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <FilterSidebar
-          editor={editorAdapter as any}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <AiSidebar
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <RemoveBgSidebar
-          editor={editorAdapter as any}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <SettingsSidebar
-          editor={editorAdapter as any}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <main className="bg-muted flex-1 overflow-auto relative flex flex-col">
-          <Toolbar
-            editor={editorAdapter as any}
-            activeTool={activeTool}
-            onChangeActiveTool={onChangeActiveTool}
-            key={JSON.stringify(editor.selectedIds)}
-          />
+        {/* Floating Sidebars - positioned absolutely over the editor */}
+        <div className="absolute left-[100px] top-0 bottom-0 z-[40] pointer-events-none">
+          <div className="pointer-events-auto h-full">
+            <ShapeSidebar
+              editor={editorAdapter as any}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+            <VectorSidebar
+              editor={editorAdapter as any}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+            <FillColorSidebar
+              editor={editorAdapter as any}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+            <StrokeColorSidebar
+              editor={editorAdapter as any}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+            <StrokeWidthSidebar
+              editor={editorAdapter as any}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+            <OpacitySidebar
+              editor={editorAdapter as any}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+            <TextSidebar
+              editor={editorAdapter as any}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+            <FontSidebar
+              editor={editorAdapter as any}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+            <ImageSidebar
+              editor={editorAdapter as any}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+            <UploadsSidebar
+              editor={editorAdapter as any}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+            <TemplateSidebar
+              editor={editorAdapter as any}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+            <FilterSidebar
+              editor={editorAdapter as any}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+            <EffectsSidebar
+              editor={editorAdapter as any}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+              selectedElement={editor.selectedIds.length === 1
+                ? editor.elements.find(el => el.id === editor.selectedIds[0])
+                : null}
+              onChangeElement={editor.onChange}
+            />
+            <QRCodeSidebar
+              editor={editorAdapter as any}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+            <BarcodeSidebar
+              editor={editorAdapter as any}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+            <RemoveBgSidebar
+              editor={editorAdapter as any}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+            <SettingsSidebar
+              editor={editorAdapter as any}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+          </div>
+        </div>
+        <main
+          className="bg-muted flex-1 overflow-auto relative flex flex-col"
+          onClick={(e) => {
+            // Cerrar sidebar cuando se hace clic fuera del sidebar
+            const target = e.target as HTMLElement;
+            // Verificar que no sea un clic dentro de un sidebar
+            if (!target.closest('aside') && !target.closest('[data-sidebar]')) {
+              setActiveTool("select");
+            }
+          }}
+        >
           <div
-            className="flex-1 h-[calc(100%-68px)] bg-muted flex items-center justify-center"
+            className="flex-1 h-full bg-muted flex items-center justify-center"
             ref={containerRef}
             onDoubleClick={(e) => {
               // Detener doble clic para evitar que seleccione la toolbar
@@ -423,9 +511,27 @@ export const Editor = ({ initialData }: EditorProps) => {
               isEditingText={editor.isEditingText}
               onEditingChange={editor.setIsEditingText}
               onStageReady={editor.setStageRef}
+              onDeleteElement={editor.deleteElement}
+              onAddElement={editor.addElement}
+              onBringForward={editor.bringForward}
+              onSendBackwards={editor.sendBackwards}
+              onChangeActiveTool={onChangeActiveTool}
+              activeTool={activeTool}
+              showGrid={showGrid}
+              showPrintSafeZone={showPrintSafeZone}
             />
           </div>
         </main>
+
+        {/* Layers Panel - Floating on the right */}
+        <LayersPanel
+          elements={editor.elements}
+          selectedIds={editor.selectedIds}
+          onSelect={editor.onSelect}
+          onChange={editor.onChange}
+          onDelete={editor.deleteElement}
+          onReorder={editor.reorderElements}
+        />
       </div>
     </div>
   );

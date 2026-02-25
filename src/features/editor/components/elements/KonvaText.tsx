@@ -39,10 +39,12 @@ export const KonvaText: React.FC<KonvaTextProps> = ({
     textAlign = "left",
     textVerticalAlign = "top",
     lineHeight = 1.2,
+    letterSpacing = 0,
     fill = "#000000",
     opacity = 1,
     fontStyle = "normal",
     textDecoration = "none",
+    locked = false,
   } = element;
 
   const handleDblClick = useCallback(() => {
@@ -113,6 +115,7 @@ export const KonvaText: React.FC<KonvaTextProps> = ({
     textarea.style.textDecoration = textDecoration;
     textarea.style.lineHeight = lineHeight.toString();
     textarea.style.textAlign = textAlign;
+    textarea.style.letterSpacing = letterSpacing + 'px';
     textarea.style.color = fill;
     textarea.style.boxSizing = 'border-box';
     textarea.style.whiteSpace = 'pre-wrap';
@@ -211,7 +214,7 @@ export const KonvaText: React.FC<KonvaTextProps> = ({
       currentTextareaHeight = textarea.scrollHeight;
     }, 0);
 
-  }, [text, id, onChange, onEditingChange, fontSize, fontFamily, fontStyle, textDecoration, textAlign, textVerticalAlign, fill, lineHeight, width, height]);
+  }, [text, id, onChange, onEditingChange, fontSize, fontFamily, fontStyle, textDecoration, textAlign, textVerticalAlign, fill, lineHeight, letterSpacing, width, height]);
 
   // Konva no usa fontWeight numérico, solo fontStyle (normal, bold, italic, bold italic)
   const textWidth = width && width > 0 ? width : undefined;
@@ -233,19 +236,23 @@ export const KonvaText: React.FC<KonvaTextProps> = ({
       align={textAlign}
       verticalAlign={textVerticalAlign}
       lineHeight={lineHeight}
+      letterSpacing={letterSpacing}
       fill={fill}
       opacity={opacity}
       rotation={rotation}
-      visible={true}
+      visible={element.visible !== false}
       listening={true}
-      draggable
+      draggable={!locked}
       onDragStart={() => {
+        if (locked) return;
         onSelect();
       }}
       onDragMove={(e) => {
+        if (locked) return;
         onDragMove?.(id, e.target.x(), e.target.y());
       }}
       onDragEnd={(e) => {
+        if (locked) return;
         onChange(id, {
           x: e.target.x(),
           y: e.target.y(),

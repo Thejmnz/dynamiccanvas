@@ -24,8 +24,10 @@ import {
   MoveHorizontal,
   MoveVertical,
   Crosshair,
-  Minus
+  Minus,
+  Baseline
 } from "lucide-react";
+import { MdVerticalAlignTop, MdVerticalAlignCenter, MdVerticalAlignBottom } from "react-icons/md";
 
 import { isTextType } from "@/features/editor/utils";
 import { FontSizeInput } from "@/features/editor/components/font-size-input";
@@ -41,6 +43,11 @@ import {
 import { cn } from "@/lib/utils";
 import { Hint } from "@/components/hint";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 
@@ -67,6 +74,7 @@ export const Toolbar = ({
   const initialFontSize = editor?.getActiveFontSize() || FONT_SIZE
   const initialLetterSpacing = editor?.getActiveLetterSpacing() || 0;
   const initialLineHeight = editor?.getActiveLineHeight() || 1;
+  const initialOpacity = editor?.getActiveOpacity() ?? 1;
 
   const [properties, setProperties] = useState({
     fillColor: initialFillColor,
@@ -80,6 +88,7 @@ export const Toolbar = ({
     fontSize: initialFontSize,
     letterSpacing: initialLetterSpacing,
     lineHeight: initialLineHeight,
+    opacity: initialOpacity,
   });
 
   const selectedObject = editor?.selectedObjects[0];
@@ -103,6 +112,7 @@ export const Toolbar = ({
         fontSize: editor?.getActiveFontSize() || FONT_SIZE,
         letterSpacing: editor?.getActiveLetterSpacing() || 0,
         lineHeight: editor?.getActiveLineHeight() || 1,
+        opacity: editor?.getActiveOpacity() ?? 1,
       });
     }
   }, [selectedObject, editor]);
@@ -143,6 +153,18 @@ export const Toolbar = ({
     }));
   };
 
+  const onChangeOpacity = (value: number) => {
+    if (!selectedObject) {
+      return;
+    }
+
+    editor?.changeOpacity(value);
+    setProperties((current) => ({
+      ...current,
+      opacity: value,
+    }));
+  };
+
 
   const onChangeTextAlign = (value: string) => {
     if (!selectedObject) {
@@ -154,6 +176,81 @@ export const Toolbar = ({
       ...current,
       textAlign: value,
     }));
+  };
+
+  // Cycle through horizontal alignment: left -> center -> right -> left
+  const cycleHorizontalAlign = () => {
+    if (!selectedObject) return;
+
+    const aligns: Array<"left" | "center" | "right"> = ["left", "center", "right"];
+    const currentIndex = aligns.indexOf(properties.textAlign as "left" | "center" | "right") || 0;
+    const nextIndex = (currentIndex + 1) % aligns.length;
+    const nextAlign = aligns[nextIndex];
+
+    onChangeTextAlign(nextAlign);
+  };
+
+  // Cycle through vertical alignment: top -> middle -> bottom -> top
+  const cycleVerticalAlign = () => {
+    if (!selectedObject) return;
+
+    const currentAlign = editor?.getActiveTextVerticalAlign() || "top";
+    const aligns: Array<"top" | "middle" | "bottom"> = ["top", "middle", "bottom"];
+    const currentIndex = aligns.indexOf(currentAlign as "top" | "middle" | "bottom") || 0;
+    const nextIndex = (currentIndex + 1) % aligns.length;
+    const nextAlign = aligns[nextIndex];
+
+    editor?.changeTextVerticalAlign(nextAlign);
+  };
+
+  // Get icon for current horizontal alignment
+  const getHorizontalAlignmentIcon = () => {
+    switch (properties.textAlign) {
+      case "center":
+        return <AlignCenter className="size-4" />;
+      case "right":
+        return <AlignRight className="size-4" />;
+      default:
+        return <AlignLeft className="size-4" />;
+    }
+  };
+
+  // Get icon for current vertical alignment
+  const getVerticalAlignmentIcon = () => {
+    const align = editor?.getActiveTextVerticalAlign() || "top";
+    switch (align) {
+      case "middle":
+        return <Minus className="size-4" />;
+      case "bottom":
+        return <ArrowDown className="size-4" />;
+      default:
+        return <ArrowUp className="size-4" />;
+    }
+  };
+
+  // Get label for current horizontal alignment
+  const getHorizontalAlignmentLabel = () => {
+    switch (properties.textAlign) {
+      case "center":
+        return t("tool_align_center");
+      case "right":
+        return t("tool_align_right");
+      default:
+        return t("tool_align_left");
+    }
+  };
+
+  // Get label for current vertical alignment
+  const getVerticalAlignmentLabel = () => {
+    const align = editor?.getActiveTextVerticalAlign() || "top";
+    switch (align) {
+      case "middle":
+        return t("tool_align_middle");
+      case "bottom":
+        return t("tool_align_bottom");
+      default:
+        return t("tool_align_top");
+    }
   };
 
   const toggleBold = () => {
@@ -297,6 +394,14 @@ export const Toolbar = ({
       )}
       {isText && (
         <div className="flex items-center h-full justify-center">
+          <FontSizeInput
+            value={properties.fontSize}
+            onChange={onChangeFontSize}
+          />
+        </div>
+      )}
+      {isText && (
+        <div className="flex items-center h-full justify-center">
           <Hint label={t("tool_bold")} side="bottom" sideOffset={5}>
             <Button
               onClick={toggleBold}
@@ -359,122 +464,66 @@ export const Toolbar = ({
           </Hint>
         </div>
       )}
+      {/* Spacing Dropdown - Letter Spacing & Line Height */}
       {isText && (
         <div className="flex items-center h-full justify-center">
-          <Hint label={t("tool_align_left")} side="bottom" sideOffset={5}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+              >
+                <Baseline className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="p-3 w-48">
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t("tool_letter_spacing")}</label>
+                  <LetterSpacingInput
+                    value={properties.letterSpacing}
+                    onChange={onChangeLetterSpacing}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t("tool_line_height")}</label>
+                  <LineHeightInput
+                    value={properties.lineHeight}
+                    onChange={onChangeLineHeight}
+                  />
+                </div>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+      {/* Horizontal Alignment - Cycles: left -> center -> right */}
+      {isText && (
+        <div className="flex items-center h-full justify-center">
+          <Hint label={getHorizontalAlignmentLabel()} side="bottom" sideOffset={5}>
             <Button
-              onClick={() => onChangeTextAlign("left")}
+              onClick={cycleHorizontalAlign}
               size="icon"
               variant="ghost"
-              className={cn(
-                properties.textAlign === "left" && "bg-gray-100"
-              )}
+              className="bg-gray-100"
             >
-              <AlignLeft className="size-4" />
+              {getHorizontalAlignmentIcon()}
             </Button>
           </Hint>
         </div>
       )}
+      {/* Vertical Alignment - Cycles: top -> middle -> bottom */}
       {isText && (
         <div className="flex items-center h-full justify-center">
-          <Hint label={t("tool_align_center")} side="bottom" sideOffset={5}>
+          <Hint label={getVerticalAlignmentLabel()} side="bottom" sideOffset={5}>
             <Button
-              onClick={() => onChangeTextAlign("center")}
+              onClick={cycleVerticalAlign}
               size="icon"
               variant="ghost"
-              className={cn(
-                properties.textAlign === "center" && "bg-gray-100"
-              )}
+              className="bg-gray-100"
             >
-              <AlignCenter className="size-4" />
+              {getVerticalAlignmentIcon()}
             </Button>
-          </Hint>
-        </div>
-      )}
-      {isText && (
-        <div className="flex items-center h-full justify-center">
-          <Hint label={t("tool_align_right")} side="bottom" sideOffset={5}>
-            <Button
-              onClick={() => onChangeTextAlign("right")}
-              size="icon"
-              variant="ghost"
-              className={cn(
-                properties.textAlign === "right" && "bg-gray-100"
-              )}
-            >
-              <AlignRight className="size-4" />
-            </Button>
-          </Hint>
-        </div>
-      )}
-      {isText && (
-        <div className="flex items-center h-full justify-center gap-0">
-          {/* Vertical Align Top */}
-          <Hint label="Align Top" side="bottom" sideOffset={5}>
-            <Button
-              onClick={() => editor?.changeTextVerticalAlign("top")}
-              size="icon"
-              variant="ghost"
-              className={cn(
-                editor?.getActiveTextVerticalAlign() === "top" && "bg-gray-100"
-              )}
-            >
-              <ArrowUp className="size-4" />
-            </Button>
-          </Hint>
-          {/* Vertical Align Center */}
-          <Hint label="Align Middle" side="bottom" sideOffset={5}>
-            <Button
-              onClick={() => editor?.changeTextVerticalAlign("middle")}
-              size="icon"
-              variant="ghost"
-              className={cn(
-                editor?.getActiveTextVerticalAlign() === "middle" && "bg-gray-100"
-              )}
-            >
-              <Minus className="size-4" />
-            </Button>
-          </Hint>
-          {/* Vertical Align Bottom */}
-          <Hint label="Align Bottom" side="bottom" sideOffset={5}>
-            <Button
-              onClick={() => editor?.changeTextVerticalAlign("bottom")}
-              size="icon"
-              variant="ghost"
-              className={cn(
-                editor?.getActiveTextVerticalAlign() === "bottom" && "bg-gray-100"
-              )}
-            >
-              <ArrowDown className="size-4" />
-            </Button>
-          </Hint>
-        </div>
-      )}
-      {isText && (
-        <div className="flex items-center h-full justify-center">
-          <FontSizeInput
-            value={properties.fontSize}
-            onChange={onChangeFontSize}
-          />
-        </div>
-      )}
-      {isText && (
-        <div className="flex items-center h-full justify-center">
-          <Hint label={t("tool_letter_spacing")} side="bottom" sideOffset={5}>
-            <LetterSpacingInput
-              value={properties.letterSpacing}
-              onChange={onChangeLetterSpacing}
-            />
-          </Hint>
-        </div>
-      )}
-      {isText && (
-        <div className="flex items-center h-full justify-center">
-          <Hint label={t("tool_line_height")} side="bottom" sideOffset={5}>
-            <LineHeightInput
-              value={properties.lineHeight}
-              onChange={onChangeLineHeight}
-            />
           </Hint>
         </div>
       )}
@@ -533,7 +582,7 @@ export const Toolbar = ({
         </Hint>
       </div>
       <div className="flex items-center h-full justify-center">
-        <Hint label="Center horizontally" side="bottom" sideOffset={5}>
+        <Hint label={t("tool_center_horizontally")} side="bottom" sideOffset={5}>
           <Button
             onClick={() => editor?.centerHorizontally()}
             size="icon"
@@ -544,7 +593,7 @@ export const Toolbar = ({
         </Hint>
       </div>
       <div className="flex items-center h-full justify-center">
-        <Hint label="Center vertically" side="bottom" sideOffset={5}>
+        <Hint label={t("tool_center_vertically")} side="bottom" sideOffset={5}>
           <Button
             onClick={() => editor?.centerVertically()}
             size="icon"
@@ -554,17 +603,35 @@ export const Toolbar = ({
           </Button>
         </Hint>
       </div>
+      {/* Opacity Dropdown with Slider */}
       <div className="flex items-center h-full justify-center">
-        <Hint label={t("tool_opacity")} side="bottom" sideOffset={5}>
-          <Button
-            onClick={() => onChangeActiveTool("opacity")}
-            size="icon"
-            variant="ghost"
-            className={cn(activeTool === "opacity" && "bg-gray-100")}
-          >
-            <RxTransparencyGrid className="size-4" />
-          </Button>
-        </Hint>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="icon"
+              variant="ghost"
+            >
+              <RxTransparencyGrid className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="p-4 w-48">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-muted-foreground">{t("tool_opacity")}</label>
+                <span className="text-xs font-medium text-white">{Math.round(properties.opacity * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={properties.opacity}
+                onChange={(e) => onChangeOpacity(parseFloat(e.target.value))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#135bec]"
+              />
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       <div className="flex items-center h-full justify-center">
         <Hint label={t("tool_duplicate")} side="bottom" sideOffset={5}>

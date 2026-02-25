@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { Transformer } from "react-konva";
 import { CanvasElement } from "../types";
 
@@ -18,6 +18,7 @@ export const KonvaTransformer: React.FC<KonvaTransformerProps> = ({
   isEditing = false,
 }) => {
   const transformerRef = useRef<any>(null);
+  const [hoveredAnchor, setHoveredAnchor] = useState<string | null>(null);
 
   // Determinar qué anchors usar
   const selectedElements = elements.filter(e => selectedIds.includes(e.id));
@@ -25,6 +26,18 @@ export const KonvaTransformer: React.FC<KonvaTransformerProps> = ({
   const isSingleText = selectedIds.length === 1 && hasText;
 
   const enabledAnchors = ['top-left', 'top-center', 'top-right', 'middle-left', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right'];
+
+  // Función para cambiar el estilo del anchor en hover
+  const anchorStyleFunc = (anchor: any) => {
+    const name = anchor.name();
+    if (hoveredAnchor === name) {
+      anchor.fill("#1677FF");
+      anchor.stroke("#1677FF");
+    } else {
+      anchor.fill("#ffffff");
+      anchor.stroke("#9ca3af");
+    }
+  };
 
   // Actualizar los nodos seleccionados cuando cambian los selectedIds
   useEffect(() => {
@@ -54,6 +67,23 @@ export const KonvaTransformer: React.FC<KonvaTransformerProps> = ({
     <Transformer
       ref={transformerRef}
       enabledAnchors={enabledAnchors}
+      anchorCornerRadius={50}
+      anchorSize={14}
+      anchorStroke="#9ca3af"
+      anchorFill="#ffffff"
+      anchorStrokeWidth={1}
+      borderStroke="#1677FF"
+      borderStrokeWidth={2}
+      anchorStyleFunc={anchorStyleFunc}
+      onMouseOver={(e: any) => {
+        const name = e.target.name();
+        if (name && name.includes("anchor")) {
+          setHoveredAnchor(name);
+        }
+      }}
+      onMouseOut={() => {
+        setHoveredAnchor(null);
+      }}
       boundBoxFunc={(oldBox, newBox) => {
         // Limitar el tamaño mínimo
         if (newBox.width < 20 || newBox.height < 20) {
@@ -62,7 +92,7 @@ export const KonvaTransformer: React.FC<KonvaTransformerProps> = ({
         return newBox;
       }}
       onTransform={(e) => {
-        // Manejar transform en tiempo real para texto
+        // Manejar transform en tiempo real para texto y círculos
         const transformedNodes = transformerRef.current?.nodes() || [];
 
         transformedNodes.forEach((node: any) => {
@@ -73,10 +103,27 @@ export const KonvaTransformer: React.FC<KonvaTransformerProps> = ({
             const scaleY = node.scaleY();
             const newWidth = node.width() * Math.abs(scaleX);
             const newHeight = node.height() * Math.abs(scaleY);
-            
+
             node.setAttrs({
               width: newWidth,
               height: newHeight,
+              scaleX: 1,
+              scaleY: 1,
+            });
+          } else if (element?.type === 'circle') {
+            // Para círculos: usar el bounding box del transformer
+            const scaleX = node.scaleX();
+            const scaleY = node.scaleY();
+            // Para Circle, width()/height() retornan 0, usamos radiusX*2 y radiusY*2
+            const oldRadiusX = node.radiusX();
+            const oldRadiusY = node.radiusY();
+            const newRadiusX = oldRadiusX * Math.abs(scaleX);
+            const newRadiusY = oldRadiusY * Math.abs(scaleY);
+
+            // Actualizar los radios del círculo
+            node.setAttrs({
+              radiusX: newRadiusX,
+              radiusY: newRadiusY,
               scaleX: 1,
               scaleY: 1,
             });
@@ -91,31 +138,53 @@ export const KonvaTransformer: React.FC<KonvaTransformerProps> = ({
           const id = node.id();
           const element = elements.find(el => el.id === id);
           const rotation = node.rotation();
-          const x = node.x();
-          const y = node.y();
+          let x = node.x();
+          let y = node.y();
 
-          // Obtener las dimensiones actuales del nodo
-          const nodeWidth = node.width();
-          const nodeHeight = node.height();
+          let newWidth: number;
+          let newHeight: number;
 
-          let newWidth = nodeWidth;
-          let newHeight = nodeHeight;
-
-          if (element?.type !== 'text') {
-            // Para otros elementos, aplicar la escala
+          if (element?.type === 'text') {
+            // Para texto: usar width/height directamente
+            newWidth = node.width();
+            newHeight = node.height();
+          } else if (element?.type === 'circle') {
+            // Para círculos: usar radius para calcular dimensiones
             const scaleX = node.scaleX();
             const scaleY = node.scaleY();
-            newWidth = nodeWidth * Math.abs(scaleX);
-            newHeight = nodeHeight * Math.abs(scaleY);
+            newWidth = node.radiusX() * 2 * Math.abs(scaleX);
+            newHeight = node.radiusY() * 2 * Math.abs(scaleY);
+
+            // Validar que las dimensiones sean válidas
+            if (newWidth < 5) newWidth = 5;
+            if (newHeight < 5) newHeight = 5;
+
+            // Actualizar el nodo con los nuevos radios
+            node.setAttrs({
+              radiusX: newWidth / 2,
+              radiusY: newHeight / 2,
+              scaleX: 1,
+              scaleY: 1,
+            });
+
+            // Para círculos, ajustar las coordenadas (el círculo se posiciona desde el centro)
+            x = x - newWidth / 2;
+            y = y - newHeight / 2;
+          } else {
+            // Para otros elementos (rect, triangle, etc.)
+            const scaleX = node.scaleX();
+            const scaleY = node.scaleY();
+            newWidth = node.width() * Math.abs(scaleX);
+            newHeight = node.height() * Math.abs(scaleY);
+
+            // Validar que las dimensiones sean válidas
+            if (newWidth < 5) newWidth = 5;
+            if (newHeight < 5) newHeight = 5;
+
+            // Resetear escala a 1
+            node.scaleX(1);
+            node.scaleY(1);
           }
-
-          // Validar que las dimensiones sean válidas
-          if (newWidth < 5) newWidth = 5;
-          if (newHeight < 5) newHeight = 5;
-
-          // Resetear escala a 1
-          node.scaleX(1);
-          node.scaleY(1);
 
           onChange(id, {
             x,

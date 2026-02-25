@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Copy, ExternalLink, KeyRound, BookOpen, Lightbulb, Code, Braces, FileJson, Puzzle, RefreshCw, Play, Loader2, Check, X, AlertCircle, ChevronRight, Zap } from "lucide-react";
 import React, { useState, useEffect, useMemo, Suspense } from "react";
@@ -43,11 +44,13 @@ interface Template {
     height: number;
     backgroundColor: string;
     elements: TemplateElement[];
+    lastModified?: string;
 }
 
 interface TemplateElement {
     id: string;
     type: 'text' | 'image';
+    name?: string;
     x: number;
     y: number;
     fontSize?: number;
@@ -60,6 +63,7 @@ interface TemplateElement {
     height?: number;
     lineHeight?: number;
     src?: string;
+    image_url?: string;
     [key: string]: any;
 }
 
@@ -82,67 +86,425 @@ interface ApiResponse {
 const ABSOLUTE_API_ENDPOINT = "/api/render";
 const generateExampleApiKey = () => (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `key-${Math.random().toString(36).substring(2, 10)}`;
 
+// Helper function to format relative time
+const getRelativeTime = (dateString: string | undefined, language: string): string => {
+    if (!dateString) return language === "es" ? "Fecha desconocida" : "Unknown date";
+
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSeconds = Math.floor(diffMs / 1000);
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (language === "es") {
+        if (diffSeconds < 60) return "Hace unos segundos";
+        if (diffMinutes < 60) return `Hace ${diffMinutes} minuto${diffMinutes > 1 ? "s" : ""}`;
+        if (diffHours < 24) return `Hace ${diffHours} hora${diffHours > 1 ? "s" : ""}`;
+        if (diffDays === 1) return "Ayer";
+        if (diffDays < 7) return `Hace ${diffDays} días`;
+        return date.toLocaleDateString("es-ES");
+    } else {
+        if (diffSeconds < 60) return "A few seconds ago";
+        if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes > 1 ? "s" : ""} ago`;
+        if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+        if (diffDays === 1) return "Yesterday";
+        if (diffDays < 7) return `${diffDays} days ago`;
+        return date.toLocaleDateString("en-US");
+    }
+};
+
 interface CodeSnippetProps {
     language: string;
     code: string;
 }
 
+const highlightJsonCode = (code: string): React.ReactNode => {
+    const lines = code.split('\n');
+    return lines.map((line, lineIndex) => {
+        const parts: React.ReactNode[] = [];
+        let remaining = line;
+        let keyIndex = 0;
+
+        while (remaining.length > 0) {
+            const keyMatch = remaining.match(/^"([^"]+)":\s*/);
+            const stringMatch = remaining.match(/^:\s*"([^"]*)"/);
+            const numberMatch = remaining.match(/^:\s*(\d+)/);
+            const bracketMatch = remaining.match(/^([{}\[\]])/);
+            const colonMatch = remaining.match(/^:\s*/);
+
+            if (keyMatch) {
+                parts.push(<span key={keyIndex++} className="text-cyan-400">"{keyMatch[1]}"</span>);
+                parts.push(<span key={keyIndex++}>:</span>);
+                remaining = remaining.slice(keyMatch[0].length);
+            } else if (stringMatch) {
+                parts.push(<span key={keyIndex++} className="text-green-400">"{stringMatch[1]}"</span>);
+                remaining = remaining.slice(stringMatch[0].length);
+            } else if (numberMatch) {
+                parts.push(<span key={keyIndex++} className="text-yellow-400">{numberMatch[1]}</span>);
+                remaining = remaining.slice(numberMatch[0].length);
+            } else if (bracketMatch) {
+                parts.push(<span key={keyIndex++} className="text-white">{bracketMatch[1]}</span>);
+                remaining = remaining.slice(1);
+            } else {
+                parts.push(<span key={keyIndex++}>{remaining[0]}</span>);
+                remaining = remaining.slice(1);
+            }
+        }
+
+        return <div key={lineIndex}>{parts}</div>;
+    });
+};
+
+const highlightPythonCode = (code: string): React.ReactNode => {
+    const lines = code.split('\n');
+    return lines.map((line, lineIndex) => {
+        const trimmed = line.trim();
+        
+        if (trimmed.startsWith('#')) {
+            return <div key={lineIndex} className="text-gray-500">{line}</div>;
+        }
+
+        const parts: React.ReactNode[] = [];
+        let remaining = line;
+        let keyIndex = 0;
+
+        const keywords = ['import', 'from', 'as', 'def', 'return', 'try', 'except', 'if', 'else', 'elif', 'for', 'while', 'with', 'class', 'True', 'False', 'None', 'print'];
+        const functions = ['requests', 'json', 'post', 'get'];
+
+        while (remaining.length > 0) {
+            let matched = false;
+
+            for (const kw of keywords) {
+                const regex = new RegExp(`^\\b(${kw})\\b`);
+                const match = remaining.match(regex);
+                if (match) {
+                    parts.push(<span key={keyIndex++} className="text-purple-400">{match[1]}</span>);
+                    remaining = remaining.slice(match[0].length);
+                    matched = true;
+                    break;
+                }
+            }
+
+            if (!matched) {
+                const stringMatch = remaining.match(/^("[^"]*"|'[^']*')/);
+                if (stringMatch) {
+                    parts.push(<span key={keyIndex++} className="text-green-400">{stringMatch[1]}</span>);
+                    remaining = remaining.slice(stringMatch[0].length);
+                    matched = true;
+                }
+            }
+
+            if (!matched) {
+                const numberMatch = remaining.match(/^\b(\d+)\b/);
+                if (numberMatch) {
+                    parts.push(<span key={keyIndex++} className="text-yellow-400">{numberMatch[1]}</span>);
+                    remaining = remaining.slice(numberMatch[0].length);
+                    matched = true;
+                }
+            }
+
+            if (!matched) {
+                const commentMatch = remaining.match(/^(#.*)$/);
+                if (commentMatch) {
+                    parts.push(<span key={keyIndex++} className="text-gray-500">{commentMatch[1]}</span>);
+                    remaining = '';
+                    matched = true;
+                }
+            }
+
+            if (!matched) {
+                parts.push(<span key={keyIndex++}>{remaining[0]}</span>);
+                remaining = remaining.slice(1);
+            }
+        }
+
+        return <div key={lineIndex}>{parts}</div>;
+    });
+};
+
+const highlightCurlCode = (code: string): React.ReactNode => {
+    const lines = code.split('\n');
+    return lines.map((line, lineIndex) => {
+        const parts: React.ReactNode[] = [];
+        let remaining = line;
+        let keyIndex = 0;
+
+        while (remaining.length > 0) {
+            const curlMatch = remaining.match(/^\b(curl)\b/);
+            const flagMatch = remaining.match(/^(-[a-zA-Z]+)/);
+            const stringMatch = remaining.match(/^("[^"]*")/);
+            const methodMatch = remaining.match(/\b(POST|GET|PUT|DELETE|PATCH)\b/);
+
+            if (curlMatch) {
+                parts.push(<span key={keyIndex++} className="text-pink-400">{curlMatch[1]}</span>);
+                remaining = remaining.slice(curlMatch[0].length);
+            } else if (flagMatch) {
+                parts.push(<span key={keyIndex++} className="text-yellow-400">{flagMatch[1]}</span>);
+                remaining = remaining.slice(flagMatch[0].length);
+            } else if (stringMatch) {
+                parts.push(<span key={keyIndex++} className="text-green-400">{stringMatch[1]}</span>);
+                remaining = remaining.slice(stringMatch[0].length);
+            } else if (methodMatch) {
+                parts.push(<span key={keyIndex++} className="text-purple-400">{methodMatch[1]}</span>);
+                remaining = remaining.slice(methodMatch[0].length);
+            } else {
+                parts.push(<span key={keyIndex++}>{remaining[0]}</span>);
+                remaining = remaining.slice(1);
+            }
+        }
+
+        return <div key={lineIndex}>{parts}</div>;
+    });
+};
+
+const highlightPhpCode = (code: string): React.ReactNode => {
+    const lines = code.split('\n');
+    return lines.map((line, lineIndex) => {
+        const trimmed = line.trim();
+        
+        if (trimmed.startsWith('//') || trimmed.startsWith('#')) {
+            return <div key={lineIndex} className="text-gray-500">{line}</div>;
+        }
+
+        const parts: React.ReactNode[] = [];
+        let remaining = line;
+        let keyIndex = 0;
+
+        const keywords = ['function', 'return', 'new', 'try', 'catch', 'if', 'else', 'foreach', 'as', 'true', 'false', 'null', 'array', 'echo', 'print'];
+
+        while (remaining.length > 0) {
+            let matched = false;
+
+            if (remaining.startsWith('<?php')) {
+                parts.push(<span key={keyIndex++} className="text-pink-400">{'<?php'}</span>);
+                remaining = remaining.slice(5);
+                matched = true;
+            }
+
+            if (!matched) {
+                const varMatch = remaining.match(/^(\$\w+)/);
+                if (varMatch) {
+                    parts.push(<span key={keyIndex++} className="text-cyan-400">{varMatch[1]}</span>);
+                    remaining = remaining.slice(varMatch[0].length);
+                    matched = true;
+                }
+            }
+
+            if (!matched) {
+                for (const kw of keywords) {
+                    const regex = new RegExp(`^\\b(${kw})\\b`);
+                    const match = remaining.match(regex);
+                    if (match) {
+                        parts.push(<span key={keyIndex++} className="text-purple-400">{match[1]}</span>);
+                        remaining = remaining.slice(match[0].length);
+                        matched = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!matched) {
+                const stringMatch = remaining.match(/^("[^"]*"|'[^']*')/);
+                if (stringMatch) {
+                    parts.push(<span key={keyIndex++} className="text-green-400">{stringMatch[1]}</span>);
+                    remaining = remaining.slice(stringMatch[0].length);
+                    matched = true;
+                }
+            }
+
+            if (!matched) {
+                parts.push(<span key={keyIndex++}>{remaining[0]}</span>);
+                remaining = remaining.slice(1);
+            }
+        }
+
+        return <div key={lineIndex}>{parts}</div>;
+    });
+};
+
+const highlightJavaCode = (code: string): React.ReactNode => {
+    const lines = code.split('\n');
+    return lines.map((line, lineIndex) => {
+        const trimmed = line.trim();
+        
+        if (trimmed.startsWith('//')) {
+            return <div key={lineIndex} className="text-gray-500">{line}</div>;
+        }
+
+        const parts: React.ReactNode[] = [];
+        let remaining = line;
+        let keyIndex = 0;
+
+        const keywords = ['public', 'private', 'protected', 'class', 'static', 'void', 'return', 'new', 'try', 'catch', 'if', 'else', 'for', 'while', 'import', 'package', 'extends', 'implements', 'true', 'false', 'null', 'int', 'String', 'byte', 'short', 'long', 'float', 'double', 'boolean', 'char'];
+
+        while (remaining.length > 0) {
+            let matched = false;
+
+            for (const kw of keywords) {
+                const regex = new RegExp(`^\\b(${kw})\\b`);
+                const match = remaining.match(regex);
+                if (match) {
+                    parts.push(<span key={keyIndex++} className="text-purple-400">{match[1]}</span>);
+                    remaining = remaining.slice(match[0].length);
+                    matched = true;
+                    break;
+                }
+            }
+
+            if (!matched) {
+                const stringMatch = remaining.match(/^("[^"]*")/);
+                if (stringMatch) {
+                    parts.push(<span key={keyIndex++} className="text-green-400">{stringMatch[1]}</span>);
+                    remaining = remaining.slice(stringMatch[0].length);
+                    matched = true;
+                }
+            }
+
+            if (!matched) {
+                const numberMatch = remaining.match(/^\b(\d+)\b/);
+                if (numberMatch) {
+                    parts.push(<span key={keyIndex++} className="text-yellow-400">{numberMatch[1]}</span>);
+                    remaining = remaining.slice(numberMatch[0].length);
+                    matched = true;
+                }
+            }
+
+            if (!matched) {
+                const annotationMatch = remaining.match(/^(@\w+)/);
+                if (annotationMatch) {
+                    parts.push(<span key={keyIndex++} className="text-pink-400">{annotationMatch[1]}</span>);
+                    remaining = remaining.slice(annotationMatch[0].length);
+                    matched = true;
+                }
+            }
+
+            if (!matched) {
+                parts.push(<span key={keyIndex++}>{remaining[0]}</span>);
+                remaining = remaining.slice(1);
+            }
+        }
+
+        return <div key={lineIndex}>{parts}</div>;
+    });
+};
+
+const highlightCode = (code: string, language: string): React.ReactNode => {
+    const lang = language.toLowerCase();
+    
+    if (lang === 'json' || lang === 'javascript') {
+        return highlightJsonCode(code);
+    }
+    if (lang === 'python') {
+        return highlightPythonCode(code);
+    }
+    if (lang === 'curl') {
+        return highlightCurlCode(code);
+    }
+    if (lang === 'php') {
+        return highlightPhpCode(code);
+    }
+    if (lang === 'java') {
+        return highlightJavaCode(code);
+    }
+    
+    return code;
+};
+
 const CodeSnippet: React.FC<CodeSnippetProps> = ({ language, code }) => {
+    const [copied, setCopied] = useState(false);
+
     const copyToClipboard = () => {
         navigator.clipboard.writeText(code).then(() => {
-            toast.success("Copied!", { description: `${language} code snippet copied to clipboard.` });
+            setCopied(true);
+            toast.success("Copied!", { description: `${language} code copied to clipboard.` });
+            setTimeout(() => setCopied(false), 2000);
         }).catch(err => {
             toast.error("Copy Failed", { description: "Could not copy to clipboard." });
         });
     };
 
     return (
-        <div className="relative group">
-            <pre className="bg-slate-900 text-slate-300 p-4 rounded-md overflow-x-auto text-sm">
-                <code>{code.trim()}</code>
+        <div className="relative group rounded-lg overflow-hidden border border-white/10 bg-gradient-to-br from-[#1e293b] to-[#0f172a] flex flex-col h-full">
+            {/* Header */}
+            <div className="flex items-center justify-between px-3 py-2 bg-black/20 border-b border-white/5 flex-shrink-0">
+                <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{language}</span>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs text-slate-400 hover:text-white hover:bg-white/10"
+                    onClick={copyToClipboard}
+                >
+                    {copied ? (
+                        <>
+                            <Check className="h-3 w-3 mr-1 text-green-400" />
+                            <span className="text-green-400">Copied</span>
+                        </>
+                    ) : (
+                        <>
+                            <Copy className="h-3 w-3 mr-1" />
+                            Copy
+                        </>
+                    )}
+                </Button>
+            </div>
+
+            {/* Code */}
+            <pre className="p-4 overflow-auto text-xs font-mono text-slate-300 leading-relaxed flex-1 min-h-0 whitespace-pre-wrap break-all">
+                <code>{highlightCode(code.trim(), language)}</code>
             </pre>
-            <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 right-2 h-7 w-7 text-gray-400 hover:text-white opacity-50 group-hover:opacity-100 transition-opacity"
-                onClick={copyToClipboard}
-                title={`Copy ${language} code`}
-            >
-                <Copy className="h-4 w-4" />
-            </Button>
         </div>
     );
 };
 
+
 // Snippet generators
 const getJsSnippet = (absoluteApiEndpoint: string, apiKey: string, templateId?: string | null, layers?: Record<string, any>) => {
-    const defaultLayers = {
-        "text-example": { "text": "Provide text here", "color": "#FF0000" },
-        "image-example": { "image_url": "https://placehold.co/200x300.png" }
-    };
-    const finalLayers = layers && Object.keys(layers).length > 0 ? layers : defaultLayers;
+    const simpleLayers: Record<string, any> = {};
+    if (layers && Object.keys(layers).length > 0) {
+        Object.entries(layers).forEach(([id, data]) => {
+            if (data.type === 'text') {
+                simpleLayers[id] = { text: data.text || '' };
+            } else if (data.type === 'image') {
+                simpleLayers[id] = { image_url: data.src || data.image_url || '' };
+            }
+        });
+    }
+    if (Object.keys(simpleLayers).length === 0) {
+        simpleLayers["text-example"] = { text: "Provide text here" };
+    }
 
     return JSON.stringify({
         templateId: templateId || 'YOUR_TEMPLATE_ID',
-        layers: finalLayers
+        layers: simpleLayers
     }, null, 2);
 };
 
 const getPythonSnippet = (absoluteApiEndpoint: string, apiKey: string, templateId?: string | null, layers?: Record<string, any>) => {
-    const defaultLayers = {
-        "text-example": { "text": "Hello from Python!", "color": "#00FF00" },
-        "image-example": { "image_url": "https://placehold.co/200x300.png" }
-    };
-    const finalLayers = layers && Object.keys(layers).length > 0 ? layers : defaultLayers;
+    const simpleLayers: Record<string, any> = {};
+    if (layers && Object.keys(layers).length > 0) {
+        Object.entries(layers).forEach(([id, data]) => {
+            if (data.type === 'text') {
+                simpleLayers[id] = { text: data.text || '' };
+            } else if (data.type === 'image') {
+                simpleLayers[id] = { image_url: data.src || data.image_url || '' };
+            }
+        });
+    }
+    if (Object.keys(simpleLayers).length === 0) {
+        simpleLayers["text-example"] = { text: "Hello from Python!" };
+    }
 
-    let code = '';
-    code += '# Python Request Example\n';
-    code += 'import requests\nimport json\n\n';
+    const layersJson = JSON.stringify(simpleLayers, null, 4).replace(/\n/g, '\n    ');
+    
+    let code = '# Python Request Example\n';
+    code += 'import requests\n\n';
     code += `api_url = "${absoluteApiEndpoint}"\n`;
     code += `headers = {\n    "Authorization": "Bearer ${apiKey}",\n    "Content-Type": "application/json"\n}\n\n`;
     code += 'payload = {\n';
     code += `    "templateId": "${templateId || 'YOUR_TEMPLATE_ID'}",\n`;
-    code += `    "layers": ${JSON.stringify(finalLayers, null, 4).replace(/\n/g, '\n    ')}\n`;
+    code += `    "layers": ${layersJson}\n`;
     code += '}\n\n';
     code += "response = requests.post(api_url, headers=headers, json=payload)\n";
     code += "print(response.json())";
@@ -150,34 +512,57 @@ const getPythonSnippet = (absoluteApiEndpoint: string, apiKey: string, templateI
 };
 
 const getCurlSnippet = (absoluteApiEndpoint: string, apiKey: string, templateId?: string | null, layers?: Record<string, any>) => {
-    const defaultLayers = {
-        "text-example": { "text": "Hello from cURL!", "color": "#FF5733" }
-    };
-    const finalLayers = layers && Object.keys(layers).length > 0 ? layers : defaultLayers;
+    const simpleLayers: Record<string, any> = {};
+    if (layers && Object.keys(layers).length > 0) {
+        Object.entries(layers).forEach(([id, data]) => {
+            if (data.type === 'text') {
+                simpleLayers[id] = { text: data.text || '' };
+            } else if (data.type === 'image') {
+                simpleLayers[id] = { image_url: data.src || data.image_url || '' };
+            }
+        });
+    }
+    if (Object.keys(simpleLayers).length === 0) {
+        simpleLayers["text-example"] = { text: "Hello from cURL!" };
+    }
 
-    let code = '';
-    code += `curl -X POST "${absoluteApiEndpoint}" \\\n`;
+    const payloadJson = JSON.stringify({ 
+        templateId: templateId || 'YOUR_TEMPLATE_ID', 
+        layers: simpleLayers 
+    }, null, 2).replace(/'/g, "'\\''");
+    
+    let code = `curl -X POST "${absoluteApiEndpoint}" \\\n`;
     code += `  -H "Authorization: Bearer ${apiKey}" \\\n`;
     code += `  -H "Content-Type: application/json" \\\n`;
-    code += `  -d '${JSON.stringify({ templateId: templateId || 'YOUR_TEMPLATE_ID', layers: finalLayers }, null, 2)}'\n`;
+    code += `  -d '${payloadJson}'\n`;
     return code;
 };
 
 const getNodeSnippet = (absoluteApiEndpoint: string, apiKey: string, templateId?: string | null, layers?: Record<string, any>) => {
-    const defaultLayers = {
-        "text-example": { "text": "Hello from Node.js!", "color": "#68A063" }
-    };
-    const finalLayers = layers && Object.keys(layers).length > 0 ? layers : defaultLayers;
+    const simpleLayers: Record<string, any> = {};
+    if (layers && Object.keys(layers).length > 0) {
+        Object.entries(layers).forEach(([id, data]) => {
+            if (data.type === 'text') {
+                simpleLayers[id] = { text: data.text || '' };
+            } else if (data.type === 'image') {
+                simpleLayers[id] = { image_url: data.src || data.image_url || '' };
+            }
+        });
+    }
+    if (Object.keys(simpleLayers).length === 0) {
+        simpleLayers["text-example"] = { text: "Hello from Node.js!" };
+    }
 
-    let code = '';
-    code += '// Node.js (axios) Example\n';
+    const layersJson = JSON.stringify(simpleLayers, null, 6).replace(/\n/g, '\n        ');
+
+    let code = '// Node.js (axios) Example\n';
     code += 'const axios = require(\'axios\');\n\n';
     code += 'const renderImage = async () => {\n';
     code += '  try {\n';
     code += `    const response = await axios.post('${absoluteApiEndpoint}',\n`;
     code += '      {\n';
     code += `        templateId: "${templateId || 'YOUR_TEMPLATE_ID'}",\n`;
-    code += `        layers: ${JSON.stringify(finalLayers, null, 6).replace(/\n/g, '\n        ')}\n`;
+    code += `        layers: ${layersJson}\n`;
     code += '      },\n';
     code += '      {\n';
     code += `        headers: {\n`;
@@ -195,10 +580,263 @@ const getNodeSnippet = (absoluteApiEndpoint: string, apiKey: string, templateId?
     return code;
 };
 
+const getPhpSnippet = (absoluteApiEndpoint: string, apiKey: string, templateId?: string | null, layers?: Record<string, any>) => {
+    const simpleLayers: Record<string, any> = {};
+    if (layers && Object.keys(layers).length > 0) {
+        Object.entries(layers).forEach(([id, data]) => {
+            if (data.type === 'text') {
+                simpleLayers[id] = { text: data.text || '' };
+            } else if (data.type === 'image') {
+                simpleLayers[id] = { image_url: data.src || data.image_url || '' };
+            }
+        });
+    }
+    if (Object.keys(simpleLayers).length === 0) {
+        simpleLayers["text-example"] = { text: "Hello from PHP!" };
+    }
+    const layersJson = JSON.stringify(simpleLayers).replace(/'/g, "\\'");
+
+    let code = '<?php\n';
+    code += '// PHP Example using cURL\n\n';
+    code += `$apiUrl = "${absoluteApiEndpoint}";\n`;
+    code += `$apiKey = "${apiKey}";\n\n`;
+    code += `$payload = array(\n`;
+    code += `    "templateId" => "${templateId || 'YOUR_TEMPLATE_ID'}",\n`;
+    code += `    "layers" => json_decode('${layersJson}', true)\n`;
+    code += `);\n\n`;
+    code += `$ch = curl_init($apiUrl);\n`;
+    code += `curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n`;
+    code += `curl_setopt($ch, CURLOPT_POST, true);\n`;
+    code += `curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));\n`;
+    code += `curl_setopt($ch, CURLOPT_HTTPHEADER, array(\n`;
+    code += `    "Authorization: Bearer " . $apiKey,\n`;
+    code += `    "Content-Type: application/json"\n`;
+    code += `));\n\n`;
+    code += `$response = curl_exec($ch);\n`;
+    code += `curl_close($ch);\n\n`;
+    code += `$result = json_decode($response, true);\n`;
+    code += `print_r($result);\n`;
+    code += `?>`;
+    return code;
+};
+
+const getJavaSnippet = (absoluteApiEndpoint: string, apiKey: string, templateId?: string | null, layers?: Record<string, any>) => {
+    const simpleLayers: Record<string, any> = {};
+    if (layers && Object.keys(layers).length > 0) {
+        Object.entries(layers).forEach(([id, data]) => {
+            if (data.type === 'text') {
+                simpleLayers[id] = { text: data.text || '' };
+            } else if (data.type === 'image') {
+                simpleLayers[id] = { image_url: data.src || data.image_url || '' };
+            }
+        });
+    }
+    if (Object.keys(simpleLayers).length === 0) {
+        simpleLayers["text-example"] = { text: "Hello from Java!" };
+    }
+    const layersJson = JSON.stringify(simpleLayers).replace(/"/g, '\\"');
+
+    let code = '// Java Example using HttpURLConnection\n';
+    code += 'import java.net.*;\n';
+    code += 'import java.io.*;\n\n';
+    code += 'public class ApiRequest {\n';
+    code += '    public static void main(String[] args) throws Exception {\n';
+    code += `        URL url = new URL("${absoluteApiEndpoint}");\n`;
+    code += '        HttpURLConnection conn = (HttpURLConnection) url.openConnection();\n';
+    code += '        conn.setRequestMethod("POST");\n';
+    code += `        conn.setRequestProperty("Authorization", "Bearer ${apiKey}");\n`;
+    code += '        conn.setRequestProperty("Content-Type", "application/json");\n';
+    code += '        conn.setDoOutput(true);\n\n';
+    code += `        String jsonInputString = "{\\"templateId\\": \\"${templateId || 'YOUR_TEMPLATE_ID'}\\", \\"layers\\": ${layersJson.replace(/"/g, '\\\\"')}}";\n\n`;
+    code += '        try (OutputStream os = conn.getOutputStream()) {\n';
+    code += '            byte[] input = jsonInputString.getBytes("utf-8");\n';
+    code += '            os.write(input, 0, input.length);\n';
+    code += '        }\n\n';
+    code += '        int responseCode = conn.getResponseCode();\n';
+    code += '        System.out.println("Response Code: " + responseCode);\n';
+    code += '        conn.disconnect();\n';
+    code += '    }\n';
+    code += '}';
+    return code;
+};
+
+// Helper to get all layer properties
+const getFullLayers = (layers?: Record<string, any>): Record<string, any> => {
+    const fullLayers: Record<string, any> = {};
+    if (layers && Object.keys(layers).length > 0) {
+        Object.entries(layers).forEach(([id, data]) => {
+            const layerData: Record<string, any> = {};
+            
+            if (data.type === 'text') {
+                if (data.text !== undefined) layerData.text = data.text;
+                if (data.fontSize !== undefined) layerData.fontSize = data.fontSize;
+                if (data.fontFamily !== undefined) layerData.fontFamily = data.fontFamily;
+                if (data.color !== undefined) layerData.color = data.color;
+                if (data.textAlign !== undefined) layerData.textAlign = data.textAlign;
+                if (data.x !== undefined) layerData.x = data.x;
+                if (data.y !== undefined) layerData.y = data.y;
+                if (data.width !== undefined) layerData.width = data.width;
+                if (data.height !== undefined) layerData.height = data.height;
+                if (data.lineHeight !== undefined) layerData.lineHeight = data.lineHeight;
+                if (data.zIndex !== undefined) layerData.zIndex = data.zIndex;
+            } else if (data.type === 'image') {
+                const imgUrl = data.src || data.image_url || '';
+                if (imgUrl) layerData.image_url = imgUrl;
+                if (data.x !== undefined) layerData.x = data.x;
+                if (data.y !== undefined) layerData.y = data.y;
+                if (data.width !== undefined) layerData.width = data.width;
+                if (data.height !== undefined) layerData.height = data.height;
+                if (data.zIndex !== undefined) layerData.zIndex = data.zIndex;
+            }
+            
+            if (Object.keys(layerData).length > 0) {
+                fullLayers[id] = layerData;
+            }
+        });
+    }
+    if (Object.keys(fullLayers).length === 0) {
+        fullLayers["text-example"] = { 
+            text: "Hello World!", 
+            fontSize: 24, 
+            fontFamily: "Arial",
+            color: "#000000",
+            textAlign: "center",
+            x: 100,
+            y: 100
+        };
+    }
+    return fullLayers;
+};
+
+// Full Code Snippets - Include all properties
+const getFullJsSnippet = (absoluteApiEndpoint: string, apiKey: string, templateId?: string | null, layers?: Record<string, any>) => {
+    const fullLayers = getFullLayers(layers);
+    return JSON.stringify({
+        templateId: templateId || 'YOUR_TEMPLATE_ID',
+        layers: fullLayers
+    }, null, 2);
+};
+
+const getFullPythonSnippet = (absoluteApiEndpoint: string, apiKey: string, templateId?: string | null, layers?: Record<string, any>) => {
+    const fullLayers = getFullLayers(layers);
+    const layersJson = JSON.stringify(fullLayers, null, 4).replace(/\n/g, '\n    ');
+    
+    let code = '# Python Request Example (Full)\n';
+    code += 'import requests\n\n';
+    code += `api_url = "${absoluteApiEndpoint}"\n`;
+    code += `headers = {\n    "Authorization": "Bearer ${apiKey}",\n    "Content-Type": "application/json"\n}\n\n`;
+    code += 'payload = {\n';
+    code += `    "templateId": "${templateId || 'YOUR_TEMPLATE_ID'}",\n`;
+    code += `    "layers": ${layersJson}\n`;
+    code += '}\n\n';
+    code += "response = requests.post(api_url, headers=headers, json=payload)\n";
+    code += "print(response.json())";
+    return code;
+};
+
+const getFullCurlSnippet = (absoluteApiEndpoint: string, apiKey: string, templateId?: string | null, layers?: Record<string, any>) => {
+    const fullLayers = getFullLayers(layers);
+    const payloadJson = JSON.stringify({ 
+        templateId: templateId || 'YOUR_TEMPLATE_ID', 
+        layers: fullLayers 
+    }, null, 2).replace(/'/g, "'\\''");
+    
+    let code = `curl -X POST "${absoluteApiEndpoint}" \\\n`;
+    code += `  -H "Authorization: Bearer ${apiKey}" \\\n`;
+    code += `  -H "Content-Type: application/json" \\\n`;
+    code += `  -d '${payloadJson}'\n`;
+    return code;
+};
+
+const getFullNodeSnippet = (absoluteApiEndpoint: string, apiKey: string, templateId?: string | null, layers?: Record<string, any>) => {
+    const fullLayers = getFullLayers(layers);
+    const layersJson = JSON.stringify(fullLayers, null, 6).replace(/\n/g, '\n        ');
+
+    let code = '// Node.js (axios) Example (Full)\n';
+    code += 'const axios = require(\'axios\');\n\n';
+    code += 'const renderImage = async () => {\n';
+    code += '  try {\n';
+    code += `    const response = await axios.post('${absoluteApiEndpoint}',\n`;
+    code += '      {\n';
+    code += `        templateId: "${templateId || 'YOUR_TEMPLATE_ID'}",\n`;
+    code += `        layers: ${layersJson}\n`;
+    code += '      },\n';
+    code += '      {\n';
+    code += `        headers: {\n`;
+    code += `          'Authorization': 'Bearer ${apiKey}',\n`;
+    code += `          'Content-Type': 'application/json'\n`;
+    code += '        }\n';
+    code += '      }\n';
+    code += '    );\n';
+    code += '    console.log(response.data);\n';
+    code += '  } catch (error) {\n';
+    code += '    console.error(error);\n';
+    code += '  }\n';
+    code += '};\n\n';
+    code += 'renderImage();\n';
+    return code;
+};
+
+const getFullPhpSnippet = (absoluteApiEndpoint: string, apiKey: string, templateId?: string | null, layers?: Record<string, any>) => {
+    const fullLayers = getFullLayers(layers);
+    const layersJson = JSON.stringify(fullLayers).replace(/'/g, "\\'");
+
+    let code = '<?php\n';
+    code += '// PHP Example using cURL (Full)\n\n';
+    code += `$apiUrl = "${absoluteApiEndpoint}";\n`;
+    code += `$apiKey = "${apiKey}";\n\n`;
+    code += `$payload = array(\n`;
+    code += `    "templateId" => "${templateId || 'YOUR_TEMPLATE_ID'}",\n`;
+    code += `    "layers" => json_decode('${layersJson}', true)\n`;
+    code += `);\n\n`;
+    code += `$ch = curl_init($apiUrl);\n`;
+    code += `curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n`;
+    code += `curl_setopt($ch, CURLOPT_POST, true);\n`;
+    code += `curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));\n`;
+    code += `curl_setopt($ch, CURLOPT_HTTPHEADER, array(\n`;
+    code += `    "Authorization: Bearer " . $apiKey,\n`;
+    code += `    "Content-Type: application/json"\n`;
+    code += `));\n\n`;
+    code += `$response = curl_exec($ch);\n`;
+    code += `curl_close($ch);\n\n`;
+    code += `$result = json_decode($response, true);\n`;
+    code += `print_r($result);\n`;
+    code += `?>`;
+    return code;
+};
+
+const getFullJavaSnippet = (absoluteApiEndpoint: string, apiKey: string, templateId?: string | null, layers?: Record<string, any>) => {
+    const fullLayers = getFullLayers(layers);
+    const layersJson = JSON.stringify(fullLayers).replace(/"/g, '\\"');
+
+    let code = '// Java Example using HttpURLConnection (Full)\n';
+    code += 'import java.net.*;\n';
+    code += 'import java.io.*;\n\n';
+    code += 'public class ApiRequest {\n';
+    code += '    public static void main(String[] args) throws Exception {\n';
+    code += `        URL url = new URL("${absoluteApiEndpoint}");\n`;
+    code += '        HttpURLConnection conn = (HttpURLConnection) url.openConnection();\n';
+    code += '        conn.setRequestMethod("POST");\n';
+    code += `        conn.setRequestProperty("Authorization", "Bearer ${apiKey}");\n`;
+    code += '        conn.setRequestProperty("Content-Type", "application/json");\n';
+    code += '        conn.setDoOutput(true);\n\n';
+    code += `        String jsonInputString = "{\\"templateId\\": \\"${templateId || 'YOUR_TEMPLATE_ID'}\\", \\"layers\\": ${layersJson.replace(/"/g, '\\\\"')}}";\n\n`;
+    code += '        try (OutputStream os = conn.getOutputStream()) {\n';
+    code += '            byte[] input = jsonInputString.getBytes("utf-8");\n';
+    code += '            os.write(input, 0, input.length);\n';
+    code += '        }\n\n';
+    code += '        int responseCode = conn.getResponseCode();\n';
+    code += '        System.out.println("Response Code: " + responseCode);\n';
+    code += '        conn.disconnect();\n';
+    code += '    }\n';
+    code += '}';
+    return code;
+};
+
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 
 function ApiIntegrationContent() {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const searchParams = useSearchParams();
     const templateIdParam = searchParams.get('templateIdForApi');
     const [exampleApiKey, setExampleApiKey] = useState<string>("");
@@ -213,13 +851,24 @@ function ApiIntegrationContent() {
     const [templateIdForApi, setTemplateIdForApi] = useState<string | null>(null);
     const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
     const [requestBody, setRequestBody] = useState("");
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // Sync request body with selection
+    // Sync request body with form data
     useEffect(() => {
-        if (selectedTemplate) {
+        if (selectedTemplate && Object.keys(layersDataForSnippets).length > 0) {
+            // Build layers object from form data - only include editable fields
+            const layers: Record<string, { text?: string; src?: string; image_url?: string }> = {};
+            Object.entries(layersDataForSnippets).forEach(([id, el]) => {
+                if (el.type === 'text') {
+                    layers[id] = { text: el.text || '' };
+                } else if (el.type === 'image') {
+                    layers[id] = { image_url: el.src || el.image_url || '' };
+                }
+            });
+
             setRequestBody(JSON.stringify({
                 templateId: selectedTemplate.id,
-                layers: layersDataForSnippets
+                layers
             }, null, 2));
         }
     }, [selectedTemplate, layersDataForSnippets]);
@@ -336,7 +985,8 @@ function ApiIntegrationContent() {
                             width: t.width || 800,
                             height: t.height || 600,
                             backgroundColor: t.background_color || '#fff',
-                            elements: elements
+                            elements: elements,
+                            lastModified: t.lastModified
                         } as Template;
                     });
 
@@ -353,7 +1003,12 @@ function ApiIntegrationContent() {
 
                     if (Array.isArray(templateToSelect.elements)) {
                         const initialLayers = templateToSelect.elements.reduce((acc, el) => {
-                            acc[el.id] = { ...el, text: el.text || '', src: el.src || '' };
+                            acc[el.id] = {
+                                ...el,
+                                text: el.text || '',
+                                src: el.src || el.image_url || '',
+                                image_url: el.src || el.image_url || ''
+                            };
                             return acc;
                         }, {} as Record<string, TemplateElement>);
                         setLayersDataForSnippets(initialLayers);
@@ -397,23 +1052,39 @@ function ApiIntegrationContent() {
         if (template) {
             setSelectedTemplate(template);
             setTemplateIdForApi(template.id);
+            setApiResponse(null); // Clear previous response
             if (Array.isArray(template.elements)) {
                 const updatedLayers = template.elements.reduce((acc, el) => {
-                    acc[el.id] = { ...el, text: el.text || '', src: el.src || '' };
+                    acc[el.id] = {
+                        ...el,
+                        text: el.text || '',
+                        src: el.src || el.image_url || '',
+                        image_url: el.src || el.image_url || ''
+                    };
                     return acc;
                 }, {} as Record<string, TemplateElement>);
                 setLayersDataForSnippets(updatedLayers);
             }
+            setIsModalOpen(true); // Open modal when template is selected
         }
     };
 
-    // Generate snippets
+    // Generate snippets - Simple (basic properties only)
     const jsCode = useMemo(() => getJsSnippet(ABSOLUTE_API_ENDPOINT, exampleApiKey, selectedTemplate?.id, layersDataForSnippets), [exampleApiKey, selectedTemplate, layersDataForSnippets]);
     const [editableJsPayload, setEditableJsPayload] = useState<string>(() => jsCode);
     useEffect(() => { setEditableJsPayload(jsCode); }, [jsCode]);
     const pythonCode = useMemo(() => getPythonSnippet(ABSOLUTE_API_ENDPOINT, exampleApiKey, selectedTemplate?.id, layersDataForSnippets), [exampleApiKey, selectedTemplate, layersDataForSnippets]);
     const curlCode = useMemo(() => getCurlSnippet(ABSOLUTE_API_ENDPOINT, exampleApiKey, selectedTemplate?.id, layersDataForSnippets), [exampleApiKey, selectedTemplate, layersDataForSnippets]);
-    const nodeCode = useMemo(() => getNodeSnippet(ABSOLUTE_API_ENDPOINT, exampleApiKey, selectedTemplate?.id, layersDataForSnippets), [exampleApiKey, selectedTemplate, layersDataForSnippets]);
+    const phpCode = useMemo(() => getPhpSnippet(ABSOLUTE_API_ENDPOINT, exampleApiKey, selectedTemplate?.id, layersDataForSnippets), [exampleApiKey, selectedTemplate, layersDataForSnippets]);
+    const javaCode = useMemo(() => getJavaSnippet(ABSOLUTE_API_ENDPOINT, exampleApiKey, selectedTemplate?.id, layersDataForSnippets), [exampleApiKey, selectedTemplate, layersDataForSnippets]);
+    
+    // Generate snippets - Full (all properties)
+    const fullJsCode = useMemo(() => getFullJsSnippet(ABSOLUTE_API_ENDPOINT, exampleApiKey, selectedTemplate?.id, layersDataForSnippets), [exampleApiKey, selectedTemplate, layersDataForSnippets]);
+    const fullPythonCode = useMemo(() => getFullPythonSnippet(ABSOLUTE_API_ENDPOINT, exampleApiKey, selectedTemplate?.id, layersDataForSnippets), [exampleApiKey, selectedTemplate, layersDataForSnippets]);
+    const fullCurlCode = useMemo(() => getFullCurlSnippet(ABSOLUTE_API_ENDPOINT, exampleApiKey, selectedTemplate?.id, layersDataForSnippets), [exampleApiKey, selectedTemplate, layersDataForSnippets]);
+    const fullNodeCode = useMemo(() => getFullNodeSnippet(ABSOLUTE_API_ENDPOINT, exampleApiKey, selectedTemplate?.id, layersDataForSnippets), [exampleApiKey, selectedTemplate, layersDataForSnippets]);
+    const fullPhpCode = useMemo(() => getFullPhpSnippet(ABSOLUTE_API_ENDPOINT, exampleApiKey, selectedTemplate?.id, layersDataForSnippets), [exampleApiKey, selectedTemplate, layersDataForSnippets]);
+    const fullJavaCode = useMemo(() => getFullJavaSnippet(ABSOLUTE_API_ENDPOINT, exampleApiKey, selectedTemplate?.id, layersDataForSnippets), [exampleApiKey, selectedTemplate, layersDataForSnippets]);
 
     const handleTestApi = async () => {
         if (!selectedTemplate?.id) {
@@ -475,137 +1146,167 @@ function ApiIntegrationContent() {
     };
 
     return (
-        <div className="container mx-auto py-10 max-w-7xl">
+        <div className="container mx-auto py-10 max-w-4xl">
             <div className="mb-8">
-                <h1 className="text-4xl font-bold mb-2">{t("api_integration_title")}</h1>
+                <h1 className="text-4xl font-bold mb-2">{language === "es" ? "Playground" : "Playground"}</h1>
                 <p className="text-lg text-muted-foreground">
-                    {t("api_integration_desc")}
+                    {language === "es"
+                        ? "Selecciona una plantilla para generar imágenes a través de la API."
+                        : "Select a template to generate images through the API."}
                 </p>
             </div>
 
-            {/* Quick Start */}
-            <Card className="mb-8 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
-                <CardHeader>
-                    <CardTitle className="flex items-center text-blue-900">
-                        <Zap className="mr-2 h-6 w-6" />
-                        {t("quick_start")}
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid md:grid-cols-4 gap-4">
-                        <div className="flex gap-3">
-                            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold shrink-0">1</div>
-                            <div>
-                                <p className="font-semibold">{t("quick_start_step1")}</p>
-                                <p className="text-sm text-muted-foreground">{t("quick_start_step1_desc")}</p>
-                            </div>
-                        </div>
-                        <div className="flex gap-3">
-                            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold shrink-0">2</div>
-                            <div>
-                                <p className="font-semibold">{t("quick_start_step2")}</p>
-                                <p className="text-sm text-muted-foreground">{t("quick_start_step2_desc")}</p>
-                            </div>
-                        </div>
-                        <div className="flex gap-3">
-                            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold shrink-0">3</div>
-                            <div>
-                                <p className="font-semibold">{t("quick_start_step3")}</p>
-                                <p className="text-sm text-muted-foreground">{t("quick_start_step3_desc")}</p>
-                            </div>
-                        </div>
-                        <div className="flex gap-3">
-                            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold shrink-0">4</div>
-                            <div>
-                                <p className="font-semibold">{t("quick_start_step4")}</p>
-                                <p className="text-sm text-muted-foreground">{t("quick_start_step4_desc")}</p>
-                            </div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+            {/* Template Selection */}
+            <div className="flex gap-2 items-center">
+                <Select value={selectedTemplate?.id || ''} onValueChange={handleTemplateSelect} disabled={isLoadingTemplates}>
+                    <SelectTrigger className="h-12 text-base max-w-md">
+                        <SelectValue placeholder={t("select_a_template_placeholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {templates.map(t => (
+                            <SelectItem key={t.id} value={t.id} className="text-base py-2">
+                                {t.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                {selectedTemplate && (
+                    <Button
+                        className="h-12 bg-[#135bec] hover:bg-[#0d4ad9]"
+                        onClick={() => setIsModalOpen(true)}
+                    >
+                        <Play className="h-4 w-4 mr-2" />
+                        {language === "es" ? "Abrir" : "Open"}
+                    </Button>
+                )}
+            </div>
 
-            {/* Playground Section - First */}
-            <Card className="mb-8">
-                <CardHeader>
-                    <CardTitle className="flex items-center text-2xl">
-                        <Play className="mr-2 h-6 w-6" />
-                        {t("api_playground")}
-                    </CardTitle>
-                    <CardDescription>{t("api_playground_desc")}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Left: Controls & Request */}
-                        <div className="space-y-4">
-                            {/* Template & API Key Row */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-sm font-medium mb-2 block">{t("template")}</label>
-                                    <Select value={selectedTemplate?.id || ''} onValueChange={handleTemplateSelect} disabled={isLoadingTemplates}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder={t("select_a_template_placeholder")} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {templates.map(t => (
-                                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium mb-2 block">{t("api_key")}</label>
-                                    <div className="flex gap-2">
-                                        <Input
-                                            value={isLoadingApiKey ? "Loading..." : exampleApiKey}
-                                            readOnly
-                                            className="font-mono text-xs"
-                                            disabled={isLoadingApiKey}
-                                        />
-                                        <Button
-                                            size="icon"
-                                            variant="outline"
-                                            onClick={copyExampleApiKey}
-                                            disabled={isLoadingApiKey}
-                                        >
-                                            <Copy className="h-4 w-4" />
-                                        </Button>
+            {isLoadingTemplates && (
+                <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+            )}
+
+            {/* Modal with all options */}
+            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                <DialogContent className="max-w-[95vw] w-[95vw] h-[95vh] max-h-[95vh] overflow-hidden flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Play className="h-5 w-5" />
+                            {selectedTemplate?.name || t("template")}
+                        </DialogTitle>
+                        <DialogDescription className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                            <span className="flex items-center gap-1">
+                                <span className="font-medium text-muted-foreground">{language === "es" ? "Tamaño:" : "Size:"}</span>
+                                <span>{selectedTemplate?.width}x{selectedTemplate?.height}px</span>
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <span className="font-medium text-muted-foreground">{language === "es" ? "Capas:" : "Layers:"}</span>
+                                <span>{selectedTemplate?.elements?.length || 0}</span>
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <span className="font-medium text-muted-foreground">{language === "es" ? "Editado:" : "Edited:"}</span>
+                                <span>{getRelativeTime(selectedTemplate?.lastModified, language)}</span>
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <span className="font-medium text-muted-foreground">ID:</span>
+                                <span className="font-mono text-[10px]">{selectedTemplate?.id}</span>
+                            </span>
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4 flex-1 overflow-hidden">
+                        {/* Left: Template Elements Form */}
+                        <div className="lg:col-span-1 flex flex-col overflow-hidden">
+                            <div className="flex justify-between items-center mb-2">
+                                <label className="text-sm font-medium">{language === "es" ? "Elementos del Template" : "Template Elements"}</label>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 text-xs"
+                                    onClick={() => {
+                                        if (selectedTemplate && Array.isArray(selectedTemplate.elements)) {
+                                            const resetLayers = selectedTemplate.elements.reduce((acc, el) => {
+                                                acc[el.id] = { ...el, text: el.text || '', src: el.src || '' };
+                                                return acc;
+                                            }, {} as Record<string, TemplateElement>);
+                                            setLayersDataForSnippets(resetLayers);
+                                            toast.info(t("reset"));
+                                        }
+                                    }}
+                                >
+                                    {t("reset")}
+                                </Button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto pr-2 space-y-3">
+                                {selectedTemplate && Array.isArray(selectedTemplate.elements) && selectedTemplate.elements.length > 0 ? (
+                                    selectedTemplate.elements
+                                        .filter(el => el.type === 'text' || el.type === 'image')
+                                        .map((element) => (
+                                            <div key={element.id} className="border rounded-lg p-3 bg-slate-50">
+                                                <div className="flex flex-col gap-1 mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        {element.type === 'text' ? (
+                                                            <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-0.5 rounded">Texto</span>
+                                                        ) : (
+                                                            <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-0.5 rounded">Imagen</span>
+                                                        )}
+                                                        <span className="text-sm font-medium text-foreground">{element.name || (language === "es" ? "Sin nombre" : "Unnamed")}</span>
+                                                    </div>
+                                                    <span className="text-xs text-muted-foreground font-mono break-all">{element.id}</span>
+                                                </div>
+
+                                                {element.type === 'text' && (
+                                                    <Input
+                                                        value={layersDataForSnippets[element.id]?.text || ''}
+                                                        onChange={(e) => {
+                                                            setLayersDataForSnippets(prev => ({
+                                                                ...prev,
+                                                                [element.id]: {
+                                                                    ...prev[element.id],
+                                                                    type: 'text',
+                                                                    text: e.target.value
+                                                                }
+                                                            }));
+                                                        }}
+                                                        placeholder={language === "es" ? "Ingresa el texto..." : "Enter text..."}
+                                                        className="text-sm"
+                                                    />
+                                                )}
+
+                                                {element.type === 'image' && (
+                                                    <Input
+                                                        value={layersDataForSnippets[element.id]?.src || layersDataForSnippets[element.id]?.image_url || ''}
+                                                        onChange={(e) => {
+                                                            setLayersDataForSnippets(prev => ({
+                                                                ...prev,
+                                                                [element.id]: {
+                                                                    ...prev[element.id],
+                                                                    type: 'image',
+                                                                    src: e.target.value,
+                                                                    image_url: e.target.value
+                                                                }
+                                                            }));
+                                                        }}
+                                                        placeholder={language === "es" ? "URL de la imagen..." : "Image URL..."}
+                                                        className="text-sm"
+                                                    />
+                                                )}
+                                            </div>
+                                        ))
+                                ) : (
+                                    <div className="text-sm text-muted-foreground text-center py-8 border rounded-lg bg-slate-50">
+                                        {language === "es"
+                                            ? "Este template no tiene elementos editables"
+                                            : "This template has no editable elements"}
                                     </div>
-                                </div>
-                            </div>
-
-                            {/* Request Body */}
-                            <div>
-                                <div className="flex justify-between items-center mb-2">
-                                    <label className="text-sm font-medium">{t("request_body")}</label>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 text-xs"
-                                        onClick={() => {
-                                            if (selectedTemplate) {
-                                                setRequestBody(JSON.stringify({
-                                                    templateId: selectedTemplate.id,
-                                                    layers: layersDataForSnippets
-                                                }, null, 2));
-                                                toast.info(t("reset"));
-                                            }
-                                        }}
-                                    >
-                                        {t("reset")}
-                                    </Button>
-                                </div>
-                                <Textarea
-                                    value={requestBody}
-                                    onChange={(e) => setRequestBody(e.target.value)}
-                                    className="font-mono text-xs min-h-[200px] bg-slate-950 text-slate-50 border-slate-800"
-                                    spellCheck={false}
-                                />
+                                )}
                             </div>
 
                             {/* Test Button */}
                             <Button
-                                className="w-full bg-green-600 hover:bg-green-700 text-white"
+                                className="w-full bg-[#135bec] hover:bg-[#0d4ad9] text-white mt-3"
                                 onClick={handleTestApi}
                                 disabled={isTestingApi || !selectedTemplate}
                             >
@@ -615,16 +1316,16 @@ function ApiIntegrationContent() {
                                     </>
                                 ) : (
                                     <>
-                                        <Play className="mr-2 h-4 w-4" /> {t("run_request")}
+                                        {t("run_request")}
                                     </>
                                 )}
                             </Button>
 
-                            {/* Status Response - Below the button */}
+                            {/* Status Response */}
                             {apiResponse && (
-                                <div className={`text-xs p-3 rounded-md ${apiResponse.status === 200 ? 'bg-green-50 text-green-900 border border-green-200' : 'bg-red-50 text-red-900 border border-red-200'}`}>
+                                <div className={`text-xs p-3 rounded-md mt-3 ${apiResponse.status === 200 ? 'bg-green-50 text-green-900 border border-green-200' : 'bg-red-50 text-red-900 border border-red-200'}`}>
                                     <div className="flex items-center justify-between mb-1">
-                                        <p className="font-bold">{t("status")}: {apiResponse.status}</p>
+                                        <p className="font-bold">{t("api_status")}: {apiResponse.status}</p>
                                         {apiResponse.generationTime && (
                                             <span className="text-green-600 font-semibold">
                                                 {apiResponse.generationTime.toFixed(2)}s
@@ -636,10 +1337,10 @@ function ApiIntegrationContent() {
                             )}
                         </div>
 
-                        {/* Right: Generated Image - Full height */}
-                        <div className="flex flex-col">
+                        {/* Middle: Generated Image */}
+                        <div className="lg:col-span-1 flex flex-col">
                             <label className="text-sm font-medium mb-2 block">{t("generated_image")}</label>
-                            <div className="border rounded-lg flex-1 bg-slate-50 overflow-hidden min-h-[400px] flex items-center justify-center">
+                            <div className="border rounded-lg flex-1 bg-slate-50 overflow-hidden min-h-[300px] flex items-center justify-center">
                                 {apiResponse?.data?.imageUrl ? (
                                     <a href={apiResponse.data.imageUrl} target="_blank" rel="noopener noreferrer" className="w-full h-full flex items-center justify-center p-4">
                                         <img
@@ -655,119 +1356,28 @@ function ApiIntegrationContent() {
                                 )}
                             </div>
                         </div>
-                    </div>
-                </CardContent>
-            </Card>
 
-            {/* Code Examples Section */}
-            <Card className="mb-8">
-                <CardHeader>
-                    <CardTitle className="flex items-center text-2xl">
-                        <Code className="mr-2 h-6 w-6" />
-                        {t("code_examples")}
-                    </CardTitle>
-                    <CardDescription>{t("code_examples_desc")}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Tabs defaultValue="simple" className="w-full">
-                        <TabsList className="mb-4">
-                            <TabsTrigger value="simple">{t("simple_code")}</TabsTrigger>
-                            <TabsTrigger value="full">{t("full_code")}</TabsTrigger>
-                        </TabsList>
+                        {/* Right: Code Examples Section */}
+                        <div className="lg:col-span-1 flex flex-col overflow-hidden min-h-0">
+                            <Tabs defaultValue="simple" className="flex flex-col flex-1 min-h-0">
+                                <TabsList className="mb-2 flex-shrink-0">
+                                    <TabsTrigger value="simple" className="text-xs">{t("simple_code")}</TabsTrigger>
+                                    <TabsTrigger value="full" className="text-xs">{t("full_code")}</TabsTrigger>
+                                </TabsList>
 
-                        {/* Simple Code - Only the payload */}
-                        <TabsContent value="simple">
-                            <div className="space-y-4">
-                                <p className="text-sm text-muted-foreground">
-                                    {t("simple_code_desc")}
-                                </p>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* Template ID */}
-                                    <div className="border rounded-lg p-4">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <h4 className="font-semibold text-sm">{t("template_id")}</h4>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-6 text-xs"
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(selectedTemplate?.id || '');
-                                                    toast.success(t("copied"));
-                                                }}
-                                            >
-                                                <Copy className="h-3 w-3 mr-1" /> {t("copy")}
-                                            </Button>
-                                        </div>
-                                        <code className="text-xs bg-slate-100 px-2 py-1 rounded block overflow-x-auto">
-                                            {selectedTemplate?.id || 'YOUR_TEMPLATE_ID'}
-                                        </code>
-                                    </div>
+                                {/* Simple Code - Only Full Request Payload with language tabs */}
+                                <TabsContent value="simple" className="flex-1 min-h-0 mt-0">
+                                    <Tabs defaultValue="json" className="flex flex-col h-full">
+                                        <TabsList className="mb-2 flex-shrink-0 flex flex-wrap">
+                                            <TabsTrigger value="json" className="text-xs">JavaScript</TabsTrigger>
+                                            <TabsTrigger value="python" className="text-xs">Python</TabsTrigger>
+                                            <TabsTrigger value="php" className="text-xs">PHP</TabsTrigger>
+                                            <TabsTrigger value="java" className="text-xs">Java</TabsTrigger>
+                                            <TabsTrigger value="curl" className="text-xs">cURL</TabsTrigger>
+                                        </TabsList>
 
-                                    {/* Layers Object */}
-                                    <div className="border rounded-lg p-4">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <h4 className="font-semibold text-sm">{t("layers_object")}</h4>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-6 text-xs"
-                                                onClick={() => {
-                                                    const simpleLayers = Object.entries(layersDataForSnippets).reduce((acc, [id, el]) => {
-                                                        if (el.type === 'text') {
-                                                            acc[id] = { text: el.text || '' };
-                                                        } else if (el.type === 'image') {
-                                                            acc[id] = { image_url: el.src || '' };
-                                                        }
-                                                        return acc;
-                                                    }, {} as Record<string, any>);
-                                                    navigator.clipboard.writeText(JSON.stringify(simpleLayers, null, 2));
-                                                    toast.success(t("copied"));
-                                                }}
-                                            >
-                                                <Copy className="h-3 w-3 mr-1" /> {t("copy")}
-                                            </Button>
-                                        </div>
-                                        <pre className="text-xs bg-slate-100 px-2 py-1 rounded overflow-x-auto max-h-[100px]">
-                                            {JSON.stringify(Object.entries(layersDataForSnippets).reduce((acc, [id, el]) => {
-                                                if (el.type === 'text') {
-                                                    acc[id] = { text: el.text || '' };
-                                                } else if (el.type === 'image') {
-                                                    acc[id] = { image_url: el.src || '' };
-                                                }
-                                                return acc;
-                                            }, {} as Record<string, any>), null, 2)}
-                                        </pre>
-                                    </div>
-
-                                    {/* Full Payload */}
-                                    <div className="border rounded-lg p-4 md:col-span-2">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <h4 className="font-semibold text-sm">{t("full_request_payload")}</h4>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-6 text-xs"
-                                                onClick={() => {
-                                                    const simplePayload = {
-                                                        templateId: selectedTemplate?.id || '',
-                                                        layers: Object.entries(layersDataForSnippets).reduce((acc, [id, el]) => {
-                                                            if (el.type === 'text') {
-                                                                acc[id] = { text: el.text || '' };
-                                                            } else if (el.type === 'image') {
-                                                                acc[id] = { image_url: el.src || '' };
-                                                            }
-                                                            return acc;
-                                                        }, {} as Record<string, any>)
-                                                    };
-                                                    navigator.clipboard.writeText(JSON.stringify(simplePayload, null, 2));
-                                                    toast.success(t("copied"));
-                                                }}
-                                            >
-                                                <Copy className="h-3 w-3 mr-1" /> {t("copy")}
-                                            </Button>
-                                        </div>
-                                        <pre className="text-xs bg-slate-100 px-2 py-1 rounded overflow-x-auto max-h-[150px]">
-                                            {JSON.stringify({
+                                        <TabsContent value="json" className="flex-1 min-h-0 mt-0">
+                                            <CodeSnippet language="JSON" code={JSON.stringify({
                                                 templateId: selectedTemplate?.id || '',
                                                 layers: Object.entries(layersDataForSnippets).reduce((acc, [id, el]) => {
                                                     if (el.type === 'text') {
@@ -777,254 +1387,64 @@ function ApiIntegrationContent() {
                                                     }
                                                     return acc;
                                                 }, {} as Record<string, any>)
-                                            }, null, 2)}
-                                        </pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </TabsContent>
+                                            }, null, 2)} />
+                                        </TabsContent>
 
-                        {/* Full Code - Complete examples with headers */}
-                        <TabsContent value="full">
-                            <Tabs defaultValue="curl">
-                                <TabsList>
-                                    <TabsTrigger value="curl">cURL</TabsTrigger>
-                                    <TabsTrigger value="javascript">JavaScript</TabsTrigger>
-                                    <TabsTrigger value="python">Python</TabsTrigger>
-                                    <TabsTrigger value="node">Node.js</TabsTrigger>
-                                </TabsList>
+                                        <TabsContent value="python" className="flex-1 min-h-0 mt-0">
+                                            <CodeSnippet language="Python" code={pythonCode} />
+                                        </TabsContent>
 
-                                <TabsContent value="curl">
-                                    <CodeSnippet language="cURL" code={curlCode} />
+                                        <TabsContent value="php" className="flex-1 min-h-0 mt-0">
+                                            <CodeSnippet language="PHP" code={phpCode} />
+                                        </TabsContent>
+
+                                        <TabsContent value="java" className="flex-1 min-h-0 mt-0">
+                                            <CodeSnippet language="Java" code={javaCode} />
+                                        </TabsContent>
+
+                                        <TabsContent value="curl" className="flex-1 min-h-0 mt-0">
+                                            <CodeSnippet language="cURL" code={curlCode} />
+                                        </TabsContent>
+                                    </Tabs>
                                 </TabsContent>
 
-                                <TabsContent value="javascript">
-                                    <CodeSnippet language="JavaScript" code={jsCode} />
-                                </TabsContent>
+                                {/* Full Code - Complete examples with all languages */}
+                                <TabsContent value="full" className="flex-1 min-h-0 mt-0">
+                                    <Tabs defaultValue="javascript" className="flex flex-col h-full">
+                                        <TabsList className="mb-2 flex-shrink-0 flex flex-wrap">
+                                            <TabsTrigger value="javascript" className="text-xs">JavaScript</TabsTrigger>
+                                            <TabsTrigger value="python" className="text-xs">Python</TabsTrigger>
+                                            <TabsTrigger value="php" className="text-xs">PHP</TabsTrigger>
+                                            <TabsTrigger value="java" className="text-xs">Java</TabsTrigger>
+                                            <TabsTrigger value="curl" className="text-xs">cURL</TabsTrigger>
+                                        </TabsList>
 
-                                <TabsContent value="python">
-                                    <CodeSnippet language="Python" code={pythonCode} />
-                                </TabsContent>
+                                        <TabsContent value="javascript" className="flex-1 min-h-0 mt-0">
+                                            <CodeSnippet language="JavaScript" code={fullJsCode} />
+                                        </TabsContent>
 
-                                <TabsContent value="node">
-                                    <CodeSnippet language="Node.js" code={nodeCode} />
-                                </TabsContent>
-                            </Tabs>
-                        </TabsContent>
-                    </Tabs>
-                </CardContent>
-            </Card>
+                                        <TabsContent value="python" className="flex-1 min-h-0 mt-0">
+                                            <CodeSnippet language="Python" code={fullPythonCode} />
+                                        </TabsContent>
 
-            {/* API Reference Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-3">
-                    {/* Documentation Tabs */}
-                    <Card>
-                        <CardHeader><CardTitle>{t("api_reference")}</CardTitle></CardHeader>
-                        <CardContent>
-                            <Tabs defaultValue="overview" className="w-full">
-                                <TabsList className="w-full justify-start overflow-x-auto">
-                                    <TabsTrigger value="overview">{t("overview")}</TabsTrigger>
-                                    <TabsTrigger value="request">{t("request")}</TabsTrigger>
-                                    <TabsTrigger value="response">{t("response")}</TabsTrigger>
-                                    <TabsTrigger value="errors">{t("errors")}</TabsTrigger>
-                                </TabsList>
+                                        <TabsContent value="php" className="flex-1 min-h-0 mt-0">
+                                            <CodeSnippet language="PHP" code={fullPhpCode} />
+                                        </TabsContent>
 
-                                {/* Overview Tab */}
-                                <TabsContent value="overview" className="space-y-6">
-                                    <div>
-                                        <h3 className="text-xl font-bold mb-3">{t("endpoint")}</h3>
-                                        <div className="bg-slate-900 text-white p-4 rounded-lg font-mono">
-                                            <span className="text-green-400">POST</span> /api/render
-                                        </div>
-                                    </div>
+                                        <TabsContent value="java" className="flex-1 min-h-0 mt-0">
+                                            <CodeSnippet language="Java" code={fullJavaCode} />
+                                        </TabsContent>
 
-                                    <div>
-                                        <h3 className="text-xl font-bold mb-3">{t("authentication")}</h3>
-                                        <p className="text-muted-foreground mb-3">{t("authentication_desc")}</p>
-                                        <div className="bg-slate-900 text-white p-4 rounded-lg font-mono text-sm">
-                                            Authorization: Bearer YOUR_API_KEY
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <h3 className="text-xl font-bold mb-3">{t("features")}</h3>
-                                        <ul className="space-y-2">
-                                            <li className="flex items-start gap-2">
-                                                <Check className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-                                                <span>{t("feature_text")}</span>
-                                            </li>
-                                            <li className="flex items-start gap-2">
-                                                <Check className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-                                                <span>{t("feature_image")}</span>
-                                            </li>
-                                            <li className="flex items-start gap-2">
-                                                <Check className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-                                                <span>{t("feature_multiline")}</span>
-                                            </li>
-                                            <li className="flex items-start gap-2">
-                                                <Check className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-                                                <span>{t("feature_centering")}</span>
-                                            </li>
-                                            <li className="flex items-start gap-2">
-                                                <Check className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
-                                                <span>{t("feature_cdn")}</span>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                </TabsContent>
-
-                                {/* Request Tab */}
-                                <TabsContent value="request" className="space-y-6">
-                                    <div>
-                                        <h3 className="text-xl font-bold mb-3">{t("request_body_title")}</h3>
-                                        <p className="text-muted-foreground mb-4">{t("request_body_desc")}</p>
-
-                                        <div className="space-y-4">
-                                            <div className="border rounded-lg p-4">
-                                                <h4 className="font-semibold mb-2">templateId</h4>
-                                                <p className="text-sm text-muted-foreground mb-2">{t("templateid_required")}</p>
-                                                <code className="text-sm bg-slate-100 px-2 py-1 rounded">string (required)</code>
-                                            </div>
-
-                                            <div className="border rounded-lg p-4">
-                                                <h4 className="font-semibold mb-2">layers</h4>
-                                                <p className="text-sm text-muted-foreground mb-2">{t("layers_optional")}</p>
-                                                <code className="text-sm bg-slate-100 px-2 py-1 rounded">object (optional)</code>
-                                            </div>
-
-                                            <div className="border rounded-lg p-4">
-                                                <h4 className="font-semibold mb-3">{t("text_properties")}</h4>
-                                                <div className="space-y-2 text-sm">
-                                                    <div className="grid grid-cols-3 gap-2">
-                                                        <code className="bg-slate-100 px-2 py-1 rounded">text</code>
-                                                        <span className="col-span-2">New text content</span>
-                                                    </div>
-                                                    <div className="grid grid-cols-3 gap-2">
-                                                        <code className="bg-slate-100 px-2 py-1 rounded">color</code>
-                                                        <span className="col-span-2">Text color (hex format)</span>
-                                                    </div>
-                                                    <div className="grid grid-cols-3 gap-2">
-                                                        <code className="bg-slate-100 px-2 py-1 rounded">fontFamily</code>
-                                                        <span className="col-span-2">Font family name</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="border rounded-lg p-4">
-                                                <h4 className="font-semibold mb-3">{t("image_properties")}</h4>
-                                                <div className="space-y-2 text-sm">
-                                                    <div className="grid grid-cols-3 gap-2">
-                                                        <code className="bg-slate-100 px-2 py-1 rounded">image_url</code>
-                                                        <span className="col-span-2">URL of the new image</span>
-                                                    </div>
-                                                    <div className="grid grid-cols-3 gap-2">
-                                                        <code className="bg-slate-100 px-2 py-1 rounded">src</code>
-                                                        <span className="col-span-2">Alternative to image_url</span>
-                                                    </div>
-                                                    <div className="grid grid-cols-3 gap-2">
-                                                        <code className="bg-slate-100 px-2 py-1 rounded">url</code>
-                                                        <span className="col-span-2">Alternative to image_url</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </TabsContent>
-
-                                {/* Response Tab */}
-                                <TabsContent value="response" className="space-y-6">
-                                    <div>
-                                        <h3 className="text-xl font-bold mb-3">{t("success_response")}</h3>
-                                        <div className="bg-slate-900 text-white p-4 rounded-lg font-mono text-sm">
-                                            <pre>{`{
-  "status": "success",
-  "imageUrl": "https://cdn.example.com/renders/template-123.png"
-}`}</pre>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <h3 className="text-xl font-bold mb-3">{t("error_responses")}</h3>
-                                        <div className="space-y-4">
-                                            <div className="border border-red-200 rounded-lg p-4">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <div className="bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">401</div>
-                                                    <span className="font-semibold">{t("unauthorized")}</span>
-                                                </div>
-                                                <p className="text-sm text-muted-foreground">{t("unauthorized_desc")}</p>
-                                            </div>
-
-                                            <div className="border border-red-200 rounded-lg p-4">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <div className="bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">400</div>
-                                                    <span className="font-semibold">{t("bad_request")}</span>
-                                                </div>
-                                                <p className="text-sm text-muted-foreground">{t("bad_request_desc")}</p>
-                                            </div>
-
-                                            <div className="border border-red-200 rounded-lg p-4">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <div className="bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">404</div>
-                                                    <span className="font-semibold">{t("not_found")}</span>
-                                                </div>
-                                                <p className="text-sm text-muted-foreground">{t("not_found_desc")}</p>
-                                            </div>
-
-                                            <div className="border border-red-200 rounded-lg p-4">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <div className="bg-red-500 text-white px-2 py-1 rounded text-sm font-bold">500</div>
-                                                    <span className="font-semibold">{t("server_error")}</span>
-                                                </div>
-                                                <p className="text-sm text-muted-foreground">{t("server_error_desc")}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </TabsContent>
-
-                                {/* Errors Tab */}
-                                <TabsContent value="errors" className="space-y-4">
-                                    <div className="space-y-4">
-                                        <div className="border rounded-lg p-4">
-                                            <h4 className="font-semibold mb-2 flex items-center gap-2">
-                                                <AlertCircle className="h-4 w-4 text-amber-500" />
-                                                {t("error_missing_templateid")}
-                                            </h4>
-                                            <p className="text-sm text-muted-foreground mb-2">{t("error_missing_templateid_desc")}</p>
-                                            <code className="text-xs bg-slate-100 px-2 py-1 rounded">{`{ "templateId": "your-template-id" }`}</code>
-                                        </div>
-
-                                        <div className="border rounded-lg p-4">
-                                            <h4 className="font-semibold mb-2 flex items-center gap-2">
-                                                <AlertCircle className="h-4 w-4 text-amber-500" />
-                                                {t("error_invalid_apikey")}
-                                            </h4>
-                                            <p className="text-sm text-muted-foreground mb-2">{t("error_invalid_apikey_desc")}</p>
-                                            <code className="text-xs bg-slate-100 px-2 py-1 rounded">Authorization: Bearer YOUR_API_KEY</code>
-                                        </div>
-
-                                        <div className="border rounded-lg p-4">
-                                            <h4 className="font-semibold mb-2 flex items-center gap-2">
-                                                <AlertCircle className="h-4 w-4 text-amber-500" />
-                                                {t("error_element_not_found")}
-                                            </h4>
-                                            <p className="text-sm text-muted-foreground mb-2">{t("error_element_not_found_desc")}</p>
-                                        </div>
-
-                                        <div className="border rounded-lg p-4">
-                                            <h4 className="font-semibold mb-2 flex items-center gap-2">
-                                                <AlertCircle className="h-4 w-4 text-amber-500" />
-                                                {t("error_image_load")}
-                                            </h4>
-                                            <p className="text-sm text-muted-foreground mb-2">{t("error_image_load_desc")}</p>
-                                        </div>
-                                    </div>
+                                        <TabsContent value="curl" className="flex-1 min-h-0 mt-0">
+                                            <CodeSnippet language="cURL" code={fullCurlCode} />
+                                        </TabsContent>
+                                    </Tabs>
                                 </TabsContent>
                             </Tabs>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

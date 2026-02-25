@@ -5,6 +5,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
+import { db } from "@/db/drizzle";
+import { sql, eq } from "drizzle-orm";
+import { users, renders } from "@/db/schema";
 // Type for canvas elements
 interface CanvasElement {
   id: string;
@@ -225,6 +228,9 @@ export async function POST(req: NextRequest) {
     }
   };
 
+  let apiKeyData: { user_id: string } | null = null;
+  let templateId: string | undefined;
+
   try {
     // 1. Validate API Key
     const authHeader = req.headers.get("authorization");
@@ -235,11 +241,13 @@ export async function POST(req: NextRequest) {
     const apiKey = authHeader.replace("Bearer ", "");
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { data: apiKeyData, error: apiKeyError } = await supabase
+    const { data: keyData, error: apiKeyError } = await supabase
       .from("user_api_keys")
       .select("user_id")
       .eq("api_key", apiKey)
       .single();
+
+    apiKeyData = keyData;
 
     if (apiKeyError || !apiKeyData) {
       return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
@@ -247,7 +255,8 @@ export async function POST(req: NextRequest) {
 
     // 2. Parse request
     const body = await req.json();
-    const { templateId, layers } = body;
+    templateId = body.templateId;
+    const layers = body.layers;
 
     log(`Received request for Template: ${templateId}`);
 
@@ -669,6 +678,15 @@ export async function POST(req: NextRequest) {
       log(`Upload error: ${uploadError?.message}`);
     }
 
+    // Increment render count for user
+    try {
+      await db.update(users)
+        .set({ renderCount: sql `${users.renderCount} + 1` })
+        .where(eq(users.id, apiKeyData.user_id));
+    } catch (logError) {
+      console.error("Error updating render count:", logError);
+    }
+
     return NextResponse.json({
       status: "success",
       imageUrl: publicUrl,
@@ -676,6 +694,21 @@ export async function POST(req: NextRequest) {
     }, { status: 200 });
 
   } catch (error: any) {
+    // Register failed render in database
+    try {
+      if (apiKeyData) {
+        await db.insert(renders).values({
+          userId: apiKeyData.user_id,
+          templateId: templateId || null,
+          status: "failed",
+          errorMessage: error.message,
+          createdAt: new Date(),
+        });
+      }
+    } catch (logError) {
+      console.error("Error logging render:", logError);
+    }
+
     log(`Fatal Error: ${error.message}`);
     console.error("[API Render] Error:", error);
     return NextResponse.json(

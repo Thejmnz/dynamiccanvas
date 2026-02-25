@@ -8,6 +8,7 @@ import { SubscriptionAlert } from "@/features/subscriptions/components/subscript
 import { Modals } from "@/components/modals";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/components/providers";
+import { CookieConsent } from "@/components/cookie-consent";
 
 import "./globals.css";
 
@@ -43,6 +44,7 @@ export default function RootLayout({
               <Modals />
               {/* <SubscriptionAlert /> */}
               {children}
+              <CookieConsent />
             </Providers>
           </LanguageProvider>
         </AuthProvider>

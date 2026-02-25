@@ -61,6 +61,7 @@ export const useUpdateProject = (id: string) => {
       width?: number;
       thumbnailDataUrl?: string; // Thumbnail en formato data URL
       name?: string;
+      silent?: boolean; // Si es true, no muestra toast de éxito
     }) => {
       console.log("🔄 Saving project:", id);
 
@@ -112,10 +113,12 @@ export const useUpdateProject = (id: string) => {
       console.log("✅ Save success:", data);
       return data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       queryClient.invalidateQueries({ queryKey: ["project", { id }] });
-      toast.success("Project saved");
+      if (!variables.silent) {
+        toast.success("Project saved");
+      }
     },
     onError: (error) => {
       console.error("Mutation error:", error);

@@ -134,6 +134,45 @@ export const useEditor = ({
     });
   }, [selectedIds, workspace, saveCallback]);
 
+  // Delete a single element by ID
+  const deleteElement = useCallback((id: string) => {
+    setElements(prev => {
+      const newElements = prev.filter(el => el.id !== id);
+
+      historyRef.current = [...historyRef.current.slice(0, historyIndexRef.current + 1), newElements];
+      historyIndexRef.current = historyRef.current.length - 1;
+
+      saveCallback?.({
+        json: JSON.stringify({ version: "2.0", workspace, elements: newElements }),
+        height: workspace.height,
+        width: workspace.width,
+      });
+
+      setSelectedIds(prev => prev.filter(sid => sid !== id));
+      return newElements;
+    });
+  }, [workspace, saveCallback]);
+
+  // Reorder elements by drag and drop
+  const reorderElements = useCallback((dragIndex: number, hoverIndex: number) => {
+    setElements(prev => {
+      const newElements = [...prev];
+      const [draggedElement] = newElements.splice(dragIndex, 1);
+      newElements.splice(hoverIndex, 0, draggedElement);
+
+      historyRef.current = [...historyRef.current.slice(0, historyIndexRef.current + 1), newElements];
+      historyIndexRef.current = historyRef.current.length - 1;
+
+      saveCallback?.({
+        json: JSON.stringify({ version: "2.0", workspace, elements: newElements }),
+        height: workspace.height,
+        width: workspace.width,
+      });
+
+      return newElements;
+    });
+  }, [workspace, saveCallback]);
+
   // Crear formas
   const addRect = useCallback((soft = false) => {
     const newElement = addElement({
@@ -143,10 +182,27 @@ export const useEditor = ({
       width: 400,
       height: 400,
       fill: "#000000",
-      stroke: "none",
+      stroke: undefined,
       strokeWidth: 0,
       rx: soft ? 50 : 0,
       ry: soft ? 50 : 0,
+    });
+    setSelectedIds([newElement.id]);
+    clearSelectionCallback?.();
+  }, [addElement, clearSelectionCallback]);
+
+  const addRectangle = useCallback(() => {
+    const newElement = addElement({
+      type: "rect",
+      x: 100,
+      y: 100,
+      width: 600,
+      height: 300,
+      fill: "#000000",
+      stroke: undefined,
+      strokeWidth: 0,
+      rx: 0,
+      ry: 0,
     });
     setSelectedIds([newElement.id]);
     clearSelectionCallback?.();
@@ -157,10 +213,10 @@ export const useEditor = ({
       type: "circle",
       x: 100,
       y: 100,
-      width: 450,
-      height: 450,
+      width: 400,
+      height: 400,
       fill: "#000000",
-      stroke: "none",
+      stroke: undefined,
       strokeWidth: 0,
     });
     setSelectedIds([newElement.id]);
@@ -190,6 +246,96 @@ export const useEditor = ({
       y: 100,
       width: 600,
       height: 600,
+      fill: "#000000",
+      stroke: "none",
+      strokeWidth: 0,
+    });
+    setSelectedIds([newElement.id]);
+    clearSelectionCallback?.();
+  }, [addElement, clearSelectionCallback]);
+
+  const addPentagon = useCallback(() => {
+    const newElement = addElement({
+      type: "pentagon",
+      x: 100,
+      y: 100,
+      width: 400,
+      height: 400,
+      fill: "#000000",
+      stroke: "none",
+      strokeWidth: 0,
+    });
+    setSelectedIds([newElement.id]);
+    clearSelectionCallback?.();
+  }, [addElement, clearSelectionCallback]);
+
+  const addHexagon = useCallback(() => {
+    const newElement = addElement({
+      type: "hexagon",
+      x: 100,
+      y: 100,
+      width: 400,
+      height: 400,
+      fill: "#000000",
+      stroke: "none",
+      strokeWidth: 0,
+    });
+    setSelectedIds([newElement.id]);
+    clearSelectionCallback?.();
+  }, [addElement, clearSelectionCallback]);
+
+  const addStar = useCallback(() => {
+    const newElement = addElement({
+      type: "star",
+      x: 100,
+      y: 100,
+      width: 400,
+      height: 400,
+      fill: "#000000",
+      stroke: "none",
+      strokeWidth: 0,
+    });
+    setSelectedIds([newElement.id]);
+    clearSelectionCallback?.();
+  }, [addElement, clearSelectionCallback]);
+
+  const addHeart = useCallback(() => {
+    const newElement = addElement({
+      type: "heart",
+      x: 100,
+      y: 100,
+      width: 400,
+      height: 400,
+      fill: "#000000",
+      stroke: "none",
+      strokeWidth: 0,
+    });
+    setSelectedIds([newElement.id]);
+    clearSelectionCallback?.();
+  }, [addElement, clearSelectionCallback]);
+
+  const addArrow = useCallback(() => {
+    const newElement = addElement({
+      type: "arrow",
+      x: 100,
+      y: 100,
+      width: 500,
+      height: 200,
+      fill: "#000000",
+      stroke: "none",
+      strokeWidth: 0,
+    });
+    setSelectedIds([newElement.id]);
+    clearSelectionCallback?.();
+  }, [addElement, clearSelectionCallback]);
+
+  const addLine = useCallback(() => {
+    const newElement = addElement({
+      type: "line",
+      x: 100,
+      y: 100,
+      width: 500,
+      height: 10,
       fill: "#000000",
       stroke: "none",
       strokeWidth: 0,
@@ -633,19 +779,39 @@ export const useEditor = ({
     isEditingText,
 
     // Acciones
-    onSelect: (id: string) => setSelectedIds([id]),
+    onSelect: (id: string, isShiftKey?: boolean) => {
+      if (isShiftKey) {
+        setSelectedIds(prev =>
+          prev.includes(id)
+            ? prev.filter(sid => sid !== id)
+            : [...prev, id]
+        );
+      } else {
+        setSelectedIds([id]);
+      }
+    },
     onMultiSelect: (ids: string[]) => setSelectedIds(ids),
     onChange: updateElement,
     setIsEditingText,
 
     // API pública
+    addElement,
     addRect,
+    addRectangle,
     addCircle,
     addTriangle,
     addDiamond,
+    addPentagon,
+    addHexagon,
+    addStar,
+    addHeart,
+    addArrow,
+    addLine,
     addText,
     addImage,
     delete: deleteSelected,
+    deleteElement,
+    reorderElements,
     changeFillColor,
     changeStrokeColor,
     changeStrokeWidth,
@@ -703,6 +869,25 @@ export const useEditor = ({
     // Copy/Paste
     onCopy,
     onPaste,
+
+    // Workspace resize
+    changeSize: (width: number, height: number) => {
+      setWorkspace(prev => ({
+        ...prev,
+        width,
+        height,
+      }));
+    },
+
+    // Image filters
+    changeImageFilter: (filter: string) => {
+      selectedIds.forEach(id => {
+        const element = elements.find(el => el.id === id);
+        if (element?.type === 'image') {
+          updateElement(id, { filterType: filter });
+        }
+      });
+    },
 
     // Stage reference for export
     setStageRef: (stage: any) => { stageRef.current = stage; },

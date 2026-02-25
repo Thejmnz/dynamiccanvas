@@ -4,6 +4,7 @@ import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
+import { eq } from "drizzle-orm";
 
 import { db } from "@/db/drizzle";
 import { supabase } from "@/lib/supabaseClient";
@@ -17,6 +18,7 @@ const CredentialsSchema = z.object({
 declare module "next-auth/jwt" {
   interface JWT {
     id: string | undefined;
+    role: string | undefined;
   }
 }
 
@@ -24,6 +26,7 @@ declare module "next-auth/jwt" {
 declare module "@auth/core/jwt" {
   interface JWT {
     id: string | undefined;
+    role: string | undefined;
   }
 }
 
@@ -65,11 +68,11 @@ export default {
       },
     }),
     GitHub,
-    Google
+    Google,
   ],
   pages: {
     signIn: "/sign-in",
-    error: "/sign-in"
+    error: "/sign-in",
   },
   session: {
     strategy: "jwt",
@@ -79,15 +82,25 @@ export default {
       if (token.id) {
         session.user.id = token.id;
       }
+      if (token.role) {
+        session.user.role = token.role;
+      }
 
       return session;
     },
     async jwt({ token, user }: any) {
       if (user) {
         token.id = user.id;
+        // Fetch user role from database
+        const dbUser = await db.query.users.findFirst({
+          where: (users, { eq }) => eq(users.id, user.id),
+        });
+        if (dbUser) {
+          token.role = dbUser.role || "user";
+        }
       }
 
       return token;
-    }
+    },
   },
 } as any;

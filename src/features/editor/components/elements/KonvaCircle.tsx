@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
-import { Circle } from "react-konva";
+import React, { useRef, useEffect } from "react";
+import { Ellipse } from "react-konva";
 import { CanvasElement } from "../../types";
+import Konva from "konva";
 
 interface KonvaCircleProps {
   element: CanvasElement;
@@ -20,6 +21,8 @@ export const KonvaCircle: React.FC<KonvaCircleProps> = ({
   onDragMove,
   onDragEnd,
 }) => {
+  const shapeRef = useRef<Konva.Ellipse>(null);
+
   const {
     id,
     x,
@@ -29,20 +32,37 @@ export const KonvaCircle: React.FC<KonvaCircleProps> = ({
     rotation = 0,
     scaleX = 1,
     scaleY = 1,
-    fill = "#888888",
+    fill = "#000000",
     stroke,
     strokeWidth = 0,
     opacity = 1,
+    locked = false,
   } = element;
 
-  const radiusX = width / 2;
-  const radiusY = height / 2;
+  // Asegurar que width y height tengan valores válidos
+  const safeWidth = width || 200;
+  const safeHeight = height || 200;
+
+  const radiusX = safeWidth / 2;
+  const radiusY = safeHeight / 2;
+
+  // El centro del círculo/elipse
+  const centerX = x + radiusX;
+  const centerY = y + radiusY;
+
+  // Efecto para actualizar el Transformer cuando cambia el elemento
+  useEffect(() => {
+    if (shapeRef.current) {
+      shapeRef.current.getLayer()?.batchDraw();
+    }
+  }, [safeWidth, safeHeight, x, y, rotation, scaleX, scaleY]);
 
   return (
-    <Circle
+    <Ellipse
+      ref={shapeRef}
       id={id}
-      x={x + radiusX}
-      y={y + radiusY}
+      x={centerX}
+      y={centerY}
       radiusX={radiusX}
       radiusY={radiusY}
       rotation={rotation}
@@ -52,13 +72,25 @@ export const KonvaCircle: React.FC<KonvaCircleProps> = ({
       stroke={stroke}
       strokeWidth={strokeWidth}
       opacity={opacity}
-      draggable
-      onDragStart={onSelect}
+      visible={element.visible !== false}
+      draggable={!locked}
+      onDragStart={() => {
+        if (locked) return;
+        onSelect();
+      }}
       onDragMove={(e) => {
-        onDragMove?.(id, e.target.x() - radiusX * scaleX, e.target.y() - radiusY * scaleY);
+        if (locked) return;
+        // Convertir de centro a esquina superior izquierda para el editor
+        const newX = e.target.x() - radiusX * scaleX;
+        const newY = e.target.y() - radiusY * scaleY;
+        onDragMove?.(id, newX, newY);
       }}
       onDragEnd={(e) => {
-        onChange(id, { x: e.target.x() - radiusX * scaleX, y: e.target.y() - radiusY * scaleY });
+        if (locked) return;
+        // Convertir de centro a esquina superior izquierda para el editor
+        const newX = e.target.x() - radiusX * scaleX;
+        const newY = e.target.y() - radiusY * scaleY;
+        onChange(id, { x: newX, y: newY });
         onDragEnd?.();
       }}
       onClick={onSelect}

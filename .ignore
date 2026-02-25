@@ -1,0 +1,11 @@
+node_modules/
+.next/
+.git/
+dist/
+build/
+tsconfig.tsbuildinfo
+*.lockb
+package-lock.json
+public/fonts/
+server.log
+nul

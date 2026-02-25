@@ -3,16 +3,12 @@
 import Link from "next/link";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { FaGithub } from "react-icons/fa";
-import { FcGoogle } from "react-icons/fc";
 import { Loader2, TriangleAlert } from "lucide-react";
 
 import { useSignUp } from "@/features/auth/hooks/use-sign-up";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Card, CardTitle, CardHeader, CardContent, CardDescription } from "@/components/ui/card";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/language-switcher";
 
@@ -60,88 +56,117 @@ export const SignUpCard = () => {
   };
 
   return (
-    <Card className="w-full h-full p-8 relative">
-      <div className="absolute top-4 right-4">
-        <LanguageSwitcher />
-      </div>
-      <CardHeader className="px-0 pt-0">
-        <CardTitle>{showSuccess ? t("registration_successful") : t("signup_title")}</CardTitle>
-        <CardDescription>
-          {showSuccess ? t("check_email_confirm") : t("signup_subtitle")}
-        </CardDescription>
-      </CardHeader>
+    <div className="w-full">
+      {/* Logo */}
+      <Link href="/" className="flex items-center justify-center gap-2 mb-8 cursor-pointer">
+        <div className="w-10 h-10 bg-[#135bec] rounded-lg flex items-center justify-center text-white font-bold text-base">
+          DC
+        </div>
+        <span className="text-2xl font-extrabold tracking-tight text-white">Dynamic Canvas</span>
+      </Link>
 
-      {showSuccess ? (
-        <CardContent className="space-y-5 px-0 pb-0">
-          <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-md border border-green-200 dark:border-green-800">
-            <p className="text-sm text-green-800 dark:text-green-200 mb-4">
-              {t("confirmation_email_sent")} <strong>{email}</strong>. {t("check_inbox_activate")}
+      {/* Card */}
+      <div className="bg-slate-800/40 border border-white/10 rounded-2xl p-8">
+        {/* Header with Language Switcher */}
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h1 className="text-xl font-bold text-white mb-1">
+              {showSuccess ? t("registration_successful") : t("signup_title")}
+            </h1>
+            <p className="text-slate-400 text-sm">
+              {showSuccess ? t("check_email_confirm") : t("signup_subtitle")}
             </p>
           </div>
-          <Link href="/sign-in" className="w-full block">
-            <Button className="w-full" size="lg">
-              {t("go_to_signin")}
-            </Button>
-          </Link>
-        </CardContent>
-      ) : (
-        <>
-          {!!mutation.error && (
-            <div className="bg-destructive/15 p-3 rounded-md flex items-center gap-x-2 text-sm text-destructive mb-6">
-              <TriangleAlert className="size-4" />
-              <p>{mutation.error.message}</p>
+          <LanguageSwitcher />
+        </div>
+
+        {showSuccess ? (
+          <>
+            <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-lg mb-6">
+              <p className="text-sm text-green-400">
+                {t("confirmation_email_sent")} <strong className="text-white">{email}</strong>. {t("check_inbox_activate")}
+              </p>
             </div>
-          )}
-          <CardContent className="space-y-5 px-0 pb-0">
-            <form onSubmit={onCredentialSignUp} className="space-y-2.5">
-              <Input
-                disabled={mutation.isPending || loading}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t("fullname_placeholder")}
-                type="text"
-                required
-              />
-              <Input
-                disabled={mutation.isPending || loading}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t("email_placeholder")}
-                type="email"
-                required
-              />
-              <Input
-                disabled={mutation.isPending || loading}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={t("password_placeholder")}
-                type="password"
-                required
-                minLength={3}
-                maxLength={20}
-              />
+            <Link href="/sign-in" className="block">
               <Button
-                className="w-full"
+                size="lg"
+                className="w-full bg-[#135bec] hover:bg-[#135bec]/90 text-white font-bold shadow-lg shadow-[#135bec]/20"
+              >
+                {t("go_to_signin")}
+              </Button>
+            </Link>
+          </>
+        ) : (
+          <>
+            {/* Error Message */}
+            {!!mutation.error && (
+              <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-lg flex items-center gap-x-2 text-sm text-red-400 mb-6">
+                <TriangleAlert className="size-4" />
+                <p>{mutation.error.message}</p>
+              </div>
+            )}
+
+            {/* Form */}
+            <form onSubmit={onCredentialSignUp} className="space-y-4">
+              <div>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t("fullname_placeholder")}
+                  type="text"
+                  disabled={loading || mutation.isPending}
+                  required
+                  className="bg-slate-900/50 border-white/10 text-white placeholder:text-slate-500 focus:border-[#135bec]"
+                />
+              </div>
+              <div>
+                <Input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={t("email_placeholder")}
+                  type="email"
+                  disabled={loading || mutation.isPending}
+                  required
+                  className="bg-slate-900/50 border-white/10 text-white placeholder:text-slate-500 focus:border-[#135bec]"
+                />
+              </div>
+              <div>
+                <Input
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={t("password_placeholder")}
+                  type="password"
+                  disabled={loading || mutation.isPending}
+                  required
+                  minLength={3}
+                  maxLength={20}
+                  className="bg-slate-900/50 border-white/10 text-white placeholder:text-slate-500 focus:border-[#135bec]"
+                />
+              </div>
+              <Button
                 type="submit"
                 size="lg"
                 disabled={loading || mutation.isPending}
+                className="w-full bg-[#135bec] hover:bg-[#135bec]/90 text-white font-bold shadow-lg shadow-[#135bec]/20"
               >
                 {mutation.isPending ? (
-                  <Loader2 className="mr-2 size-5 top-2.5 left-2.5 animate-spin" />
+                  <Loader2 className="mr-2 size-5 animate-spin" />
                 ) : (
                   t("continue")
                 )}
               </Button>
             </form>
-            <p className="text-xs text-muted-foreground">
-              Already have an account?{" "}
+
+            {/* Sign In Link */}
+            <p className="text-sm text-slate-400 mt-6 text-center">
+              {t("already_have_account")}{" "}
               <Link href="/sign-in" onClick={() => setLoading(true)}>
-                <span className="text-sky-700 hover:underline">Sign in</span>
+                <span className="text-[#135bec] hover:underline font-semibold">{t("sign_in")}</span>
               </Link>
             </p>
-          </CardContent>
-        </>
-      )}
-    </Card>
+          </>
+        )}
+      </div>
+    </div>
   );
 };
