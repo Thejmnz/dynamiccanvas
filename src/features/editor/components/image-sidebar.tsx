@@ -69,6 +69,8 @@ export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSi
   // Ref para evitar cargas múltiples
   const isLoadingMoreRef = useRef(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const savedScrollPositionRef = useRef<number>(0);
+  const isRestoringScrollRef = useRef(false);
 
   const IMAGES_PER_PAGE = 10;
 
@@ -225,11 +227,16 @@ export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSi
 
   // Manejar scroll
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (isRestoringScrollRef.current) return;
+    
     const target = e.target as HTMLDivElement;
     const { scrollTop, scrollHeight, clientHeight } = target;
 
     // Si está cerca del final (a 200px) y no está ya cargando
     if (scrollHeight - scrollTop - clientHeight < 200 && !isLoadingMoreRef.current) {
+      // Guardar posición actual del scroll
+      savedScrollPositionRef.current = scrollTop;
+      
       if (showSearchResults && hasMoreSearch) {
         loadMoreSearchResults();
       } else if (!showSearchResults && hasMoreCategory) {
@@ -237,6 +244,17 @@ export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSi
       }
     }
   }, [showSearchResults, hasMoreSearch, hasMoreCategory, loadMoreCategoryImages, loadMoreSearchResults]);
+
+  // Restaurar posición del scroll después de cargar más imágenes
+  useEffect(() => {
+    if (!isLoadingCategory && !isSearching && savedScrollPositionRef.current > 0 && scrollContainerRef.current) {
+      isRestoringScrollRef.current = true;
+      scrollContainerRef.current.scrollTop = savedScrollPositionRef.current;
+      setTimeout(() => {
+        isRestoringScrollRef.current = false;
+      }, 100);
+    }
+  }, [categoryImages, searchResults, isLoadingCategory, isSearching]);
 
   // Componente para renderizar grid de imágenes
   const ImageGrid = ({ images }: { images: PixabayImage[] }) => (

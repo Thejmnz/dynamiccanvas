@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
-import { Search, Loader2, AlertCircle, Palette } from "lucide-react";
+import { Search, Loader2, AlertCircle } from "lucide-react";
 
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { ActiveTool, Editor } from "@/features/editor/types";
@@ -42,12 +42,10 @@ const POPULAR_ICONS: IconItem[] = [
   { name: "logos:twitch", color: "#9146FF" },
   { name: "logos:spotify-icon", color: "#1DB954" },
   { name: "logos:soundcloud", color: "#FF5500" },
-  { name: "logos:snapchat-icon", color: "#FFFC00" },
   { name: "logos:medium-icon", color: "#000000" },
 
   // Brands (brand colors)
   { name: "logos:netflix-icon", color: "#E50914" },
-  { name: "logos:amazon-icon", color: "#FF9900" },
   { name: "logos:google-icon", color: "#4285F4" },
   { name: "logos:apple", color: "#000000" },
   { name: "logos:microsoft-icon", color: "#00A4EF" },
@@ -128,7 +126,6 @@ export const VectorSidebar = ({
   const [icons, setIcons] = useState<IconItem[]>(POPULAR_ICONS);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentColor, setCurrentColor] = useState<string | null>(null);
 
   // Search icons using Iconify API
   const searchIcons = useCallback(async (query: string) => {
@@ -151,8 +148,7 @@ export const VectorSidebar = ({
 
       const data: IconifySearchResponse = await response.json();
       const searchResults = (data.icons || []).slice(0, 60).map(name => ({
-        name,
-        color: currentColor || "#333333"
+        name
       }));
       setIcons(searchResults);
     } catch (err) {
@@ -165,7 +161,7 @@ export const VectorSidebar = ({
     } finally {
       setIsLoading(false);
     }
-  }, [language, currentColor]);
+  }, [language]);
 
   // Debounced search
   const debouncedSearch = useCallback(
@@ -186,23 +182,19 @@ export const VectorSidebar = ({
   };
 
   const handleIconClick = (icon: IconItem) => {
-    const color = icon.color || currentColor || "#111111";
-    const encodedColor = encodeURIComponent(color);
-    const svgUrl = `https://api.iconify.design/${icon.name}.svg?color=${encodedColor}&width=200&height=200`;
+    let svgUrl: string;
+    if (icon.color) {
+      const encodedColor = encodeURIComponent(icon.color);
+      svgUrl = `https://api.iconify.design/${icon.name}.svg?color=${encodedColor}&width=200&height=200`;
+    } else {
+      svgUrl = `https://api.iconify.design/${icon.name}.svg?width=200&height=200`;
+    }
     editor?.addImage(svgUrl);
   };
 
   const onClose = () => {
     onChangeActiveTool("select");
   };
-
-  // Color picker for custom color
-  const quickColors = [
-    "#000000", "#FFFFFF", "#F44336", "#E91E63", "#9C27B0",
-    "#673AB7", "#3F51B5", "#2196F3", "#03A9F4", "#00BCD4",
-    "#009688", "#4CAF50", "#8BC34A", "#CDDC39", "#FFEB3B",
-    "#FFC107", "#FF9800", "#FF5722", "#795548", "#9E9E9E",
-  ];
 
   return (
     <aside
@@ -216,7 +208,7 @@ export const VectorSidebar = ({
         description={language === "es" ? "Busca iconos y vectores" : "Search icons and vectors"}
       />
 
-      <div className="p-4 border-b space-y-3">
+      <div className="p-4 border-b">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
@@ -225,28 +217,6 @@ export const VectorSidebar = ({
             onChange={handleSearchChange}
             className="pl-10"
           />
-        </div>
-
-        {/* Color picker */}
-        <div className="flex items-center gap-2">
-          <Palette className="h-4 w-4 text-gray-500" />
-          <span className="text-xs text-gray-500">
-            {language === "es" ? "Color:" : "Color:"}
-          </span>
-          <div className="flex flex-wrap gap-1 flex-1">
-            {quickColors.map((color) => (
-              <button
-                key={color}
-                onClick={() => setCurrentColor(currentColor === color ? null : color)}
-                className={cn(
-                  "w-5 h-5 rounded border-2 transition-all",
-                  currentColor === color ? "ring-2 ring-blue-500 ring-offset-1" : "border-gray-300"
-                )}
-                style={{ backgroundColor: color }}
-                title={color}
-              />
-            ))}
-          </div>
         </div>
       </div>
 
@@ -276,8 +246,9 @@ export const VectorSidebar = ({
           {!isLoading && icons.length > 0 && (
             <div className="grid grid-cols-5 gap-2">
               {icons.map((icon) => {
-                const displayColor = currentColor || icon.color || "#333333";
-                const bgColor = displayColor === "#FFFFFF" ? "#f0f0f0" : "transparent";
+                const previewUrl = icon.color
+                  ? `https://api.iconify.design/${icon.name}.svg?color=${encodeURIComponent(icon.color)}&width=32&height=32`
+                  : `https://api.iconify.design/${icon.name}.svg?width=32&height=32`;
 
                 return (
                   <button
@@ -285,10 +256,9 @@ export const VectorSidebar = ({
                     onClick={() => handleIconClick(icon)}
                     className="aspect-square bg-gray-50 rounded-lg p-1.5 hover:bg-blue-50 hover:ring-2 hover:ring-blue-300 transition-all flex items-center justify-center"
                     title={icon.name.split(":")[1]?.replace(/-/g, " ") || icon.name}
-                    style={bgColor !== "transparent" ? { backgroundColor: bgColor } : {}}
                   >
                     <img
-                      src={`https://api.iconify.design/${icon.name}.svg?color=${encodeURIComponent(displayColor)}&width=32&height=32`}
+                      src={previewUrl}
                       alt={icon.name}
                       className="w-6 h-6 object-contain"
                       loading="lazy"

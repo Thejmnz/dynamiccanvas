@@ -193,3 +193,8 @@ body {
   width: 1px;
   height: 100%;
 }
+
+html.dragging-layer,
+html.dragging-layer * {
+  cursor: grabbing !important;
+}

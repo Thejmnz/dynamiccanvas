@@ -482,7 +482,7 @@ export const Editor = ({ initialData }: EditorProps) => {
           </div>
         </div>
         <main
-          className="bg-muted flex-1 overflow-auto relative flex flex-col"
+          className="flex-1 overflow-auto relative flex flex-col"
           onClick={(e) => {
             // Cerrar sidebar cuando se hace clic fuera del sidebar
             const target = e.target as HTMLElement;
@@ -493,7 +493,7 @@ export const Editor = ({ initialData }: EditorProps) => {
           }}
         >
           <div
-            className="flex-1 h-full bg-muted flex items-center justify-center"
+            className="flex-1 h-full flex items-center justify-center"
             ref={containerRef}
             onDoubleClick={(e) => {
               // Detener doble clic para evitar que seleccione la toolbar

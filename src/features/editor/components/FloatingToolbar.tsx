@@ -3,12 +3,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { CanvasElement, ActiveTool } from "../types";
 import {
-  FaBold,
-  FaItalic,
-  FaUnderline,
-  FaStrikethrough
-} from "react-icons/fa";
-import {
   AlignLeft,
   AlignCenter,
   AlignRight,
@@ -20,13 +14,57 @@ import {
   AlignHorizontalJustifyCenter,
   Sparkles,
   X,
+  Bold,
+  Italic,
+  Underline,
+  Strikethrough,
+  Frame,
+  Grid3x3,
+  Palette,
+  FlipHorizontal2,
+  FlipVertical2,
+  Radius,
+  Filter,
+  Copy,
+  Trash2,
+  Lock,
+  Unlock,
+  Eye,
+  EyeOff,
+  Layers,
+  Move,
+  Type,
+  Image,
+  Shapes,
+  Wand2,
+  Eraser,
+  RotateCw,
+  RotateCcw,
+  Maximize2,
+  Minimize2,
+  MoreHorizontal,
+  MoreVertical,
+  Smartphone,
+  Monitor,
+  Tablet,
+  Laptop,
+  Tv,
+  Radio,
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Square,
+  Circle,
+  Triangle,
+  Heart,
+  Star,
+  Sun,
+  Moon,
+  Cloud,
+  Droplet,
+  Plus,
 } from "lucide-react";
-import { BsBorderWidth } from "react-icons/bs";
-import { RxTransparencyGrid } from "react-icons/rx";
-import { TbColorFilter, TbBorderCornerPill } from "react-icons/tb";
-import { MdOutlineBorderOuter } from "react-icons/md";
-import { RiFlipVertical2Fill, RiFlipHorizontal2Fill } from "react-icons/ri";
-import { SquareSplitHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Hint } from "@/components/hint";
 import { FontSizeInput } from "./font-size-input";
@@ -67,7 +105,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   activeTool,
   onReplaceImage,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const toolbarRef = useRef<HTMLDivElement>(null);
   const [showOpacityDropdown, setShowOpacityDropdown] = useState(false);
   const [showBorderDropdown, setShowBorderDropdown] = useState(false);
@@ -80,8 +118,8 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   // Element type
   const isText = element.type === "text";
   const isImage = element.type === "image";
+  const isVector = isImage && element.src?.includes("api.iconify.design");
 
-  // Properties
   const fontWeight = element.fontWeight || 400;
   const fontStyle = element.fontStyle || "normal";
   const textDecoration = element.textDecoration || "none";
@@ -254,7 +292,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                       showBorderDropdown ? "bg-blue-100" : "hover:bg-gray-100"
                     )}
                   >
-                    <MdOutlineBorderOuter className="size-4 text-gray-600" />
+                    <Square className="size-4 text-gray-600" />
                   </button>
                 </Hint>
 
@@ -299,7 +337,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                       showCornerDropdown ? "bg-blue-100" : "hover:bg-gray-100"
                     )}
                   >
-                    <TbBorderCornerPill className="size-4 text-gray-600" />
+                    <Radius className="size-4 text-gray-600" />
                   </button>
                 </Hint>
 
@@ -315,7 +353,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                       max="100"
                       value={cornerRadius}
                       onChange={(e) => onChange(element.id, { cornerRadius: parseInt(e.target.value) })}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                      className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
                     />
                     <div className="flex gap-2 mt-2">
                       <button
@@ -358,11 +396,11 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                     flipX ? "bg-blue-100" : "hover:bg-gray-100"
                   )}
                 >
-                  <RiFlipHorizontal2Fill className="size-4 text-gray-600" />
+                  <FlipHorizontal2 className="size-4 text-gray-600" />
                 </button>
               </Hint>
 
-              {/* Flip Vertical */}
+              {/* FlipVertical */}
               <Hint label={t("floating_flip_vertical")} side="bottom" sideOffset={5}>
                 <button
                   onClick={toggleFlipY}
@@ -371,7 +409,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                     flipY ? "bg-blue-100" : "hover:bg-gray-100"
                   )}
                 >
-                  <RiFlipVertical2Fill className="size-4 text-gray-600" />
+                  <FlipVertical2 className="size-4 text-gray-600" />
                 </button>
               </Hint>
 
@@ -439,7 +477,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                     activeTool === "stroke-width" ? "bg-blue-100" : "hover:bg-gray-100"
                   )}
                 >
-                  <BsBorderWidth className="size-4" />
+                  <Frame className="size-4 text-gray-600" />
                 </button>
               </Hint>
 
@@ -499,7 +537,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                     fontWeight > 500 ? "bg-blue-100" : "hover:bg-gray-100"
                   )}
                 >
-                  <FaBold className="size-3.5 text-gray-600" />
+                  <Bold className="size-3.5 text-gray-600" />
                 </button>
               </Hint>
 
@@ -512,7 +550,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                     fontStyle === "italic" ? "bg-blue-100" : "hover:bg-gray-100"
                   )}
                 >
-                  <FaItalic className="size-3.5 text-gray-600" />
+                  <Italic className="size-3.5 text-gray-600" />
                 </button>
               </Hint>
 
@@ -525,7 +563,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                     textDecoration === "underline" ? "bg-blue-100" : "hover:bg-gray-100"
                   )}
                 >
-                  <FaUnderline className="size-3.5 text-gray-600" />
+                  <Underline className="size-3.5 text-gray-600" />
                 </button>
               </Hint>
 
@@ -538,7 +576,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                     textDecoration === "line-through" ? "bg-blue-100" : "hover:bg-gray-100"
                   )}
                 >
-                  <FaStrikethrough className="size-3.5 text-gray-600" />
+                  <Strikethrough className="size-3.5 text-gray-600" />
                 </button>
               </Hint>
 
@@ -578,7 +616,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                     activeTool === "filter" ? "bg-blue-100" : "hover:bg-gray-100"
                   )}
                 >
-                  <TbColorFilter className="size-4" />
+                  <Filter className="size-4 text-gray-600" />
                 </button>
               </Hint>
 
@@ -591,7 +629,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                     activeTool === "remove-bg" ? "bg-blue-100" : "hover:bg-gray-100"
                   )}
                 >
-                  <SquareSplitHorizontal className="size-4" />
+                  <Eraser className="size-4 text-gray-600" />
                 </button>
               </Hint>
             </>
@@ -607,7 +645,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                   showOpacityDropdown ? "bg-blue-100" : "hover:bg-gray-100"
                 )}
               >
-                <RxTransparencyGrid className="size-4" />
+                <Grid3x3 className="size-4 text-gray-600" />
               </button>
             </Hint>
 
@@ -643,7 +681,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
               }}
               className="flex items-center justify-center w-7 h-7 rounded hover:bg-gray-100 transition-colors"
             >
-              <AlignHorizontalJustifyCenter className="size-4" />
+              <AlignHorizontalJustifyCenter className="size-4 text-gray-600" />
             </button>
           </Hint>
 
@@ -658,7 +696,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
               }}
               className="flex items-center justify-center w-7 h-7 rounded hover:bg-gray-100 transition-colors"
             >
-              <AlignVerticalJustifyCenter className="size-4" />
+              <AlignVerticalJustifyCenter className="size-4 text-gray-600" />
             </button>
           </Hint>
         </div>

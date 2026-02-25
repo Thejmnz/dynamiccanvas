@@ -248,7 +248,9 @@ export const KonvaCanvas: React.FC<KonvaCanvasProps> = ({
       style={{
         width: "100%",
         height: "100%",
-        backgroundColor: "#f3f4f6",
+        backgroundColor: "#e5e7eb",
+        backgroundImage: "radial-gradient(circle, #9ca3af 1.5px, transparent 1.5px)",
+        backgroundSize: "24px 24px",
         overflow: "auto",
         display: "flex",
         alignItems: "center",
