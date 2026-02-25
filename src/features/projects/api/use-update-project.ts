@@ -59,9 +59,11 @@ export const useUpdateProject = (id: string) => {
       json?: string;
       height?: number;
       width?: number;
-      thumbnailDataUrl?: string; // Thumbnail en formato data URL
+      thumbnailDataUrl?: string;
       name?: string;
-      silent?: boolean; // Si es true, no muestra toast de éxito
+      description?: string;
+      tags?: string[];
+      silent?: boolean;
     }) => {
       console.log("🔄 Saving project:", id);
 
@@ -96,6 +98,12 @@ export const useUpdateProject = (id: string) => {
       if (values.name !== undefined) {
         console.log("  - Name:", values.name);
         updateData.name = values.name;
+      }
+      if (values.description !== undefined) {
+        updateData.description = values.description;
+      }
+      if (values.tags !== undefined) {
+        updateData.tags = values.tags;
       }
 
       const { data, error } = await supabase
