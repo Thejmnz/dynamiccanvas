@@ -233,7 +233,6 @@ const translations = {
     api_playground_desc:
       "Test the API in real-time. Select a template, modify the JSON, and see the result.",
     template: "Template",
-    api_key: "API Key",
     request_body: "Request Body",
     reset: "Reset",
     run_request: "Generate Render",
@@ -432,9 +431,7 @@ const translations = {
     menu_tags_coming_soon: "Tags feature coming soon",
     menu_shortcuts_info: "Keyboard shortcuts: Ctrl+Z (Undo), Ctrl+Y (Redo), Ctrl+S (Save), Delete (Remove)",
     menu_description_saved: "Description saved",
-    menu_duplicate_template: "Duplicate Template",
     menu_tags_saved: "Tags saved",
-    menu_add_tags: "Add Tags",
 
     // Preset Size Names
     preset_square: "Square",
@@ -1068,7 +1065,6 @@ const translations = {
     api_playground_desc:
       "Prueba la API en tiempo real. Selecciona una plantilla, modifica el JSON y ve el resultado.",
     template: "Plantilla",
-    api_key: "Clave API",
     request_body: "Cuerpo de la Petición",
     reset: "Restablecer",
     run_request: "Generar Render",
@@ -1272,9 +1268,7 @@ const translations = {
     menu_tags_coming_soon: "Función de etiquetas próximamente",
     menu_shortcuts_info: "Atajos de teclado: Ctrl+Z (Deshacer), Ctrl+Y (Rehacer), Ctrl+S (Guardar), Delete (Eliminar)",
     menu_description_saved: "Descripción guardada",
-    menu_duplicate_template: "Duplicar Plantilla",
     menu_tags_saved: "Etiquetas guardadas",
-    menu_add_tags: "Agregar Etiquetas",
 
     // Preset Size Names
     preset_square: "Cuadrado",
