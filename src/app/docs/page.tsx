@@ -1,913 +1,357 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useLanguage } from "@/lib/contexts/LanguageContext";
+import {
+  AlertTriangle,
+  ArrowRight,
+  BookOpen,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Clipboard,
+  Code2,
+  Copy,
+  ExternalLink,
+  FileImage,
+  Gauge,
+  ImageIcon,
+  KeyRound,
+  Layers3,
+  Menu,
+  Rocket,
+  Server,
+  ShieldCheck,
+  Sparkles,
+  Terminal,
+  X,
+  Zap,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { BrandMark } from "@/components/brand-mark";
+import { useLanguage } from "@/lib/contexts/LanguageContext";
 
-type Section = {
-  id: string;
-  titleKey: string;
+const docsCopy = {
+  es: {
+    back: "Volver al inicio",
+    dashboard: "Dashboard",
+    badge: "DOCUMENTACIÓN API",
+    title: "Construye imágenes dinámicas sin construir un motor de render.",
+    subtitle: "Diseña plantillas visualmente, modifica sus capas con JSON y recibe una imagen HD lista para usar.",
+    start: "Inicio rápido",
+    playground: "Abrir Playground",
+    live: "API activa",
+    version: "Endpoint actual",
+    nav: "En esta página",
+    overview: "Introducción",
+    quick: "Inicio rápido",
+    auth: "Autenticación",
+    endpoint: "Renderizar imagen",
+    layers: "Capas dinámicas",
+    output: "Calidad y respuesta",
+    errors: "Errores",
+    integrations: "Integraciones",
+    limits: "Límites",
+    overviewTitle: "Una API, dos equipos, un solo flujo",
+    overviewText: "El equipo creativo controla la composición en el editor. Desarrollo solo envía los datos que cambian. Dynamic Canvas carga la plantilla, actualiza las capas y produce el render final.",
+    creative: "Diseño controla",
+    creativeText: "Composición, fuentes, tamaños, formas, imágenes y nombres de capa.",
+    dev: "Desarrollo controla",
+    devText: "Contenido, imágenes dinámicas, escala de salida y momento del render.",
+    service: "Dynamic Canvas resuelve",
+    serviceText: "Fuentes, layout, procesamiento, exportación HD y URL pública.",
+    quickTitle: "Tu primer render en menos de cinco minutos",
+    quickText: "Necesitas una plantilla guardada, su ID y una API Key creada desde el dashboard.",
+    step1: "Crea y guarda una plantilla",
+    step1Text: "Usa el editor, nombra claramente las capas dinámicas y pulsa Guardar.",
+    step2: "Copia las credenciales",
+    step2Text: "Obtén el ID desde Archivo → ID de plantilla y tu clave desde API Key.",
+    step3: "Envía la petición",
+    step3Text: "Usa el endpoint de tu instalación. El ejemplo usa una ruta relativa para el mismo dominio.",
+    authTitle: "Autenticación Bearer",
+    authText: "Todas las peticiones de render requieren una API Key válida en el encabezado Authorization.",
+    securityTitle: "Mantén la clave en el servidor",
+    securityText: "Nunca publiques la API Key en JavaScript del navegador, repositorios o aplicaciones móviles. Envíala desde tu backend o plataforma de automatización.",
+    endpointTitle: "POST /api/render",
+    endpointText: "Genera una imagen PNG desde una plantilla existente. La salida usa escala 3× por defecto, limitada de forma segura para no superar aproximadamente 4096 px en el lado mayor.",
+    field: "Campo",
+    type: "Tipo",
+    required: "Requerido",
+    description: "Descripción",
+    yes: "Sí",
+    no: "No",
+    templateDesc: "UUID de la plantilla guardada.",
+    layersDesc: "Objeto cuyas claves son IDs o nombres de capa.",
+    scaleDesc: "Multiplicador de resolución entre 1 y 3. Predeterminado: 3.",
+    layersTitle: "Actualiza capas por ID",
+    layersText: "El nombre visible en el panel Capas se serializa como identificador. Usa ese valor como clave dentro de layers.",
+    textLayer: "Capa de texto",
+    textLayerText: "Permite cambiar text, color y fontFamily.",
+    imageLayer: "Capa de imagen",
+    imageLayerText: "Acepta image_url, src, url o image. Por seguridad, la URL debe usar HTTPS y no puede apuntar a redes privadas.",
+    noteTitle: "Los IDs importan",
+    noteText: "Si una clave no coincide con una capa, el render continúa pero esa actualización se ignora. Revisa los nombres en Playground antes de integrar.",
+    outputTitle: "Render HD por defecto",
+    outputText: "El endpoint siempre produce PNG. pixelRatio indica la escala realmente aplicada y width/height corresponden a los píxeles finales.",
+    response: "Respuesta 200",
+    errorsTitle: "Respuestas de error",
+    errorsText: "Los errores devuelven JSON con una propiedad error legible. Registra el status HTTP y el mensaje para diagnosticar integraciones.",
+    integrationsTitle: "Conecta cualquier flujo HTTP",
+    integrationsText: "No necesitas un SDK. Usa fetch, cURL, Python, n8n, Make, Zapier o cualquier herramienta capaz de enviar JSON.",
+    limitsTitle: "Límites por plan",
+    limitsText: "Los límites publicados actualmente son los siguientes. Un exceso puede devolver HTTP 429.",
+    plan: "Plan",
+    requests: "Solicitudes / minuto",
+    renders: "Renders / mes",
+    free: "Gratis",
+    pro: "Pro",
+    enterprise: "Enterprise",
+    unlimited: "Ilimitado",
+    nextTitle: "¿Listo para probar tu plantilla?",
+    nextText: "El Playground usa la misma API y te permite revisar IDs, payload y resultado antes de escribir código.",
+    copied: "Copiado",
+    copy: "Copiar",
+  },
+  en: {
+    back: "Back to home",
+    dashboard: "Dashboard",
+    badge: "API DOCUMENTATION",
+    title: "Build dynamic images without building a rendering engine.",
+    subtitle: "Design templates visually, modify their layers with JSON and receive an HD image ready to use.",
+    start: "Quick start",
+    playground: "Open Playground",
+    live: "API active",
+    version: "Current endpoint",
+    nav: "On this page",
+    overview: "Introduction",
+    quick: "Quick start",
+    auth: "Authentication",
+    endpoint: "Render image",
+    layers: "Dynamic layers",
+    output: "Quality and response",
+    errors: "Errors",
+    integrations: "Integrations",
+    limits: "Limits",
+    overviewTitle: "One API, two teams, one workflow",
+    overviewText: "The creative team controls composition in the editor. Development only sends the data that changes. Dynamic Canvas loads the template, updates its layers and produces the final render.",
+    creative: "Design controls",
+    creativeText: "Composition, fonts, sizes, shapes, images and layer names.",
+    dev: "Development controls",
+    devText: "Content, dynamic images, output scale and render timing.",
+    service: "Dynamic Canvas handles",
+    serviceText: "Fonts, layout, processing, HD export and the public URL.",
+    quickTitle: "Your first render in under five minutes",
+    quickText: "You need a saved template, its ID and an API Key created from the dashboard.",
+    step1: "Create and save a template",
+    step1Text: "Use the editor, clearly name dynamic layers and click Save.",
+    step2: "Copy your credentials",
+    step2Text: "Get the ID from File → Template ID and your key from API Key.",
+    step3: "Send the request",
+    step3Text: "Use your installation endpoint. The example uses a relative route on the same domain.",
+    authTitle: "Bearer authentication",
+    authText: "Every render request requires a valid API Key in the Authorization header.",
+    securityTitle: "Keep the key server-side",
+    securityText: "Never publish the API Key in browser JavaScript, repositories or mobile apps. Send it from your backend or automation platform.",
+    endpointTitle: "POST /api/render",
+    endpointText: "Generates a PNG from an existing template. Output defaults to 3× scale, safely capped so the longest side remains around 4096 px.",
+    field: "Field",
+    type: "Type",
+    required: "Required",
+    description: "Description",
+    yes: "Yes",
+    no: "No",
+    templateDesc: "UUID of the saved template.",
+    layersDesc: "Object whose keys are layer IDs or names.",
+    scaleDesc: "Resolution multiplier from 1 to 3. Default: 3.",
+    layersTitle: "Update layers by ID",
+    layersText: "The visible name in the Layers panel is serialized as the identifier. Use that value as a key inside layers.",
+    textLayer: "Text layer",
+    textLayerText: "Supports text, color and fontFamily.",
+    imageLayer: "Image layer",
+    imageLayerText: "Accepts image_url, src, url or image. For security, the URL must use HTTPS and cannot target private networks.",
+    noteTitle: "IDs matter",
+    noteText: "If a key does not match a layer, rendering continues but that update is ignored. Check names in Playground before integrating.",
+    outputTitle: "HD rendering by default",
+    outputText: "The endpoint always produces PNG. pixelRatio reports the applied scale and width/height are the final pixel dimensions.",
+    response: "200 response",
+    errorsTitle: "Error responses",
+    errorsText: "Errors return JSON with a readable error property. Log the HTTP status and message to diagnose integrations.",
+    integrationsTitle: "Connect any HTTP workflow",
+    integrationsText: "No SDK is required. Use fetch, cURL, Python, n8n, Make, Zapier or any tool capable of sending JSON.",
+    limitsTitle: "Limits by plan",
+    limitsText: "The currently published limits are below. Exceeding them may return HTTP 429.",
+    plan: "Plan",
+    requests: "Requests / minute",
+    renders: "Renders / month",
+    free: "Free",
+    pro: "Pro",
+    enterprise: "Enterprise",
+    unlimited: "Unlimited",
+    nextTitle: "Ready to test your template?",
+    nextText: "Playground uses the same API and lets you inspect IDs, payload and output before writing code.",
+    copied: "Copied",
+    copy: "Copy",
+  },
 };
 
-type Category = {
-  titleKey: string;
-  sections: Section[];
-};
+const navItems = [
+  ["overview", "overview"],
+  ["quick-start", "quick"],
+  ["authentication", "auth"],
+  ["render", "endpoint"],
+  ["layers", "layers"],
+  ["output", "output"],
+  ["errors", "errors"],
+  ["integrations", "integrations"],
+  ["limits", "limits"],
+] as const;
+
+const curlCode = `curl -X POST "https://your-domain.com/api/render" \\
+  -H "Authorization: Bearer $DYNAMIC_CANVAS_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "templateId": "YOUR_TEMPLATE_UUID",
+    "layers": {
+      "headline": { "text": "Summer sale", "color": "#5b35d5" },
+      "product_image": { "image_url": "https://example.com/product.png" }
+    },
+    "scale": 3
+  }'`;
+
+const jsCode = `const response = await fetch("/api/render", {
+  method: "POST",
+  headers: {
+    "Authorization": \`Bearer \${process.env.DYNAMIC_CANVAS_API_KEY}\`,
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    templateId: "YOUR_TEMPLATE_UUID",
+    layers: {
+      headline: { text: "Summer sale", color: "#5b35d5" },
+      product_image: { image_url: "https://example.com/product.png" }
+    },
+    scale: 3
+  })
+});
+
+const render = await response.json();`;
+
+const responseCode = `{
+  "status": "success",
+  "imageUrl": "https://.../renders/template-1720000000000.png",
+  "width": 3240,
+  "height": 4050,
+  "pixelRatio": 3
+}`;
+
+function CodeBlock({ code, label }: { code: string; label: string }) {
+  const { language } = useLanguage();
+  const c = docsCopy[language];
+  const [copied, setCopied] = useState(false);
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = code;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      textarea.remove();
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  };
+
+  return (
+    <div className="overflow-hidden rounded-2xl border-2 border-[#101426] bg-[#101426] shadow-[6px_6px_0_#d9ccff]">
+      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+        <div className="flex items-center gap-2"><span className="size-2.5 rounded-full bg-[#ff6b57]" /><span className="size-2.5 rounded-full bg-[#ffd166]" /><span className="size-2.5 rounded-full bg-[#c9ff5a]" /><span className="ml-2 font-mono text-[10px] font-bold text-white/40">{label}</span></div>
+        <button onClick={copyCode} className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] font-bold text-white/50 transition hover:bg-white/10 hover:text-white">{copied ? <Check className="size-3" /> : <Copy className="size-3" />}{copied ? c.copied : c.copy}</button>
+      </div>
+      <pre className="overflow-x-auto p-5 text-[12px] leading-6 text-white/75"><code>{code}</code></pre>
+    </div>
+  );
+}
 
 export default function DocsPage() {
-  const { t } = useLanguage();
-  const [activeSection, setActiveSection] = useState("getting-started");
+  const { language } = useLanguage();
+  const c = docsCopy[language];
+  const [active, setActive] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const categories: Category[] = [
-    {
-      titleKey: "docs_getting_started",
-      sections: [
-        { id: "getting-started", titleKey: "docs_introduction" },
-        { id: "quick-start", titleKey: "docs_quick_start" },
-        { id: "authentication", titleKey: "docs_authentication" },
-      ],
-    },
-    {
-      titleKey: "docs_api_reference",
-      sections: [
-        { id: "api-overview", titleKey: "docs_api_overview" },
-        { id: "render-endpoint", titleKey: "docs_render_endpoint" },
-        { id: "templates", titleKey: "docs_templates" },
-        { id: "modifications", titleKey: "docs_modifications" },
-        { id: "formats", titleKey: "docs_formats" },
-        { id: "errors", titleKey: "docs_errors" },
-      ],
-    },
-    {
-      titleKey: "docs_guides",
-      sections: [
-        { id: "creating-templates", titleKey: "docs_creating_templates" },
-        { id: "dynamic-images", titleKey: "docs_dynamic_images" },
-        { id: "dynamic-text", titleKey: "docs_dynamic_text" },
-        { id: "batch-processing", titleKey: "docs_batch_processing" },
-      ],
-    },
-    {
-      titleKey: "docs_integrations",
-      sections: [
-        { id: "n8n", titleKey: "docs_n8n" },
-        { id: "zapier", titleKey: "docs_zapier" },
-        { id: "make", titleKey: "docs_make" },
-        { id: "sdks", titleKey: "docs_sdks" },
-      ],
-    },
-    {
-      titleKey: "docs_limits",
-      sections: [
-        { id: "rate-limits", titleKey: "docs_rate_limits" },
-        { id: "pricing", titleKey: "docs_pricing" },
-      ],
-    },
-  ];
-
   useEffect(() => {
-    const handleScroll = () => {
-      const sectionElements = categories
-        .flatMap((cat) => cat.sections)
-        .map((section) => document.getElementById(section.id))
-        .filter(Boolean);
-
-      for (const element of sectionElements) {
-        if (element) {
-          const rect = element.getBoundingClientRect();
-          if (rect.top <= 150) {
-            setActiveSection(element.id);
-            break;
-          }
-        }
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (visible?.target.id) setActive(visible.target.id);
+    }, { rootMargin: "-18% 0px -68% 0px", threshold: [0, 0.25, 0.75] });
+    navItems.forEach(([id]) => { const element = document.getElementById(id); if (element) observer.observe(element); });
+    return () => observer.disconnect();
   }, []);
 
-  const scrollToSection = (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      const offset = 100;
-      const top = element.getBoundingClientRect().top + window.scrollY - offset;
-      window.scrollTo({ top, behavior: "smooth" });
-    }
+  const goTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
     setSidebarOpen(false);
   };
 
   return (
-    <div className="dark min-h-screen bg-[#101622] text-slate-100 antialiased">
-      {/* Top Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 w-full border-b border-white/10 bg-[#101622]/95 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden p-2 rounded-lg hover:bg-white/5 transition-colors"
-              >
-                <span className="material-symbols-outlined text-white">
-                  {sidebarOpen ? "close" : "menu"}
-                </span>
-              </button>
-              <Link
-                href="/"
-                className="flex items-center gap-2 group cursor-pointer"
-              >
-                <div className="w-8 h-8 bg-[#135bec] rounded-lg flex items-center justify-center text-white font-bold text-sm">
-                  DC
-                </div>
-                <span className="text-xl font-extrabold tracking-tight text-white">
-                  Dynamic Canvas
-                </span>
-              </Link>
-            </div>
-            <div className="flex items-center gap-4">
-              <Link
-                href="/"
-                className="text-sm font-medium text-slate-400 hover:text-white transition-colors"
-              >
-                {t("back_to_home")}
-              </Link>
-              <LanguageSwitcher />
-            </div>
+    <div className="min-h-screen bg-[#f6f5ef] text-[#101426] selection:bg-[#c9ff5a]">
+      <header className="fixed inset-x-0 top-0 z-50 h-[72px] border-b-2 border-[#101426] bg-[#f6f5ef]/95 backdrop-blur-xl">
+        <div className="mx-auto flex h-full max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
+            <button aria-label="Menu" onClick={() => setSidebarOpen(!sidebarOpen)} className="flex size-10 items-center justify-center rounded-xl border border-[#101426]/15 bg-white lg:hidden">{sidebarOpen ? <X className="size-5" /> : <Menu className="size-5" />}</button>
+            <Link href="/" aria-label="Dynamic Canvas"><BrandMark /></Link>
+            <span className="hidden h-7 border-l border-[#101426]/15 sm:block" /><span className="hidden text-xs font-black uppercase tracking-[0.15em] text-[#5b35d5] sm:block">Docs</span>
           </div>
+          <div className="flex items-center gap-2 sm:gap-4"><Link href="/" className="hidden text-sm font-bold text-[#101426]/55 hover:text-[#5b35d5] sm:block">{c.back}</Link><Link href="/dashboard" className="rounded-full bg-[#101426] px-4 py-2 text-sm font-bold text-white hover:bg-[#5b35d5]">{c.dashboard}</Link><LanguageSwitcher /></div>
         </div>
-      </nav>
+      </header>
 
-      {/* Sidebar Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className={`fixed top-16 left-0 bottom-0 w-72 bg-[#0d1320] border-r border-white/10 overflow-y-auto z-40 transform transition-transform duration-300 lg:translate-x-0 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="p-6">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4">
-            {t("docs_documentation")}
-          </h2>
-          <nav className="space-y-6">
-            {categories.map((category) => (
-              <div key={category.titleKey}>
-                <h3 className="text-xs font-bold uppercase tracking-widest text-[#135bec] mb-3">
-                  {t(category.titleKey)}
-                </h3>
-                <ul className="space-y-1">
-                  {category.sections.map((section) => (
-                    <li key={section.id}>
-                      <button
-                        onClick={() => scrollToSection(section.id)}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                          activeSection === section.id
-                            ? "bg-[#135bec]/20 text-[#135bec] font-medium"
-                            : "text-slate-400 hover:text-white hover:bg-white/5"
-                        }`}
-                      >
-                        {t(section.titleKey)}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </nav>
-        </div>
+      {sidebarOpen && <button aria-label="Close menu" className="fixed inset-0 z-30 bg-[#101426]/30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+      <aside className={`fixed bottom-0 left-0 top-[72px] z-40 w-[292px] overflow-y-auto border-r-2 border-[#101426] bg-[#101426] p-5 text-white transition-transform lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+        <div className="mb-5 rounded-2xl border border-white/10 bg-white/5 p-4"><div className="flex items-center gap-2 text-xs font-black text-[#c9ff5a]"><span className="size-2 animate-pulse rounded-full bg-[#c9ff5a]" />{c.live}</div><div className="mt-2 font-mono text-[11px] text-white/45">POST /api/render</div></div>
+        <p className="mb-3 px-3 text-[10px] font-black uppercase tracking-[0.18em] text-white/35">{c.nav}</p>
+        <nav className="space-y-1">{navItems.map(([id, key], index) => <button key={id} onClick={() => goTo(id)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${active === id ? "bg-[#c9ff5a] font-bold text-[#101426]" : "text-white/55 hover:bg-white/10 hover:text-white"}`}><span className="font-mono text-[10px] opacity-50">{String(index + 1).padStart(2, "0")}</span>{c[key]}</button>)}</nav>
+        <div className="mt-7 border-t border-white/10 pt-5"><Link href="/playground" className="flex items-center justify-between rounded-xl bg-[#5b35d5] px-4 py-3 text-sm font-bold hover:bg-white hover:text-[#101426]">{c.playground}<ExternalLink className="size-4" /></Link></div>
       </aside>
 
-      {/* Main Content */}
-      <main className="lg:ml-72 pt-16">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          {/* Getting Started */}
-          <section id="getting-started" className="mb-16 scroll-mt-24">
-            <h1 className="text-4xl font-black text-white mb-4">
-              {t("docs_introduction")}
-            </h1>
-            <p className="text-slate-400 text-lg mb-8">
-              {t("docs_intro_desc")}
-            </p>
-            <div className="bg-gradient-to-br from-[#135bec]/20 to-blue-500/10 border border-[#135bec]/30 rounded-2xl p-6 mb-8">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-[#135bec]/20 flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-[#135bec]">rocket_launch</span>
-                </div>
-                <div>
-                  <h3 className="text-white font-bold mb-1">{t("docs_new_here")}</h3>
-                  <p className="text-slate-400 text-sm">
-                    {t("docs_new_here_desc")}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
+      <main className="pt-[72px] lg:pl-[292px]">
+        <section className="brand-dots border-b-2 border-[#101426] px-5 py-16 sm:px-8 lg:px-12 lg:py-24">
+          <div className="mx-auto max-w-5xl"><div className="inline-flex items-center gap-2 rounded-full border border-[#5b35d5]/20 bg-white px-3 py-1.5 text-[10px] font-black tracking-[0.16em] text-[#5b35d5]"><BookOpen className="size-3.5" />{c.badge}</div><h1 className="mt-6 max-w-4xl text-5xl font-black leading-[0.92] tracking-[-0.055em] sm:text-6xl lg:text-7xl">{c.title}</h1><p className="mt-7 max-w-2xl text-lg font-medium leading-relaxed text-[#101426]/60">{c.subtitle}</p><div className="mt-8 flex flex-wrap gap-3"><button onClick={() => goTo("quick-start")} className="flex items-center gap-2 rounded-full bg-[#5b35d5] px-6 py-3 font-bold text-white hover:bg-[#101426]">{c.start}<ArrowRight className="size-4" /></button><Link href="/playground" className="flex items-center gap-2 rounded-full border-2 border-[#101426] bg-white px-6 py-3 font-bold hover:bg-[#c9ff5a]"><Terminal className="size-4" />{c.playground}</Link></div><div className="mt-9 flex flex-wrap gap-3 text-xs font-bold text-[#101426]/50"><span className="rounded-full bg-[#c9ff5a] px-3 py-1.5 text-[#101426]">{c.version}: /api/render</span><span className="rounded-full border border-[#101426]/15 bg-white px-3 py-1.5">Bearer Auth</span><span className="rounded-full border border-[#101426]/15 bg-white px-3 py-1.5">PNG · 1×–3×</span></div></div>
+        </section>
 
-          {/* Quick Start */}
-          <section id="quick-start" className="mb-16 scroll-mt-24">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              {t("docs_quick_start")}
-            </h2>
-            <p className="text-slate-300 mb-6">
-              {t("docs_quick_start_desc")}
-            </p>
+        <div className="mx-auto max-w-5xl space-y-24 px-5 py-16 sm:px-8 lg:px-12 lg:py-24">
+          <section id="overview" className="scroll-mt-28"><SectionHeading number="01" title={c.overviewTitle} text={c.overviewText} /><div className="mt-9 grid gap-4 md:grid-cols-3">{[[PaletteIcon, c.creative, c.creativeText, "bg-[#e9e5ff]"], [Code2, c.dev, c.devText, "bg-[#c9ff5a]"], [Server, c.service, c.serviceText, "bg-[#ffb7aa]"]].map(([Icon, title, text, bg]) => { const CardIcon = Icon as typeof Code2; return <article key={String(title)} className={`rounded-[22px] border-2 border-[#101426] p-5 ${String(bg)}`}><CardIcon className="size-8" /><h3 className="mt-8 text-lg font-black">{String(title)}</h3><p className="mt-2 text-sm leading-relaxed text-[#101426]/60">{String(text)}</p></article>; })}</div></section>
 
-            <div className="space-y-6">
-              <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6">
-                <h3 className="text-white font-bold mb-3 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-[#135bec] text-white text-xs flex items-center justify-center">1</span>
-                  {t("docs_step_api_key")}
-                </h3>
-                <p className="text-slate-400 text-sm mb-4">
-                  {t("docs_step_api_key_desc")}
-                </p>
-                <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm">
-                  <span className="text-slate-500">$ </span>
-                  <span className="text-green-400">export</span>
-                  <span className="text-white"> DYNAMIC_CANVAS_API_KEY=</span>
-                  <span className="text-amber-400">"your-api-key"</span>
-                </div>
-              </div>
+          <section id="quick-start" className="scroll-mt-28"><SectionHeading number="02" title={c.quickTitle} text={c.quickText} /><div className="mt-9 space-y-4">{[[Rocket, c.step1, c.step1Text], [KeyRound, c.step2, c.step2Text], [Zap, c.step3, c.step3Text]].map(([Icon, title, text], index) => { const StepIcon = Icon as typeof Rocket; return <div key={String(title)} className="grid gap-4 rounded-[22px] border-2 border-[#101426] bg-white p-5 sm:grid-cols-[56px_1fr]"><div className="flex size-12 items-center justify-center rounded-xl bg-[#e9e5ff]"><StepIcon className="size-6 text-[#5b35d5]" /></div><div><div className="text-[10px] font-black text-[#5b35d5]">STEP 0{index + 1}</div><h3 className="mt-1 text-lg font-black">{String(title)}</h3><p className="mt-1 text-sm leading-relaxed text-[#101426]/55">{String(text)}</p></div></div>; })}</div><div className="mt-7"><CodeBlock code={curlCode} label="curl" /></div></section>
 
-              <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6">
-                <h3 className="text-white font-bold mb-3 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-[#135bec] text-white text-xs flex items-center justify-center">2</span>
-                  {t("docs_step_create_request")}
-                </h3>
-                <p className="text-slate-400 text-sm mb-4">
-                  {t("docs_step_create_request_desc")}
-                </p>
-                <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
-                  <pre className="text-slate-300">{`curl -X POST https://api.dynamiccanvas.com/v1/render \\
-  -H "Authorization: Bearer $DYNAMIC_CANVAS_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "template_id": "social-media-post",
-    "modifications": [
-      { "name": "title", "text": "Hello World" },
-      { "name": "image", "src": "https://example.com/image.jpg" }
-    ],
-    "format": "png"
-  }'`}</pre>
-                </div>
-              </div>
+          <section id="authentication" className="scroll-mt-28"><SectionHeading number="03" title={c.authTitle} text={c.authText} /><div className="mt-8 grid gap-5 lg:grid-cols-[1fr_.9fr]"><CodeBlock code={`Authorization: Bearer YOUR_API_KEY\nContent-Type: application/json`} label="headers" /><div className="rounded-[22px] border-2 border-[#101426] bg-[#ffd166] p-5"><ShieldCheck className="size-8" /><h3 className="mt-5 font-black">{c.securityTitle}</h3><p className="mt-2 text-sm leading-relaxed text-[#101426]/65">{c.securityText}</p></div></div></section>
 
-              <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6">
-                <h3 className="text-white font-bold mb-3 flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-[#135bec] text-white text-xs flex items-center justify-center">3</span>
-                  {t("docs_step_receive")}
-                </h3>
-                <p className="text-slate-400 text-sm mb-4">
-                  {t("docs_step_receive_desc")}
-                </p>
-                <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
-                  <pre className="text-slate-300">{`{
-  "success": true,
-  "render_id": "render_abc123",
-  "url": "https://cdn.dynamiccanvas.com/renders/abc123.png",
-  "width": 1080,
-  "height": 1080,
-  "format": "png",
-  "created_at": "2025-01-15T10:30:00Z"
-}`}</pre>
-                </div>
-              </div>
-            </div>
-          </section>
+          <section id="render" className="scroll-mt-28"><SectionHeading number="04" title={c.endpointTitle} text={c.endpointText} /><div className="mt-8 overflow-hidden rounded-[22px] border-2 border-[#101426] bg-white"><div className="grid grid-cols-[.8fr_.6fr_.6fr_2fr] border-b-2 border-[#101426] bg-[#e9e5ff] px-4 py-3 text-[10px] font-black uppercase tracking-wider"><span>{c.field}</span><span>{c.type}</span><span>{c.required}</span><span>{c.description}</span></div>{[["templateId", "string", c.yes, c.templateDesc], ["layers", "object", c.no, c.layersDesc], ["scale", "number", c.no, c.scaleDesc]].map(row => <div key={row[0]} className="grid grid-cols-[.8fr_.6fr_.6fr_2fr] border-b border-[#101426]/10 px-4 py-4 text-sm last:border-0"><code className="font-bold text-[#5b35d5]">{row[0]}</code><span>{row[1]}</span><span>{row[2]}</span><span className="text-[#101426]/55">{row[3]}</span></div>)}</div><div className="mt-7"><CodeBlock code={jsCode} label="JavaScript · server-side" /></div></section>
 
-          {/* Authentication */}
-          <section id="authentication" className="mb-16 scroll-mt-24">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              {t("docs_authentication")}
-            </h2>
-            <p className="text-slate-300 mb-6">
-              {t("docs_auth_desc")}
-            </p>
+          <section id="layers" className="scroll-mt-28"><SectionHeading number="05" title={c.layersTitle} text={c.layersText} /><div className="mt-8 grid gap-5 md:grid-cols-2"><div className="rounded-[22px] border-2 border-[#101426] bg-[#e9e5ff] p-6"><Layers3 className="size-8 text-[#5b35d5]" /><h3 className="mt-6 text-xl font-black">{c.textLayer}</h3><p className="mt-2 text-sm text-[#101426]/60">{c.textLayerText}</p><code className="mt-5 block rounded-xl bg-white p-3 text-xs">{`{ text, color, fontFamily }`}</code></div><div className="rounded-[22px] border-2 border-[#101426] bg-[#c9ff5a] p-6"><ImageIcon className="size-8" /><h3 className="mt-6 text-xl font-black">{c.imageLayer}</h3><p className="mt-2 text-sm text-[#101426]/60">{c.imageLayerText}</p><code className="mt-5 block rounded-xl bg-white p-3 text-xs">{`{ image_url: "https://..." }`}</code></div></div><div className="mt-5 flex gap-3 rounded-2xl border-2 border-[#101426] bg-[#ffb7aa] p-5"><AlertTriangle className="mt-0.5 size-5 shrink-0" /><div><h3 className="font-black">{c.noteTitle}</h3><p className="mt-1 text-sm text-[#101426]/65">{c.noteText}</p></div></div></section>
 
-            <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6 mb-6">
-              <h3 className="text-white font-bold mb-3">{t("docs_auth_header")}</h3>
-              <p className="text-slate-400 text-sm mb-4">
-                {t("docs_auth_header_desc")}
-              </p>
-              <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm">
-                <span className="text-[#135bec]">Authorization</span>
-                <span className="text-white">: </span>
-                <span className="text-green-400">Bearer</span>
-                <span className="text-white"> your-api-key</span>
-              </div>
-            </div>
+          <section id="output" className="scroll-mt-28"><SectionHeading number="06" title={c.outputTitle} text={c.outputText} /><div className="mt-8 grid gap-5 lg:grid-cols-[.65fr_1.35fr]"><div className="rounded-[22px] border-2 border-[#101426] bg-[#5b35d5] p-6 text-white"><Gauge className="size-9 text-[#c9ff5a]" /><div className="mt-8 text-5xl font-black">3×</div><p className="mt-2 text-sm text-white/60">Default pixel ratio</p><div className="mt-6 border-t border-white/15 pt-4 text-xs text-white/50">Safe cap · longest side ≈ 4096 px</div></div><CodeBlock code={responseCode} label={c.response} /></div></section>
 
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-6">
-              <div className="flex items-start gap-3">
-                <span className="material-symbols-outlined text-amber-500">warning</span>
-                <div>
-                  <h4 className="text-amber-400 font-bold mb-1">{t("docs_security_note")}</h4>
-                  <p className="text-slate-400 text-sm">
-                    {t("docs_security_note_desc")}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
+          <section id="errors" className="scroll-mt-28"><SectionHeading number="07" title={c.errorsTitle} text={c.errorsText} /><div className="mt-8 overflow-hidden rounded-[22px] border-2 border-[#101426] bg-white">{[["400", "Missing templateId"], ["401", "Missing/Invalid Authorization header · Invalid API key"], ["404", "Template not found"], ["429", "Rate limit exceeded"], ["500", "Internal render error"]].map(([status, message]) => <div key={status} className="flex items-center gap-4 border-b border-[#101426]/10 px-5 py-4 last:border-0"><span className={`rounded-lg px-2.5 py-1 font-mono text-xs font-black ${status === "500" ? "bg-[#ffb7aa]" : status === "401" ? "bg-[#ffd166]" : "bg-[#e9e5ff]"}`}>{status}</span><code className="text-sm text-[#101426]/65">{message}</code></div>)}</div></section>
 
-          {/* API Overview */}
-          <section id="api-overview" className="mb-16 scroll-mt-24">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              {t("docs_api_overview")}
-            </h2>
-            <p className="text-slate-300 mb-6">
-              {t("docs_api_overview_desc")}
-            </p>
+          <section id="integrations" className="scroll-mt-28"><SectionHeading number="08" title={c.integrationsTitle} text={c.integrationsText} /><div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{["fetch", "cURL", "Python", "n8n", "Make", "Zapier"].map((name, index) => <div key={name} className={`flex h-24 items-center justify-center rounded-2xl border-2 border-[#101426] text-sm font-black ${index % 3 === 0 ? "bg-[#c9ff5a]" : index % 3 === 1 ? "bg-[#e9e5ff]" : "bg-white"}`}>{name}</div>)}</div></section>
 
-            <div className="bg-slate-800/60 border border-white/10 rounded-xl overflow-hidden">
-              <div className="border-b border-white/10 px-6 py-4">
-                <h3 className="text-white font-bold">{t("docs_base_url")}</h3>
-              </div>
-              <div className="p-6">
-                <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm">
-                  <span className="text-green-400">https://api.dynamiccanvas.com/v1</span>
-                </div>
-              </div>
-            </div>
+          <section id="limits" className="scroll-mt-28"><SectionHeading number="09" title={c.limitsTitle} text={c.limitsText} /><div className="mt-8 overflow-x-auto rounded-[22px] border-2 border-[#101426] bg-white"><table className="w-full min-w-[560px]"><thead className="bg-[#101426] text-white"><tr><th className="px-5 py-4 text-left text-xs font-black uppercase">{c.plan}</th><th className="px-5 py-4 text-left text-xs font-black uppercase">{c.requests}</th><th className="px-5 py-4 text-left text-xs font-black uppercase">{c.renders}</th></tr></thead><tbody>{[[c.free, "10", "100"], [c.pro, "60", "5,000"], [c.enterprise, "500", c.unlimited]].map((row, index) => <tr key={row[0]} className={index === 1 ? "bg-[#c9ff5a]" : "border-t border-[#101426]/10"}><td className="px-5 py-4 font-black">{row[0]}</td><td className="px-5 py-4">{row[1]}</td><td className="px-5 py-4">{row[2]}</td></tr>)}</tbody></table></div></section>
 
-            <h3 className="text-xl font-bold text-white mt-8 mb-4">{t("docs_endpoints")}</h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 bg-slate-800/40 border border-white/10 rounded-lg px-4 py-3">
-                <span className="px-2 py-1 rounded bg-green-500/20 text-green-400 text-xs font-bold">POST</span>
-                <code className="text-slate-300 font-mono text-sm">/render</code>
-                <span className="text-slate-500 text-sm">{t("docs_endpoint_render")}</span>
-              </div>
-              <div className="flex items-center gap-3 bg-slate-800/40 border border-white/10 rounded-lg px-4 py-3">
-                <span className="px-2 py-1 rounded bg-blue-500/20 text-blue-400 text-xs font-bold">GET</span>
-                <code className="text-slate-300 font-mono text-sm">/templates</code>
-                <span className="text-slate-500 text-sm">{t("docs_endpoint_templates")}</span>
-              </div>
-              <div className="flex items-center gap-3 bg-slate-800/40 border border-white/10 rounded-lg px-4 py-3">
-                <span className="px-2 py-1 rounded bg-blue-500/20 text-blue-400 text-xs font-bold">GET</span>
-                <code className="text-slate-300 font-mono text-sm">/templates/:id</code>
-                <span className="text-slate-500 text-sm">{t("docs_endpoint_template")}</span>
-              </div>
-              <div className="flex items-center gap-3 bg-slate-800/40 border border-white/10 rounded-lg px-4 py-3">
-                <span className="px-2 py-1 rounded bg-blue-500/20 text-blue-400 text-xs font-bold">GET</span>
-                <code className="text-slate-300 font-mono text-sm">/renders/:id</code>
-                <span className="text-slate-500 text-sm">{t("docs_endpoint_render_status")}</span>
-              </div>
-            </div>
-          </section>
-
-          {/* Render Endpoint */}
-          <section id="render-endpoint" className="mb-16 scroll-mt-24">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              {t("docs_render_endpoint")}
-            </h2>
-            <p className="text-slate-300 mb-6">
-              {t("docs_render_desc")}
-            </p>
-
-            <div className="bg-slate-800/60 border border-white/10 rounded-xl overflow-hidden mb-6">
-              <div className="flex items-center gap-3 border-b border-white/10 px-6 py-4">
-                <span className="px-2 py-1 rounded bg-green-500/20 text-green-400 text-xs font-bold">POST</span>
-                <code className="text-white font-mono">/render</code>
-              </div>
-              <div className="p-6">
-                <h4 className="text-white font-bold mb-4">{t("docs_request_body")}</h4>
-                <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
-                  <pre className="text-slate-300">{`{
-  "template_id": "string (required)",
-  "modifications": [
-    {
-      "name": "string (required) - element name in template",
-      "text": "string (optional) - for text elements",
-      "src": "string (optional) - for image elements",
-      "value": "string (optional) - for color/style elements",
-      "visible": "boolean (optional) - show/hide element"
-    }
-  ],
-  "format": "string (optional) - png, jpg, webp, pdf. Default: png",
-  "width": "number (optional) - override template width",
-  "height": "number (optional) - override template height",
-  "scale": "number (optional) - 1x, 2x, 3x. Default: 1x"
-}`}</pre>
-                </div>
-              </div>
-            </div>
-
-            <h3 className="text-xl font-bold text-white mb-4">{t("docs_example_request")}</h3>
-            <div className="bg-slate-900 rounded-xl p-6 font-mono text-sm overflow-x-auto mb-6">
-              <pre className="text-slate-300">{`{
-  "template_id": "instagram-post",
-  "modifications": [
-    {
-      "name": "headline",
-      "text": "Summer Sale 50% OFF"
-    },
-    {
-      "name": "product_image",
-      "src": "https://example.com/product.jpg"
-    },
-    {
-      "name": "price",
-      "text": "$29.99"
-    },
-    {
-      "name": "accent_color",
-      "value": "#ff6b6b"
-    },
-    {
-      "name": "disclaimer",
-      "visible": false
-    }
-  ],
-  "format": "png",
-  "scale": 2
-}`}</pre>
-            </div>
-
-            <h3 className="text-xl font-bold text-white mb-4">{t("docs_response")}</h3>
-            <div className="bg-slate-900 rounded-xl p-6 font-mono text-sm overflow-x-auto">
-              <pre className="text-slate-300">{`{
-  "success": true,
-  "render_id": "render_xyz789",
-  "url": "https://cdn.dynamiccanvas.com/renders/xyz789.png",
-  "width": 1080,
-  "height": 1080,
-  "format": "png",
-  "file_size": 245678,
-  "created_at": "2025-01-15T14:22:30Z",
-  "expires_at": "2025-01-22T14:22:30Z"
-}`}</pre>
-            </div>
-          </section>
-
-          {/* Templates */}
-          <section id="templates" className="mb-16 scroll-mt-24">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              {t("docs_templates")}
-            </h2>
-            <p className="text-slate-300 mb-6">
-              {t("docs_templates_desc")}
-            </p>
-
-            <div className="bg-slate-800/60 border border-white/10 rounded-xl overflow-hidden mb-6">
-              <div className="flex items-center gap-3 border-b border-white/10 px-6 py-4">
-                <span className="px-2 py-1 rounded bg-blue-500/20 text-blue-400 text-xs font-bold">GET</span>
-                <code className="text-white font-mono">/templates</code>
-              </div>
-              <div className="p-6">
-                <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm overflow-x-auto">
-                  <pre className="text-slate-300">{`{
-  "templates": [
-    {
-      "id": "instagram-post",
-      "name": "Instagram Post",
-      "width": 1080,
-      "height": 1080,
-      "elements": ["headline", "product_image", "price", "cta"],
-      "thumbnail": "https://cdn.dynamiccanvas.com/templates/instagram-post.png"
-    }
-  ],
-  "total": 1,
-  "page": 1,
-  "per_page": 20
-}`}</pre>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Modifications */}
-          <section id="modifications" className="mb-16 scroll-mt-24">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              {t("docs_modifications")}
-            </h2>
-            <p className="text-slate-300 mb-6">
-              {t("docs_modifications_desc")}
-            </p>
-
-            <div className="grid gap-4">
-              <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="material-symbols-outlined text-[#135bec]">text_fields</span>
-                  <h3 className="text-white font-bold">{t("docs_mod_text")}</h3>
-                </div>
-                <p className="text-slate-400 text-sm mb-4">{t("docs_mod_text_desc")}</p>
-                <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm">
-                  <span className="text-slate-500">{"{ "}</span>
-                  <span className="text-[#135bec]">"name"</span>
-                  <span className="text-white">: </span>
-                  <span className="text-green-400">"headline"</span>
-                  <span className="text-white">, </span>
-                  <span className="text-[#135bec]">"text"</span>
-                  <span className="text-white">: </span>
-                  <span className="text-green-400">"Your Title Here"</span>
-                  <span className="text-slate-500">{" }"}</span>
-                </div>
-              </div>
-
-              <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="material-symbols-outlined text-[#135bec]">image</span>
-                  <h3 className="text-white font-bold">{t("docs_mod_image")}</h3>
-                </div>
-                <p className="text-slate-400 text-sm mb-4">{t("docs_mod_image_desc")}</p>
-                <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm">
-                  <span className="text-slate-500">{"{ "}</span>
-                  <span className="text-[#135bec]">"name"</span>
-                  <span className="text-white">: </span>
-                  <span className="text-green-400">"photo"</span>
-                  <span className="text-white">, </span>
-                  <span className="text-[#135bec]">"src"</span>
-                  <span className="text-white">: </span>
-                  <span className="text-green-400">"https://example.com/image.jpg"</span>
-                  <span className="text-slate-500">{" }"}</span>
-                </div>
-              </div>
-
-              <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="material-symbols-outlined text-[#135bec]">palette</span>
-                  <h3 className="text-white font-bold">{t("docs_mod_color")}</h3>
-                </div>
-                <p className="text-slate-400 text-sm mb-4">{t("docs_mod_color_desc")}</p>
-                <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm">
-                  <span className="text-slate-500">{"{ "}</span>
-                  <span className="text-[#135bec]">"name"</span>
-                  <span className="text-white">: </span>
-                  <span className="text-green-400">"accent_color"</span>
-                  <span className="text-white">, </span>
-                  <span className="text-[#135bec]">"value"</span>
-                  <span className="text-white">: </span>
-                  <span className="text-green-400">"#ff6b6b"</span>
-                  <span className="text-slate-500">{" }"}</span>
-                </div>
-              </div>
-
-              <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="material-symbols-outlined text-[#135bec]">visibility</span>
-                  <h3 className="text-white font-bold">{t("docs_mod_visibility")}</h3>
-                </div>
-                <p className="text-slate-400 text-sm mb-4">{t("docs_mod_visibility_desc")}</p>
-                <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm">
-                  <span className="text-slate-500">{"{ "}</span>
-                  <span className="text-[#135bec]">"name"</span>
-                  <span className="text-white">: </span>
-                  <span className="text-green-400">"watermark"</span>
-                  <span className="text-white">, </span>
-                  <span className="text-[#135bec]">"visible"</span>
-                  <span className="text-white">: </span>
-                  <span className="text-amber-400">false</span>
-                  <span className="text-slate-500">{" }"}</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Formats */}
-          <section id="formats" className="mb-16 scroll-mt-24">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              {t("docs_formats")}
-            </h2>
-            <p className="text-slate-300 mb-6">
-              {t("docs_formats_desc")}
-            </p>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="px-2 py-1 rounded bg-purple-500/20 text-purple-400 text-xs font-bold">PNG</span>
-                  <span className="text-white font-bold">{t("docs_format_png")}</span>
-                </div>
-                <p className="text-slate-400 text-sm">{t("docs_format_png_desc")}</p>
-              </div>
-              <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="px-2 py-1 rounded bg-yellow-500/20 text-yellow-400 text-xs font-bold">JPG</span>
-                  <span className="text-white font-bold">{t("docs_format_jpg")}</span>
-                </div>
-                <p className="text-slate-400 text-sm">{t("docs_format_jpg_desc")}</p>
-              </div>
-              <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="px-2 py-1 rounded bg-green-500/20 text-green-400 text-xs font-bold">WEBP</span>
-                  <span className="text-white font-bold">{t("docs_format_webp")}</span>
-                </div>
-                <p className="text-slate-400 text-sm">{t("docs_format_webp_desc")}</p>
-              </div>
-              <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="px-2 py-1 rounded bg-red-500/20 text-red-400 text-xs font-bold">PDF</span>
-                  <span className="text-white font-bold">{t("docs_format_pdf")}</span>
-                </div>
-                <p className="text-slate-400 text-sm">{t("docs_format_pdf_desc")}</p>
-              </div>
-            </div>
-          </section>
-
-          {/* Errors */}
-          <section id="errors" className="mb-16 scroll-mt-24">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              {t("docs_errors")}
-            </h2>
-            <p className="text-slate-300 mb-6">
-              {t("docs_errors_desc")}
-            </p>
-
-            <div className="space-y-4">
-              <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <code className="text-red-400 font-mono">401 Unauthorized</code>
-                  <span className="text-slate-500 text-sm">{t("docs_error_401")}</span>
-                </div>
-                <p className="text-slate-400 text-sm">{t("docs_error_401_desc")}</p>
-              </div>
-              <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <code className="text-red-400 font-mono">404 Not Found</code>
-                  <span className="text-slate-500 text-sm">{t("docs_error_404")}</span>
-                </div>
-                <p className="text-slate-400 text-sm">{t("docs_error_404_desc")}</p>
-              </div>
-              <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <code className="text-red-400 font-mono">422 Unprocessable Entity</code>
-                  <span className="text-slate-500 text-sm">{t("docs_error_422")}</span>
-                </div>
-                <p className="text-slate-400 text-sm">{t("docs_error_422_desc")}</p>
-              </div>
-              <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <code className="text-red-400 font-mono">429 Too Many Requests</code>
-                  <span className="text-slate-500 text-sm">{t("docs_error_429")}</span>
-                </div>
-                <p className="text-slate-400 text-sm">{t("docs_error_429_desc")}</p>
-              </div>
-              <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <code className="text-red-400 font-mono">500 Internal Server Error</code>
-                  <span className="text-slate-500 text-sm">{t("docs_error_500")}</span>
-                </div>
-                <p className="text-slate-400 text-sm">{t("docs_error_500_desc")}</p>
-              </div>
-            </div>
-          </section>
-
-          {/* Creating Templates */}
-          <section id="creating-templates" className="mb-16 scroll-mt-24">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              {t("docs_creating_templates")}
-            </h2>
-            <p className="text-slate-300 mb-6">
-              {t("docs_creating_templates_desc")}
-            </p>
-
-            <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6 mb-6">
-              <h3 className="text-white font-bold mb-4">{t("docs_template_steps")}</h3>
-              <ol className="space-y-3">
-                <li className="flex items-start gap-3 text-slate-300">
-                  <span className="w-6 h-6 rounded-full bg-[#135bec] text-white text-xs flex items-center justify-center shrink-0 mt-0.5">1</span>
-                  <span>{t("docs_template_step1")}</span>
-                </li>
-                <li className="flex items-start gap-3 text-slate-300">
-                  <span className="w-6 h-6 rounded-full bg-[#135bec] text-white text-xs flex items-center justify-center shrink-0 mt-0.5">2</span>
-                  <span>{t("docs_template_step2")}</span>
-                </li>
-                <li className="flex items-start gap-3 text-slate-300">
-                  <span className="w-6 h-6 rounded-full bg-[#135bec] text-white text-xs flex items-center justify-center shrink-0 mt-0.5">3</span>
-                  <span>{t("docs_template_step3")}</span>
-                </li>
-                <li className="flex items-start gap-3 text-slate-300">
-                  <span className="w-6 h-6 rounded-full bg-[#135bec] text-white text-xs flex items-center justify-center shrink-0 mt-0.5">4</span>
-                  <span>{t("docs_template_step4")}</span>
-                </li>
-              </ol>
-            </div>
-          </section>
-
-          {/* Dynamic Images */}
-          <section id="dynamic-images" className="mb-16 scroll-mt-24">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              {t("docs_dynamic_images")}
-            </h2>
-            <p className="text-slate-300 mb-6">
-              {t("docs_dynamic_images_desc")}
-            </p>
-
-            <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6">
-              <h3 className="text-white font-bold mb-3">{t("docs_supported_formats")}</h3>
-              <div className="flex flex-wrap gap-2">
-                {["JPG", "PNG", "WEBP", "GIF", "SVG", "BMP"].map((format) => (
-                  <span
-                    key={format}
-                    className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300 text-sm"
-                  >
-                    {format}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* Dynamic Text */}
-          <section id="dynamic-text" className="mb-16 scroll-mt-24">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              {t("docs_dynamic_text")}
-            </h2>
-            <p className="text-slate-300 mb-6">
-              {t("docs_dynamic_text_desc")}
-            </p>
-
-            <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6">
-              <h3 className="text-white font-bold mb-3">{t("docs_text_tips")}</h3>
-              <ul className="space-y-2 text-slate-400 text-sm">
-                <li className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-[#135bec] text-sm mt-0.5">check_circle</span>
-                  {t("docs_text_tip1")}
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-[#135bec] text-sm mt-0.5">check_circle</span>
-                  {t("docs_text_tip2")}
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-[#135bec] text-sm mt-0.5">check_circle</span>
-                  {t("docs_text_tip3")}
-                </li>
-              </ul>
-            </div>
-          </section>
-
-          {/* Batch Processing */}
-          <section id="batch-processing" className="mb-16 scroll-mt-24">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              {t("docs_batch_processing")}
-            </h2>
-            <p className="text-slate-300 mb-6">
-              {t("docs_batch_processing_desc")}
-            </p>
-
-            <div className="bg-slate-900 rounded-xl p-6 font-mono text-sm overflow-x-auto">
-              <pre className="text-slate-300">{`# Example: Generate multiple social posts
-templates = [
-  { "title": "Product A", "image": "product-a.jpg" },
-  { "title": "Product B", "image": "product-b.jpg" },
-  { "title": "Product C", "image": "product-c.jpg" },
-]
-
-for item in templates:
-  response = requests.post(
-    "https://api.dynamiccanvas.com/v1/render",
-    headers={"Authorization": f"Bearer {API_KEY}"},
-    json={
-      "template_id": "instagram-post",
-      "modifications": [
-        { "name": "headline", "text": item["title"] },
-        { "name": "product_image", "src": item["image"] }
-      ]
-    }
-  )
-  print(response.json()["url"])`}</pre>
-            </div>
-          </section>
-
-          {/* Integrations */}
-          <section id="n8n" className="mb-16 scroll-mt-24">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              {t("docs_n8n")}
-            </h2>
-            <p className="text-slate-300 mb-6">
-              {t("docs_n8n_desc")}
-            </p>
-
-            <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6">
-              <h3 className="text-white font-bold mb-3">{t("docs_n8n_steps")}</h3>
-              <ol className="space-y-2 text-slate-400 text-sm">
-                <li className="flex items-start gap-2">
-                  <span className="text-[#135bec] font-bold">1.</span>
-                  {t("docs_n8n_step1")}
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#135bec] font-bold">2.</span>
-                  {t("docs_n8n_step2")}
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#135bec] font-bold">3.</span>
-                  {t("docs_n8n_step3")}
-                </li>
-              </ol>
-            </div>
-          </section>
-
-          <section id="zapier" className="mb-16 scroll-mt-24">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              {t("docs_zapier")}
-            </h2>
-            <p className="text-slate-300 mb-6">
-              {t("docs_zapier_desc")}
-            </p>
-          </section>
-
-          <section id="make" className="mb-16 scroll-mt-24">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              {t("docs_make")}
-            </h2>
-            <p className="text-slate-300 mb-6">
-              {t("docs_make_desc")}
-            </p>
-          </section>
-
-          <section id="sdks" className="mb-16 scroll-mt-24">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              {t("docs_sdks")}
-            </h2>
-            <p className="text-slate-300 mb-6">
-              {t("docs_sdks_desc")}
-            </p>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6">
-                <h3 className="text-white font-bold mb-2">Node.js</h3>
-                <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm">
-                  <span className="text-slate-500">npm install </span>
-                  <span className="text-green-400">@dynamic-canvas/sdk</span>
-                </div>
-              </div>
-              <div className="bg-slate-800/60 border border-white/10 rounded-xl p-6">
-                <h3 className="text-white font-bold mb-2">Python</h3>
-                <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm">
-                  <span className="text-slate-500">pip install </span>
-                  <span className="text-green-400">dynamic-canvas</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Rate Limits */}
-          <section id="rate-limits" className="mb-16 scroll-mt-24">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              {t("docs_rate_limits")}
-            </h2>
-            <p className="text-slate-300 mb-6">
-              {t("docs_rate_limits_desc")}
-            </p>
-
-            <div className="bg-slate-800/60 border border-white/10 rounded-xl overflow-hidden">
-              <table className="w-full">
-                <thead className="border-b border-white/10">
-                  <tr>
-                    <th className="text-left px-6 py-4 text-slate-400 font-medium">{t("docs_plan")}</th>
-                    <th className="text-left px-6 py-4 text-slate-400 font-medium">{t("docs_requests_min")}</th>
-                    <th className="text-left px-6 py-4 text-slate-400 font-medium">{t("docs_renders_month")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-white/5">
-                    <td className="px-6 py-4 text-white font-medium">{t("docs_free")}</td>
-                    <td className="px-6 py-4 text-slate-300">10</td>
-                    <td className="px-6 py-4 text-slate-300">100</td>
-                  </tr>
-                  <tr className="border-b border-white/5">
-                    <td className="px-6 py-4 text-white font-medium">{t("docs_pro")}</td>
-                    <td className="px-6 py-4 text-slate-300">60</td>
-                    <td className="px-6 py-4 text-slate-300">5,000</td>
-                  </tr>
-                  <tr className="border-b border-white/5">
-                    <td className="px-6 py-4 text-white font-medium">{t("docs_enterprise")}</td>
-                    <td className="px-6 py-4 text-slate-300">500</td>
-                    <td className="px-6 py-4 text-slate-300">{t("docs_unlimited")}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          {/* Pricing */}
-          <section id="pricing" className="mb-16 scroll-mt-24">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              {t("docs_pricing")}
-            </h2>
-            <p className="text-slate-300 mb-6">
-              {t("docs_pricing_desc")}
-            </p>
-
-            <div className="bg-[#135bec]/10 border border-[#135bec]/30 rounded-xl p-6">
-              <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-[#135bec]">info</span>
-                <p className="text-slate-300">
-                  {t("docs_pricing_info")}
-                </p>
-              </div>
-            </div>
-          </section>
+          <section className="rounded-[30px] border-2 border-[#101426] bg-[#c9ff5a] p-7 shadow-[8px_8px_0_#101426] sm:p-10"><Sparkles className="size-9 text-[#5b35d5]" /><h2 className="mt-5 text-3xl font-black tracking-tight sm:text-4xl">{c.nextTitle}</h2><p className="mt-3 max-w-2xl text-[#101426]/60">{c.nextText}</p><Link href="/playground" className="mt-7 inline-flex items-center gap-2 rounded-full bg-[#5b35d5] px-6 py-3 font-bold text-white hover:bg-[#101426]">{c.playground}<ArrowRight className="size-4" /></Link></section>
         </div>
       </main>
     </div>
   );
+}
+
+const PaletteIcon = Sparkles;
+
+function SectionHeading({ number, title, text }: { number: string; title: string; text: string }) {
+  return <div><div className="flex items-center gap-3"><span className="rounded-full bg-[#5b35d5] px-3 py-1 font-mono text-[10px] font-black text-white">{number}</span><span className="h-px flex-1 bg-[#101426]/10" /></div><h2 className="mt-5 text-3xl font-black tracking-[-0.035em] sm:text-5xl">{title}</h2><p className="mt-4 max-w-3xl text-base leading-relaxed text-[#101426]/60 sm:text-lg">{text}</p></div>;
 }

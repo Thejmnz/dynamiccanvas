@@ -172,14 +172,14 @@ export const CreateTemplateModal = () => {
       if (!open) setSelectedCategory(null);
     }}>
       <DialogTrigger asChild>
-        <button className="flex items-center justify-center w-full px-3 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-all duration-200">
+        <button className="flex w-full items-center justify-center rounded-xl border-2 border-[#c9ff5a] bg-[#c9ff5a] px-3 py-3 text-[#101426] transition hover:-translate-y-0.5 hover:bg-white">
           <Plus className="size-4 mr-2 stroke-2" />
           <span className="text-sm font-medium">
             {t("create_template")}
           </span>
         </button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-3xl rounded-[24px] border-2 border-[#101426] bg-[#f6f5ef] shadow-[10px_10px_0_#101426]">
         {!selectedCategory ? (
           <>
             <DialogHeader>
@@ -195,10 +195,10 @@ export const CreateTemplateModal = () => {
                   <button
                     key={key}
                     onClick={() => setSelectedCategory(key as Category)}
-                    className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-dashed hover:border-blue-500 hover:bg-blue-50 transition-all group"
+                    className="group flex flex-col items-center gap-3 rounded-2xl border-2 border-[#101426]/15 bg-white p-5 transition-all hover:-translate-y-1 hover:border-[#5b35d5] hover:shadow-[5px_5px_0_#d9ccff]"
                   >
-                    <div className="p-3 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
-                      <Icon className="h-6 w-6 text-blue-600" />
+                    <div className="rounded-xl bg-[#e9e5ff] p-3 transition-colors group-hover:bg-[#c9ff5a]">
+                      <Icon className="h-6 w-6 text-[#5b35d5]" />
                     </div>
                     <div className="text-center">
                       <p className="font-semibold text-sm">{category.title}</p>
@@ -207,7 +207,7 @@ export const CreateTemplateModal = () => {
                       </p>
                     </div>
                     {category.popular && (
-                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-md">
+                      <span className="rounded-full bg-[#c9ff5a] px-2 py-0.5 text-xs font-bold text-[#101426]">
                         {t("popular")}
                       </span>
                     )}

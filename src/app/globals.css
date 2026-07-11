@@ -2,9 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+.editor-canvas-background {
+  background-color: #f1f0e9;
+  background-image: radial-gradient(
+    circle,
+    rgba(91, 53, 213, 0.17) 1.35px,
+    transparent 1.5px
+  );
+  background-position: 0 0;
+  background-size: 26px 26px;
+}
+
 html,
 body {
   height: 100%;
+}
+
+html {
+  zoom: 0.9;
 }
 
 /* Material Symbols Outlined */
@@ -40,35 +55,35 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 48 28% 95%;
+    --foreground: 232 41% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 232 41% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 232 41% 11%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 255 66% 52%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 252 58% 93%;
+    --secondary-foreground: 255 66% 42%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 48 18% 91%;
+    --muted-foreground: 232 10% 43%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 78 100% 68%;
+    --accent-foreground: 232 41% 11%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 232 20% 82%;
+    --input: 232 16% 80%;
+    --ring: 255 66% 52%;
 
-    --radius: 0.5rem;
+    --radius: 0.875rem;
   }
 
   .dark {
@@ -109,6 +124,22 @@ body {
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .brand-dots {
+    background-color: #f6f5ef;
+    background-image: radial-gradient(rgba(91, 53, 213, 0.16) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .brand-card {
+    @apply rounded-[1.5rem] border-2 border-[#101426] bg-white;
+  }
+
+  .brand-shadow {
+    box-shadow: 7px 7px 0 #101426;
   }
 }
 

@@ -88,7 +88,7 @@ export const QRCodeSidebar = ({
   return (
     <aside
       className={cn(
-        "absolute left-0 top-0 bg-white border-r z-[40] w-[360px] h-full flex flex-col shadow-lg",
+        "bg-white relative border-r z-[40] w-[320px] h-full flex flex-col shrink-0",
         activeTool === "qrcode" ? "visible" : "hidden"
       )}
     >

@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { db } from "@/db/drizzle";
 import { designs } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
+
+const createDesignSchema = z.object({
+  name: z.string().min(1).max(255),
+  json: z.string().min(1),
+  width: z.number().int().min(1).max(10000).optional(),
+  height: z.number().int().min(1).max(10000).optional(),
+});
 
 // GET - Fetch all designs
 export async function GET() {
@@ -38,14 +46,16 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, json, width, height } = body;
+    const parsed = createDesignSchema.safeParse(body);
 
-    if (!name || !json) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Name and JSON are required" },
+        { error: "Invalid input", details: parsed.error.flatten() },
         { status: 400 }
       );
     }
+
+    const { name, json, width, height } = parsed.data;
 
     const [newDesign] = await db
       .insert(designs)

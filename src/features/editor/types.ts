@@ -1,124 +1,22 @@
+import { fabric } from "fabric";
+import { ITextboxOptions } from "fabric/fabric-impl";
 import * as material from "material-colors";
+import type { ShapeKind } from "@/features/editor/shape-library";
 
-// ============ Konva Canvas Types ============
-
-export type ElementType = 'text' | 'rect' | 'circle' | 'triangle' | 'diamond' | 'pentagon' | 'hexagon' | 'star' | 'heart' | 'arrow' | 'line' | 'image' | 'path';
-
-export interface CanvasElement {
-  id: string;
-  type: ElementType;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  rotation?: number;
-  scaleX?: number;
-  scaleY?: number;
-  fill?: string;
-  stroke?: string;
-  strokeWidth?: number;
-  strokeDashArray?: number[];
-  opacity?: number;
-  // For circle/triangle center positioning
-  radiusX?: number;
-  radiusY?: number;
-  invert?: boolean; // For inverted triangle
-  rx?: number; // Corner radius for rect
-  ry?: number; // Corner radius for rect
-  cornerRadius?: number; // Alternative corner radius
-  // Origin for centering
-  originX?: 'left' | 'center' | 'right';
-  originY?: 'top' | 'middle' | 'bottom';
-  // Text specific
-  text?: string;
-  fontSize?: number;
-  fontFamily?: string;
-  fontWeight?: number;
-  fontStyle?: 'normal' | 'italic' | 'bold italic' | 'bold';
-  textAlign?: 'left' | 'center' | 'right';
-  textVerticalAlign?: 'top' | 'middle' | 'bottom';
-  lineHeight?: number;
-  letterSpacing?: number;
-  textDecoration?: 'underline' | 'line-through' | 'none';
-  // Image specific
-  src?: string;
-  flipX?: boolean;
-  flipY?: boolean;
-  maskType?: MaskType;
-  // Filters and effects
-  filterType?: string;
-  brightness?: number;
-  contrast?: number;
-  saturation?: number;
-  blur?: number;
-  shadowColor?: string;
-  shadowBlur?: number;
-  shadowOffsetX?: number;
-  shadowOffsetY?: number;
-  shadowOpacity?: number;
-  // Crop
-  cropX?: number;
-  cropY?: number;
-  cropWidth?: number;
-  cropHeight?: number;
-  // Common
-  locked?: boolean;
-  visible?: boolean;
-  name?: string;
-}
-
-export type MaskType =
-  | "none"
-  | "star"
-  | "triangle"
-  | "diamond"
-  | "circle"
-  | "pentagon"
-  | "hexagon"
-  | "octagon"
-  | "quarter-circle"
-  | "rounded-rect";
-
-export interface CanvasState {
-  version: string;
-  workspace: {
-    width: number;
-    height: number;
-    background: string;
-  };
-  elements: CanvasElement[];
-}
-
-// ============ Constants ============
-
-export const fonts = [
-  // Fonts in public/fonts folder
-  "Arial",
-  "Arial Black",
-  "Verdana",
-  "Tahoma",
-  "Trebuchet MS",
-  "Times New Roman",
-  "Georgia",
-  "Garamond",
-  "Courier New",
-  "Palatino",
-  "Bookman",
-  "Comic Sans MS",
-  "Impact",
-  "Lucida Console",
-  "Playfair Display",
-  // Google Fonts in public/fonts
-  "Lato",
-  "Open Sans",
-  "Oswald",
-  "Raleway",
-  "Ubuntu",
-  "Merriweather",
-  "Roboto",
-  "Roboto Slab",
-  "Noto Sans",
-  "Noto Serif",
+export const JSON_KEYS = [
+  "name",
+  "konvaId",
+  "fixedHeight",
+  "textVerticalAlign",
+  "gradientAngle",
+  "selectable",
+  "hasControls",
+  "linkData",
+  "editable",
+  "extensionType",
+  "extension",
+  "evented",
+  "locked"
 ];
 
 export const filters = [
@@ -145,6 +43,38 @@ export const filters = [
   "resize",
   "saturation",
   "gamma",
+];
+
+export const fonts = [
+  "Arial",
+  "Arial Black",
+  "Verdana",
+  "Helvetica",
+  "Tahoma",
+  "Trebuchet MS",
+  "Times New Roman",
+  "Georgia",
+  "Garamond",
+  "Courier New",
+  "Brush Script MT",
+  "Palatino",
+  "Bookman",
+  "Comic Sans MS",
+  "Impact",
+  "Lucida Sans Unicode",
+  "Geneva",
+  "Lucida Console",
+  "Playfair Display",
+  "Lato",
+  "Open Sans",
+  "Oswald",
+  "Raleway",
+  "Ubuntu",
+  "Merriweather",
+  "Roboto",
+  "Roboto Slab",
+  "Noto Sans",
+  "Noto Serif",
 ];
 
 export const selectionDependentTools = [
@@ -182,10 +112,8 @@ export const colors = [
 export type ActiveTool =
   | "select"
   | "shapes"
-  | "vectors"
   | "text"
   | "images"
-  | "uploads"
   | "draw"
   | "fill"
   | "stroke-color"
@@ -193,13 +121,14 @@ export type ActiveTool =
   | "font"
   | "opacity"
   | "filter"
-  | "effects"
   | "settings"
-  | "qrcode"
-  | "barcode"
+  | "ai"
   | "remove-bg"
   | "templates"
-  | "ai";
+  | "qrcode"
+  | "barcode"
+  | "vector"
+  | "uploads";
 
 export const FILL_COLOR = "rgba(0,0,0,1)";
 export const STROKE_COLOR = "rgba(0,0,0,1)";
@@ -209,77 +138,157 @@ export const FONT_FAMILY = "Arial";
 export const FONT_SIZE = 32;
 export const FONT_WEIGHT = 400;
 
-// Editor type for compatibility
+export const CIRCLE_OPTIONS = {
+  radius: 225,
+  left: 100,
+  top: 100,
+  fill: FILL_COLOR,
+  stroke: STROKE_COLOR,
+  strokeWidth: STROKE_WIDTH,
+};
+
+export const RECTANGLE_OPTIONS = {
+  left: 100,
+  top: 100,
+  fill: FILL_COLOR,
+  stroke: STROKE_COLOR,
+  strokeWidth: STROKE_WIDTH,
+  width: 400,
+  height: 400,
+  angle: 0,
+};
+
+export const DIAMOND_OPTIONS = {
+  left: 100,
+  top: 100,
+  fill: FILL_COLOR,
+  stroke: STROKE_COLOR,
+  strokeWidth: STROKE_WIDTH,
+  width: 600,
+  height: 600,
+  angle: 0,
+};
+
+export const TRIANGLE_OPTIONS = {
+  left: 100,
+  top: 100,
+  fill: FILL_COLOR,
+  stroke: STROKE_COLOR,
+  strokeWidth: STROKE_WIDTH,
+  width: 400,
+  height: 400,
+  angle: 0,
+};
+
+export const TEXT_OPTIONS = {
+  type: "textbox",
+  left: 100,
+  top: 100,
+  fill: FILL_COLOR,
+  fontSize: FONT_SIZE,
+  fontFamily: FONT_FAMILY,
+  splitByGrapheme: false,
+};
+
+export interface EditorHookProps {
+  defaultState?: string;
+  defaultWidth?: number;
+  defaultHeight?: number;
+  clearSelectionCallback?: () => void;
+  saveCallback?: (values: {
+    json: string;
+    height: number;
+    width: number;
+    thumbnailDataUrl?: string;
+  }) => void;
+};
+
+export type BuildEditorProps = {
+  undo: () => void;
+  redo: () => void;
+  save: () => void;
+  persist: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+  autoZoom: () => void;
+  copy: () => void;
+  paste: () => void;
+  canvas: fabric.Canvas;
+  fillColor: string;
+  strokeColor: string;
+  strokeWidth: number;
+  selectedObjects: fabric.Object[];
+  strokeDashArray: number[];
+  fontFamily: string;
+  setStrokeDashArray: (value: number[]) => void;
+  setFillColor: (value: string) => void;
+  setStrokeColor: (value: string) => void;
+  setStrokeWidth: (value: number) => void;
+  setFontFamily: (value: string) => void;
+};
+
 export interface Editor {
-  canvas?: any;
-  addRect: () => void;
-  addRectangle: () => void;
-  addSoftRectangle: () => void;
-  addCircle: () => void;
-  addTriangle: () => void;
-  addInverseTriangle: () => void;
-  addDiamond: () => void;
-  addPentagon: () => void;
-  addHexagon: () => void;
-  addStar: () => void;
-  addHeart: () => void;
-  addArrow: () => void;
-  addLine: () => void;
-  addText: (text: string, options?: any) => void;
-  addImage: (src: string) => void;
-  delete: () => void;
-  selectedObjects: any[];
-  getSelectedElements: () => CanvasElement[];
-  getActiveFillColor: () => string;
-  getActiveStrokeColor: () => string;
-  getActiveStrokeWidth: () => number;
-  getActiveStrokeDashArray: () => number[];
-  getActiveOpacity: () => number;
-  getActiveFontFamily: () => string;
-  getActiveFontSize: () => number;
-  getActiveFontWeight: () => number;
-  getActiveFontStyle: () => string;
-  getActiveTextAlign: () => string;
-  getActiveTextVerticalAlign: () => string;
-  getActiveLineHeight: () => number;
-  getActiveLetterSpacing: () => number;
-  getActiveFontUnderline: () => boolean;
-  getActiveFontLinethrough: () => boolean;
-  changeFillColor: (color: string) => void;
-  changeStrokeColor: (color: string) => void;
-  changeStrokeWidth: (width: number) => void;
-  changeStrokeDashArray: (dashArray: number[]) => void;
-  changeOpacity: (opacity: number) => void;
-  changeFontSize: (size: number) => void;
-  changeFontWeight: (weight: number) => void;
-  changeFontStyle: (style: string) => void;
-  changeFontFamily: (family: string) => void;
-  changeTextAlign: (align: string) => void;
-  changeTextVerticalAlign: (align: string) => void;
-  changeLineHeight: (height: number) => void;
-  changeLetterSpacing: (spacing: number) => void;
-  changeFontUnderline: (underline: boolean) => void;
-  changeFontLinethrough: (linethrough: boolean) => void;
-  changeImageFilter: (filter: string) => void;
-  changeSize: (width: number, height: number) => void;
-  changeBackground: (color: string) => void;
-  bringForward: () => void;
-  sendBackwards: () => void;
-  centerHorizontally: () => void;
-  centerVertically: () => void;
+  save: () => void;
   savePng: () => void;
   saveJpg: () => void;
   saveSvg: () => void;
   saveJson: () => void;
   loadJson: (json: string) => void;
-  canUndo: () => boolean;
-  canRedo: () => boolean;
   onUndo: () => void;
   onRedo: () => void;
-  onCopy: () => void;
-  onPaste: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
   autoZoom: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
-  getWorkspace: () => any;
-}
+  getWorkspace: () => fabric.Object | undefined;
+  changeBackground: (value: string) => void;
+  changeSize: (value: { width: number; height: number }) => void;
+  enableDrawingMode: () => void;
+  disableDrawingMode: () => void;
+  onCopy: () => void;
+  onPaste: () => void;
+  changeImageFilter: (value: string) => void;
+  addImage: (value: string) => void;
+  delete: () => void;
+  changeFontSize: (value: number) => void;
+  getActiveFontSize: () => number;
+  changeTextAlign: (value: string) => void;
+  getActiveTextAlign: () => string;
+  changeTextVerticalAlign: (value: TextVerticalAlign) => void;
+  getActiveTextVerticalAlign: () => TextVerticalAlign;
+  changeFontUnderline: (value: boolean) => void;
+  getActiveFontUnderline: () => boolean;
+  changeFontLinethrough: (value: boolean) => void;
+  getActiveFontLinethrough: () => boolean;
+  changeFontStyle: (value: string) => void;
+  getActiveFontStyle: () => string;
+  changeFontWeight: (value: number) => void;
+  getActiveFontWeight: () => number;
+  getActiveFontFamily: () => string;
+  changeFontFamily: (value: string) => void;
+  addText: (value: string, options?: ITextboxOptions) => void;
+  getActiveOpacity: () => number;
+  changeOpacity: (value: number) => void;
+  bringForward: () => void;
+  sendBackwards: () => void;
+  changeStrokeWidth: (value: number) => void;
+  changeFillColor: (value: string) => void;
+  changeStrokeColor: (value: string) => void;
+  changeStrokeDashArray: (value: number[]) => void;
+  addCircle: () => void;
+  addSoftRectangle: () => void;
+  addRectangle: () => void;
+  addTriangle: () => void;
+  addInverseTriangle: () => void;
+  addDiamond: () => void;
+  addShape: (kind: ShapeKind) => void;
+  canvas: fabric.Canvas;
+  getActiveFillColor: () => string;
+  getActiveStrokeColor: () => string;
+  getActiveStrokeWidth: () => number;
+  getActiveStrokeDashArray: () => number[];
+  selectedObjects: fabric.Object[];
+};
+
+export type TextVerticalAlign = "top" | "middle" | "bottom";

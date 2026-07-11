@@ -33,6 +33,23 @@ export const useGetProject = (id: string) => {
       // Prepare canvas JSON for the editor
       let canvasJson;
 
+      try {
+        const parsedJson = data.json ? JSON.parse(data.json) : undefined;
+        console.log("[Project format]", JSON.stringify({
+          id,
+          jsonVersion: parsedJson?.version,
+          jsonObjects: Array.isArray(parsedJson?.objects) ? parsedJson.objects.length : undefined,
+          jsonElements: Array.isArray(parsedJson?.elements) ? parsedJson.elements.length : undefined,
+          legacyElements: Array.isArray(data.elements) ? data.elements.length : undefined,
+        }));
+      } catch {
+        console.log("[Project format]", JSON.stringify({
+          id,
+          jsonVersion: "invalid",
+          legacyElements: Array.isArray(data.elements) ? data.elements.length : undefined,
+        }));
+      }
+
       // Primero intentar usar el campo 'json' (formato Konva 2.0)
       if (data.json) {
         try {

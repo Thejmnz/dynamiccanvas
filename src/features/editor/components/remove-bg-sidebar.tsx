@@ -1,6 +1,8 @@
 import Image from "next/image";
 import { AlertTriangle } from "lucide-react";
 
+import { usePaywall } from "@/features/subscriptions/hooks/use-paywall";
+
 import { ActiveTool, Editor } from "@/features/editor/types";
 import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
 import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-header";
@@ -22,6 +24,7 @@ export const RemoveBgSidebar = ({
   activeTool,
   onChangeActiveTool,
 }: RemoveBgSidebarProps) => {
+  const { shouldBlock, triggerPaywall } = usePaywall();
   const mutation = useRemoveBg();
 
   const selectedObject = editor?.selectedObjects[0];
@@ -34,6 +37,11 @@ export const RemoveBgSidebar = ({
   };
 
   const onClick = () => {
+    if (shouldBlock) {
+      triggerPaywall();
+      return;
+    }
+
     mutation.mutate({
       image: imageSrc,
     }, {
@@ -46,7 +54,7 @@ export const RemoveBgSidebar = ({
   return (
     <aside
       className={cn(
-        "absolute left-0 top-0 bg-white border-r z-[40] w-[360px] h-full flex flex-col shadow-lg",
+        "bg-white relative border-r z-[40] w-[320px] h-full flex flex-col",
         activeTool === "remove-bg" ? "visible" : "hidden",
       )}
     >

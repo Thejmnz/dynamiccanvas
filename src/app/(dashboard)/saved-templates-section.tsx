@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader, AlertTriangle, MoreVertical, Copy, ExternalLink } from "lucide-react";
-import { createClient } from "@supabase/supabase-js";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -15,10 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Card } from "@/components/ui/card";
 import { useCreateProject } from "@/features/projects/api/use-create-project";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from "@/lib/supabaseClient";
 
 interface Template {
     id: string;
@@ -120,7 +116,7 @@ export const SavedTemplatesSection = () => {
                 <h3 className="font-semibold text-lg">My Templates</h3>
                 <div className="flex flex-col gap-y-4 items-center justify-center h-32 border-2 border-dashed rounded-lg">
                     <p className="text-muted-foreground text-sm">
-                        No templates yet. Mark a project as template in the API Integration page!
+                        No templates yet. Mark a project as template in Playground!
                     </p>
                 </div>
             </div>

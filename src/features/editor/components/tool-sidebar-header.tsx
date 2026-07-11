@@ -8,7 +8,7 @@ export const ToolSidebarHeader = ({
   description
 }: ToolSidebarHeaderProps) => {
   return (
-    <div className="p-4 border-b space-y-1 h-[68px]">
+    <div className="h-[60px] space-y-0.5 border-b px-4 py-2.5">
       <p className="text-sm font-medium">
         {title}
       </p>

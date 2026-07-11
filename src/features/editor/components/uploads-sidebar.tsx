@@ -8,6 +8,7 @@ import { ActiveTool, Editor } from "@/features/editor/types";
 import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
 import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-header";
 import { useGetImages } from "@/features/images/api/use-get-images";
+import { resizeImageIfNeeded } from "@/lib/utils/resize-image";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/lib/supabaseClient";
@@ -36,12 +37,13 @@ export const UploadsSidebar = ({ editor, activeTool, onChangeActiveTool }: Uploa
     setIsUploading(true);
 
     try {
+      const resizedFile = await resizeImageIfNeeded(file);
       const timestamp = Date.now();
-      const fileName = `uploads/${timestamp}-${file.name.replace(/\s+/g, '-')}`;
+      const fileName = `uploads/${timestamp}-${resizedFile.name.replace(/\s+/g, '-')}`;
 
       const { error } = await supabase.storage
         .from('media')
-        .upload(fileName, file, {
+        .upload(fileName, resizedFile, {
           cacheControl: '3600',
           upsert: false
         });
@@ -96,7 +98,7 @@ export const UploadsSidebar = ({ editor, activeTool, onChangeActiveTool }: Uploa
   return (
     <aside
       className={cn(
-        "absolute left-0 top-0 bg-white border-r z-[40] w-[360px] h-full flex flex-col shadow-lg",
+        "bg-white relative border-r z-[40] w-[320px] h-full flex flex-col shrink-0",
         activeTool === "uploads" ? "visible" : "hidden"
       )}
     >
@@ -195,7 +197,7 @@ export const UploadsSidebar = ({ editor, activeTool, onChangeActiveTool }: Uploa
                     </button>
                     {/* Delete button */}
                     <button
-                      onClick={() => handleDelete(image.id, image.urls.regular)}
+                      onClick={() => handleDelete(image.id, image.urls.regular || "")}
                       disabled={deletingId === image.id}
                       className={cn(
                         "absolute top-1 right-1 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition",

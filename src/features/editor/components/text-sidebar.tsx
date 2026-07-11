@@ -1,19 +1,17 @@
-import { useLanguage } from "@/lib/contexts/LanguageContext";
-import {
-  ActiveTool,
-  Editor,
-} from "@/features/editor/types";
+"use client";
+
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
 import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-header";
-
+import { ActiveTool, Editor } from "@/features/editor/types";
 import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useLanguage } from "@/lib/contexts/LanguageContext";
 
 interface TextSidebarProps {
-  editor: any;
+  editor: Editor | undefined;
   activeTool: ActiveTool;
   onChangeActiveTool: (tool: ActiveTool) => void;
-};
+}
 
 const PRESET_TITLES = [
   { text: "SPECIAL OFFER", color: "#ef4444", fontFamily: "Impact", fontSize: 60 },
@@ -53,30 +51,23 @@ export const TextSidebar = ({
   activeTool,
   onChangeActiveTool,
 }: TextSidebarProps) => {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
 
-  const onClose = () => {
-    onChangeActiveTool("select");
-  };
-
-  const buttonStyle = {
-    backgroundColor: 'rgb(249 250 251)',
-  };
-
-  const handleMouseEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.currentTarget.style.borderColor = 'rgb(147 197 253)';
-    e.currentTarget.style.backgroundColor = '#EFF6FF';
-  };
-
-  const handleMouseLeave = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.currentTarget.style.borderColor = 'transparent';
-    e.currentTarget.style.backgroundColor = 'rgb(249 250 251)';
+  const addPreset = (preset: typeof PRESET_TITLES[number]) => {
+    editor?.addText(preset.text, {
+      fontSize: preset.fontSize,
+      fontFamily: preset.fontFamily,
+      fill: preset.color,
+      fontWeight: preset.fontFamily === "Impact" || preset.fontFamily === "Arial Black"
+        ? 900
+        : 700,
+    });
   };
 
   return (
     <aside
       className={cn(
-        "absolute left-0 top-0 bg-white border-r z-[40] w-[360px] h-full flex flex-col shadow-lg",
+        "relative z-[40] flex h-full w-[320px] flex-col border-r bg-white",
         activeTool === "text" ? "visible" : "hidden",
       )}
     >
@@ -85,112 +76,85 @@ export const TextSidebar = ({
         description={language === "es" ? "Agrega texto a tu lienzo" : "Add text to your canvas"}
       />
       <ScrollArea>
-        <div className="p-4 space-y-4">
-          {/* Título */}
-          <div>
-            <h3 className="text-xs font-medium text-gray-500 mb-2">
-              {language === "es" ? "Agregar Texto" : "Add Text"}
+        <div className="space-y-5 p-4">
+          <section>
+            <h3 className="mb-2 text-xs font-medium text-slate-500">
+              {language === "es" ? "Agregar texto" : "Add text"}
             </h3>
             <div className="flex flex-col gap-2">
-              {/* Heading */}
               <button
-                onClick={() => editor?.addText?.("Heading", {
-                  fontSize: 80,
-                  fontWeight: 700,
-                })}
-                className="h-12 rounded-lg hover:border-2 transition-colors flex items-center justify-center"
-                style={buttonStyle}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-                title={language === "es" ? "Título" : "Heading"}
+                type="button"
+                onClick={() => editor?.addText("Heading", { fontSize: 80, fontWeight: 700 })}
+                className="flex h-14 items-center justify-center rounded-lg border border-transparent bg-slate-50 text-2xl font-bold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50"
               >
-                <span className="text-2xl font-bold text-gray-700">
-                  {language === "es" ? "Título" : "Heading"}
-                </span>
+                {language === "es" ? "Título" : "Heading"}
               </button>
-              {/* Subheading */}
               <button
-                onClick={() => editor?.addText?.("Subheading", {
-                  fontSize: 44,
-                  fontWeight: 600,
-                })}
-                className="h-10 rounded-lg hover:border-2 transition-colors flex items-center justify-center"
-                style={buttonStyle}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-                title={language === "es" ? "Subtítulo" : "Subheading"}
+                type="button"
+                onClick={() => editor?.addText("Subheading", { fontSize: 44, fontWeight: 600 })}
+                className="flex h-12 items-center justify-center rounded-lg border border-transparent bg-slate-50 text-xl font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50"
               >
-                <span className="text-xl font-semibold text-gray-700">
-                  {language === "es" ? "Subtítulo" : "Subheading"}
-                </span>
+                {language === "es" ? "Subtítulo" : "Subheading"}
               </button>
-              {/* Textbox */}
               <button
-                onClick={() => editor?.addText?.("Textbox")}
-                className="h-9 rounded-lg hover:border-2 transition-colors flex items-center justify-center"
-                style={buttonStyle}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-                title={language === "es" ? "Caja de texto" : "Text box"}
+                type="button"
+                onClick={() => editor?.addText("Textbox")}
+                className="flex h-11 items-center justify-center rounded-lg border border-transparent bg-slate-50 text-lg font-medium text-slate-700 transition hover:border-blue-300 hover:bg-blue-50"
               >
-                <span className="text-lg font-medium text-gray-700">
-                  {language === "es" ? "Caja de Texto" : "Text Box"}
-                </span>
+                {language === "es" ? "Caja de texto" : "Text Box"}
               </button>
-              {/* Paragraph */}
               <button
-                onClick={() => editor?.addText?.("Paragraph", {
-                  fontSize: 32,
-                })}
-                className="h-8 rounded-lg hover:border-2 transition-colors flex items-center justify-center"
-                style={buttonStyle}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-                title={language === "es" ? "Párrafo" : "Paragraph"}
+                type="button"
+                onClick={() => editor?.addText("Paragraph", { fontSize: 32 })}
+                className="flex h-10 items-center justify-center rounded-lg border border-transparent bg-slate-50 text-base text-slate-700 transition hover:border-blue-300 hover:bg-blue-50"
               >
-                <span className="text-base font-normal text-gray-700">
-                  {language === "es" ? "Párrafo" : "Paragraph"}
-                </span>
+                {language === "es" ? "Párrafo" : "Paragraph"}
               </button>
             </div>
-          </div>
+          </section>
 
-          {/* Preset Titles */}
-          <div className="pt-2 border-t">
-            <h3 className="text-xs font-medium text-gray-500 mb-2">
-              {language === "es" ? "Títulos Predefinidos" : "Preset Titles"}
+          <section className="border-t pt-4">
+            <h3 className="mb-2 text-xs font-medium text-slate-500">
+              {language === "es" ? "Títulos predefinidos" : "Preset titles"}
             </h3>
             <div className="grid grid-cols-2 gap-2">
-              {PRESET_TITLES.map((preset, index) => (
-                <button
-                  key={index}
-                  onClick={() => editor?.addText?.(preset.text, {
-                    fontSize: preset.fontSize,
-                    fontFamily: preset.fontFamily,
-                    fill: preset.color,
-                    fontWeight: preset.fontFamily === "Impact" || preset.fontFamily === "Arial Black" ? 900 : 700,
-                  })}
-                  className="h-10 rounded-lg hover:border-2 transition-colors flex items-center justify-center border border-gray-200 hover:shadow-md"
-                  style={{ backgroundColor: '#fafafa' }}
-                >
-                  <span 
-                    style={{ 
-                      color: preset.color, 
-                      fontFamily: preset.fontFamily,
-                      fontSize: preset.text.length > 10 ? '10px' : preset.text.length > 6 ? '12px' : '14px',
-                      fontWeight: preset.fontFamily === "Impact" || preset.fontFamily === "Arial Black" ? 900 : 700,
-                      letterSpacing: '0.5px',
-                    }}
+              {PRESET_TITLES.map((preset) => {
+                const previewSize = preset.text.length > 10
+                  ? 10
+                  : preset.text.length > 6
+                    ? 12
+                    : 14;
+                const previewWeight = preset.fontFamily === "Impact" || preset.fontFamily === "Arial Black"
+                  ? 900
+                  : 700;
+
+                return (
+                  <button
+                    key={preset.text}
+                    type="button"
+                    title={`${preset.text} · ${preset.fontFamily}`}
+                    onClick={() => addPreset(preset)}
+                    className="flex h-12 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 px-2 transition hover:border-blue-300 hover:bg-blue-50 hover:shadow-sm"
                   >
-                    {preset.text}
-                  </span>
-                </button>
-              ))}
+                    <span
+                      className="truncate tracking-wide"
+                      style={{
+                        color: preset.color,
+                        fontFamily: preset.fontFamily,
+                        fontSize: previewSize,
+                        fontWeight: previewWeight,
+                      }}
+                    >
+                      {preset.text}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-          </div>
+          </section>
         </div>
       </ScrollArea>
-      <ToolSidebarClose onClick={onClose} />
+      <ToolSidebarClose onClick={() => onChangeActiveTool("select")} />
     </aside>
   );
 };

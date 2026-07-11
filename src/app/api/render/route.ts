@@ -58,6 +58,89 @@ interface CanvasData {
   elements: CanvasElement[];
 }
 
+function convertFabricCanvasData(parsed: any, template: any): CanvasData | null {
+  if (!Array.isArray(parsed?.objects)) return null;
+
+  const workspaceObject = parsed.objects.find((object: any) => object?.name === "clip");
+  const workspaceWidth = Number(workspaceObject?.width || template?.width || 800);
+  const workspaceHeight = Number(workspaceObject?.height || template?.height || 600);
+  const workspaceLeft = Number(workspaceObject?.left || 0);
+  const workspaceTop = Number(workspaceObject?.top || 0);
+
+  const elements = parsed.objects
+    .filter((object: any) => object?.name !== "clip" && object?.visible !== false)
+    .map((object: any, index: number) => {
+      const originalType = String(object.type || "").toLowerCase();
+      let type = originalType;
+
+      if (["textbox", "i-text"].includes(originalType)) type = "text";
+      if (["ellipse"].includes(originalType)) type = "circle";
+      if (originalType === "polygon") {
+        type = object.points?.length === 3
+          ? "triangle"
+          : object.points?.length === 4
+            ? "diamond"
+            : "rect";
+      }
+
+      if (!["rect", "circle", "triangle", "diamond", "text", "image"].includes(type)) {
+        return null;
+      }
+
+      const scaleX = Number(object.scaleX || 1);
+      const scaleY = Number(object.scaleY || 1);
+      const width = Number(
+        object.width || (originalType === "ellipse" ? Number(object.rx || 0) * 2 : 100),
+      );
+      const height = Number(
+        object.fixedHeight || object.height || (originalType === "ellipse" ? Number(object.ry || 0) * 2 : 100),
+      );
+      let x = Number(object.left || 0) - workspaceLeft;
+      let y = Number(object.top || 0) - workspaceTop;
+
+      if (object.originX === "center") x -= (width * scaleX) / 2;
+      if (object.originX === "right") x -= width * scaleX;
+      if (object.originY === "center") y -= (height * scaleY) / 2;
+      if (object.originY === "bottom") y -= height * scaleY;
+
+      return {
+        ...object,
+        id: object.konvaId || object.name || `fabric-element-${index + 1}`,
+        name: object.name,
+        type,
+        x,
+        y,
+        width,
+        height,
+        rotation: Number(object.angle || 0),
+        scaleX,
+        scaleY,
+        src: object.src,
+        fill: object.fill,
+        text: object.text,
+        fontFamily: object.fontFamily,
+        fontSize: object.fontSize,
+        fontWeight: object.fontWeight,
+        fontStyle: object.fontStyle,
+        textAlign: object.textAlign,
+        textVerticalAlign: object.textVerticalAlign,
+        lineHeight: object.lineHeight,
+        opacity: object.opacity,
+      } as CanvasElement;
+    })
+    .filter((element: CanvasElement | null): element is CanvasElement => element !== null);
+
+  return {
+    version: "2.0",
+    workspace: {
+      width: workspaceWidth,
+      height: workspaceHeight,
+      background: workspaceObject?.fill || template?.backgroundColor || "#ffffff",
+    },
+    elements,
+  };
+}
+
 // Helper function to calculate text height based on content
 function calculateTextHeight(element: any): number {
   if (element.type !== 'text') return element.height || 100;
@@ -75,8 +158,84 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.
 
 export const dynamic = 'force-dynamic';
 
+// SSRF protection: block internal/private IPs and metadata endpoints
+const ALLOWED_IMAGE_HOSTS = [
+  'qhfbwqijhefoeebxnota.supabase.co',
+];
+
+function isSafeImageUrl(urlStr: string): boolean {
+  try {
+    const url = new URL(urlStr);
+    // Only allow https (or data: URIs handled elsewhere)
+    if (url.protocol !== 'https:') return false;
+
+    const host = url.hostname.toLowerCase();
+
+    // Block cloud metadata endpoints
+    if (host === '169.254.169.254' || host === '169.254.170.2') return false;
+
+    // Block localhost and loopback
+    if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '::1') return false;
+
+    // Block private/internal IP ranges
+    const parts = host.split('.').map(Number);
+    if (parts.length === 4) {
+      if (parts[0] === 10) return false;                        // 10.0.0.0/8
+      if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return false; // 172.16.0.0/12
+      if (parts[0] === 192 && parts[1] === 168) return false;   // 192.168.0.0/16
+      if (parts[0] === 169 && parts[1] === 254) return false;   // 169.254.0.0/16 (link-local)
+      if (parts[0] === 127) return false;                        // 127.0.0.0/8
+    }
+
+    // Block .local domains
+    if (host.endsWith('.local') || host.endsWith('.internal')) return false;
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Cache for already registered fonts to avoid re-registering
 const registeredFonts = new Set<string>();
+
+// --- Konva singleton: import once per cold start, not per request ---
+let _konvaModule: any = null;
+async function getKonva() {
+  if (!_konvaModule) {
+    await import('konva/canvas-backend');
+    _konvaModule = await import('konva');
+  }
+  return _konvaModule;
+}
+
+// --- Pre-register all local fonts at first use (once per cold start) ---
+let _localFontsScanned = false;
+function scanLocalFonts() {
+  if (_localFontsScanned) return;
+  _localFontsScanned = true;
+  try {
+    const basePath = process.cwd();
+    const fontsDir = path.join(basePath, 'public', 'fonts');
+    if (fs.existsSync(fontsDir)) {
+      const files = fs.readdirSync(fontsDir);
+      for (const file of files) {
+        const ext = path.extname(file).toLowerCase();
+        if (ext === '.ttf' || ext === '.otf' || ext === '.woff') {
+          const family = path.basename(file, ext);
+          const fontPath = path.join(fontsDir, file);
+          try {
+            registerFont(fontPath, { family });
+            registeredFonts.add(family);
+          } catch {}
+        }
+      }
+      console.log(`[API Render] Pre-registered ${registeredFonts.size} local fonts`);
+    }
+  } catch (e) {
+    console.error('[API Render] Error scanning local fonts:', e);
+  }
+}
 
 // Type for uploaded_fonts table
 interface UploadedFont {
@@ -152,10 +311,10 @@ async function registerCustomFont(
 
       // Save to temp file
       const tempDir = os.tmpdir();
-      const fontExt = font.public_url.split('.').pop() || 'ttf';
+      const fontExt = font.public_url.split('.').pop()?.split('?')[0] || 'ttf';
       const tempFontPath = path.join(tempDir, `${fontName.replace(/\s+/g, '_')}_${Date.now()}.${fontExt}`);
 
-      fs.writeFileSync(tempFontPath, Buffer.from(fontBuffer));
+      fs.writeFileSync(tempFontPath, new Uint8Array(fontBuffer));
 
       // Register the font with node-canvas
       registerFont(tempFontPath, { family: fontName });
@@ -196,14 +355,17 @@ async function registerCustomFont(
 
         // Save to temp file
         const tempDir = os.tmpdir();
-        const fontExt = fontFile.name.split('.').pop() || 'ttf';
+        const fontExt = fontFile.name.split('.').pop()?.split('?')[0] || 'ttf';
         const tempFontPath = path.join(tempDir, `${fontName.replace(/\s+/g, '_')}_${Date.now()}.${fontExt}`);
 
-        fs.writeFileSync(tempFontPath, Buffer.from(fontBuffer));
+        fs.writeFileSync(tempFontPath, new Uint8Array(fontBuffer));
 
         // Register the font with node-canvas
         registerFont(tempFontPath, { family: fontName });
         registeredFonts.add(fontName);
+
+        // Clean up temp file after process exit
+        try { fs.unlinkSync(tempFontPath); } catch {}
 
         log(`Successfully registered font "${fontName}" from ${tempFontPath}`);
         return true;
@@ -221,10 +383,13 @@ async function registerCustomFont(
 export async function POST(req: NextRequest) {
   const isDebug = process.env.DEBUG === "true";
   const debugLogs: string[] | undefined = isDebug ? [] : undefined;
+  const _t0 = Date.now();
   const log = (msg: string) => {
+    const elapsed = Date.now() - _t0;
+    const line = `[${elapsed}ms] ${msg}`;
+    console.log(`[API Render] ${line}`);
     if (isDebug) {
-      console.log(`[API Render] ${msg}`);
-      debugLogs!.push(msg);
+      debugLogs!.push(line);
     }
   };
 
@@ -232,7 +397,10 @@ export async function POST(req: NextRequest) {
   let templateId: string | undefined;
 
   try {
-    // 1. Validate API Key
+    // Pre-register local fonts (scans public/fonts once per cold start)
+    scanLocalFonts();
+
+    // 1. Parse auth header + body in parallel with data fetching
     const authHeader = req.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Missing/Invalid Authorization header" }, { status: 401 });
@@ -241,33 +409,39 @@ export async function POST(req: NextRequest) {
     const apiKey = authHeader.replace("Bearer ", "");
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { data: keyData, error: apiKeyError } = await supabase
-      .from("user_api_keys")
-      .select("user_id")
-      .eq("api_key", apiKey)
-      .single();
-
-    apiKeyData = keyData;
-
-    if (apiKeyError || !apiKeyData) {
-      return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
-    }
-
-    // 2. Parse request
+    // Parse body first so we have templateId
     const body = await req.json();
     templateId = body.templateId;
     const layers = body.layers;
+    const requestedScale = Number(body.scale ?? body.pixelRatio ?? 2);
+    const outputFormat = String(body.format ?? "jpeg").toLowerCase() === "png" ? "png" : "jpeg";
 
     log(`Received request for Template: ${templateId}`);
 
     if (!templateId) return NextResponse.json({ error: "Missing templateId" }, { status: 400 });
 
-    // 3. Fetch template
-    const { data: template, error: templateError } = await supabase
-      .from("dynamic_canvas_templates")
-      .select("*")
-      .eq("id", templateId)
-      .single();
+    // 2. Run API key check + template fetch IN PARALLEL
+    const [keyResult, templateResult] = await Promise.all([
+      supabase
+        .from("user_api_keys")
+        .select("user_id")
+        .eq("api_key", apiKey)
+        .single(),
+      supabase
+        .from("dynamic_canvas_templates")
+        .select("*")
+        .eq("id", templateId)
+        .single(),
+    ]);
+
+    apiKeyData = keyResult.data;
+
+    if (keyResult.error || !apiKeyData) {
+      return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
+    }
+
+    const template = templateResult.data;
+    const templateError = templateResult.error;
 
     if (templateError || !template) return NextResponse.json({ error: "Template not found" }, { status: 404 });
 
@@ -281,6 +455,12 @@ export async function POST(req: NextRequest) {
         const parsed = JSON.parse(template.json);
         if (parsed.version === "2.0") {
           canvasData = parsed;
+        } else {
+          const converted = convertFabricCanvasData(parsed, template);
+          if (converted) {
+            canvasData = converted;
+            log(`Converted Fabric JSON to render model (${converted.elements.length} elements)`);
+          }
         }
       } catch (e) {
         console.error("[API Render] Error parsing JSON field:", e);
@@ -330,9 +510,13 @@ export async function POST(req: NextRequest) {
           // Image updates
           const targetImageUrl = update.image_url || update.src || update.url || update.image;
           if (element.type === 'image' && targetImageUrl) {
-            newElement.src = targetImageUrl;
-            // Mark that this image was dynamically updated so we use original dimensions
-            newElement._isDynamicImage = true;
+            if (!isSafeImageUrl(targetImageUrl)) {
+              log(`Blocked unsafe image URL in layer update (SSRF): ${targetImageUrl}`);
+            } else {
+              newElement.src = targetImageUrl;
+              // Mark that this image was dynamically updated so we use original dimensions
+              newElement._isDynamicImage = true;
+            }
           }
 
           return newElement;
@@ -350,25 +534,27 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    for (const fontName of fontsToRegister) {
+    // Register all fonts in parallel (local fonts hit the cache instantly)
+    await Promise.all(Array.from(fontsToRegister).map(async (fontName) => {
       log(`Registering font: ${fontName}`);
       await registerCustomFont(fontName, supabase, log);
 
-      // Also try to register the normalized name (e.g. PlayfairDisplay -> Playfair Display)
-      // This ensures that if getBestFont renames the font, we have registered the target name if possible
       const normalized = getBestFont(fontName);
       if (normalized !== fontName) {
         log(`Also checking normalized font: ${normalized}`);
         await registerCustomFont(normalized, supabase, log);
       }
-    }
+    }));
+
+    log("Fonts registered.");
 
     // 7. Render using Konva with canvas-backend (official Node.js support)
-    log("Starting Konva rendering with canvas-backend...");
+    log("Loading Konva...");
 
-    // Import canvas backend for Konva
-    await import('konva/canvas-backend');
-    const Konva = await import('konva');
+    // Use cached Konva module (imported once per cold start)
+    const Konva = await getKonva();
+
+    log("Creating canvas...");
 
     // Create canvas using node-canvas
     const canvas = createCanvas(canvasData.workspace.width, canvasData.workspace.height);
@@ -391,6 +577,24 @@ export async function POST(req: NextRequest) {
       fill: canvasData.workspace.background || '#ffffff',
     });
     layer.add(background);
+
+    // Pre-load all images in parallel before rendering
+    const imageElements = canvasData.elements.filter((el: any) => el.type === 'image' && el.src);
+    const imageCache = new Map<string, any>();
+    if (imageElements.length > 0) {
+      log(`Pre-loading ${imageElements.length} image(s) in parallel...`);
+      await Promise.all(imageElements.map(async (el: any) => {
+        try {
+          const img = await loadImage(el.src);
+          imageCache.set(el.id, img);
+          log(`  Loaded image ${el.id}: ${img.width}x${img.height}`);
+        } catch (err: any) {
+          log(`  Failed to load image ${el.id}: ${err.message}`);
+        }
+      }));
+    }
+
+    log("Rendering elements...");
 
     // Render elements
     for (const el of canvasData.elements) {
@@ -523,26 +727,16 @@ export async function POST(req: NextRequest) {
           if (el.textDecoration) textConfig.textDecoration = el.textDecoration;
 
           node = new Konva.default.Text(textConfig);
-
-          // If height was dynamically updated, adjust Y to keep bounding box centered
-          // Get the actual rendered height from Konva
-          const actualHeight = node.height();
-          const storedHeight = el.height || 100;
-
-          // Only adjust if the actual height differs significantly from stored height
-          if (Math.abs(actualHeight - storedHeight) > 5) {
-            // Calculate the center of the original stored bounding box
-            const originalBoxCenter = textConfig.y + storedHeight / 2;
-            // Adjust Y to keep that same center point with the new height
-            node.y(originalBoxCenter - actualHeight / 2);
-          }
           break;
 
         case 'image':
           if (el.src) {
             try {
-              const { Image } = await import('canvas');
-              const imageObj = await loadImage(el.src);
+              const imageObj = imageCache.get(el.id);
+              if (!imageObj) {
+                log(`Image ${el.id} not in cache, skipping`);
+                break;
+              }
 
               // Get stored dimensions and scale (should be 1 after transformer ends)
               const scaleX = el.scaleX || 1;
@@ -565,9 +759,9 @@ export async function POST(req: NextRequest) {
 
               if (el._isDynamicImage === true) {
                 // For dynamically updated images, use object-fit: cover
-                // Scale to cover the entire container, cropping if necessary
-                const containerWidth = storedWidth;
-                const containerHeight = storedHeight;
+                // Use FINAL dimensions (stored × scale) as the container
+                const containerWidth = finalWidth;
+                const containerHeight = finalHeight;
 
                 // Calculate scale to cover container (take the larger scale)
                 const scaleByWidth = containerWidth / imageObj.width;
@@ -579,11 +773,9 @@ export async function POST(req: NextRequest) {
                 imageHeight = imageObj.height * coverScale;
 
                 // Position to center the image (will be cropped by Konva)
-                posX = (el.x || 0) - (imageWidth - containerWidth) / 2;
-                posY = (el.y || 0) - (imageHeight - containerHeight) / 2;
+                posX = (imageWidth - containerWidth) / 2;
+                posY = (imageHeight - containerHeight) / 2;
 
-                // Use a clip to crop the image to container bounds
-                // We'll create a group with clip for this
                 log(`  - Dynamic image mode: cover ${containerWidth}x${containerHeight}, scaled to ${imageWidth}x${imageHeight}`);
               } else {
                 // For template images, use the exact dimensions from the editor
@@ -595,24 +787,23 @@ export async function POST(req: NextRequest) {
 
               if (el._isDynamicImage === true) {
                 // Create a group with clip for cover effect
-                const containerWidth = el.width || 100;
-                const containerHeight = el.height || 100;
-
                 const group = new Konva.default.Group({
                   x: el.x || 0,
                   y: el.y || 0,
-                  width: containerWidth,
-                  height: containerHeight,
+                  width: finalWidth,
+                  height: finalHeight,
                   clipFunc: (ctx: any) => {
-                    ctx.rect(0, 0, containerWidth, containerHeight);
+                    ctx.rect(0, 0, finalWidth, finalHeight);
                   },
                   opacity: el.opacity !== undefined ? el.opacity : 1,
                   rotation: el.rotation || 0,
+                  scaleX: 1,
+                  scaleY: 1,
                 });
 
                 const imageNode = new Konva.default.Image({
-                  x: posX - (el.x || 0),
-                  y: posY - (el.y || 0),
+                  x: posX,
+                  y: posY,
                   image: imageObj,
                   width: imageWidth,
                   height: imageHeight,
@@ -646,26 +837,50 @@ export async function POST(req: NextRequest) {
     }
 
     // Draw the layer
+    log("Drawing layer...");
     layer.draw();
 
-    // Convert to buffer using stage.toDataURL
-    log("Converting to buffer...");
-    const dataURL = stage.toDataURL({ mimeType: 'image/png', pixelRatio: 1 });
-    const base64Data = dataURL.replace(/^data:image\/png;base64,/, '');
+    // Render in HD by default, matching the editor export quality.
+    // Keep the multiplier bounded so ordinary social templates stay below 4K.
+    const maxLogicalDimension = Math.max(
+      canvasData.workspace.width,
+      canvasData.workspace.height,
+    );
+    const safeRequestedScale = Number.isFinite(requestedScale)
+      ? Math.min(3, Math.max(1, requestedScale))
+      : 3;
+    const pixelRatio = Math.max(
+      1,
+      Math.min(safeRequestedScale, 4096 / maxLogicalDimension),
+    );
+    const outputWidth = Math.round(canvasData.workspace.width * pixelRatio);
+    const outputHeight = Math.round(canvasData.workspace.height * pixelRatio);
+
+    const mimeType = outputFormat === 'png' ? 'image/png' : 'image/jpeg';
+    const fileExt = outputFormat === 'png' ? 'png' : 'jpg';
+
+    log(`Converting to HD buffer at ${pixelRatio.toFixed(2)}x (${outputWidth}x${outputHeight}) as ${outputFormat}...`);
+    const dataURL = stage.toDataURL({
+      mimeType,
+      pixelRatio,
+      quality: outputFormat === 'png' ? 1 : 0.92,
+    });
+    const base64Data = dataURL.replace(/^data:image\/[a-z]+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
 
-    log(`Render complete: ${buffer.length} bytes`);
+    log(`Render complete: ${(buffer.length / 1024 / 1024).toFixed(2)} MB`);
 
     // 7. Upload to Supabase
+    log("Uploading to Supabase...");
     const templateName = (template.name || templateId).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     const timestamp = Date.now();
-    const fileName = `renders/${templateId}-${templateName}-${timestamp}.png`;
+    const fileName = `renders/${templateId}-${templateName}-${timestamp}.${fileExt}`;
 
     const { error: uploadError } = await supabase
       .storage
       .from('media')
       .upload(fileName, buffer, {
-        contentType: 'image/png',
+        contentType: mimeType,
         upsert: false,
       });
 
@@ -678,18 +893,21 @@ export async function POST(req: NextRequest) {
       log(`Upload error: ${uploadError?.message}`);
     }
 
-    // Increment render count for user
-    try {
-      await db.update(users)
-        .set({ renderCount: sql `${users.renderCount} + 1` })
-        .where(eq(users.id, apiKeyData.user_id));
-    } catch (logError) {
-      console.error("Error updating render count:", logError);
-    }
+    // Increment render count (fire-and-forget, don't block response)
+    db.update(users)
+      .set({ renderCount: sql `${users.renderCount} + 1` })
+      .where(eq(users.id, apiKeyData.user_id))
+      .catch((logError) => console.error("Error updating render count:", logError));
+
+    log(`✅ TOTAL: ${Date.now() - _t0}ms`);
 
     return NextResponse.json({
       status: "success",
       imageUrl: publicUrl,
+      width: outputWidth,
+      height: outputHeight,
+      pixelRatio,
+      totalTimeMs: Date.now() - _t0,
       ...(isDebug && { logs: debugLogs }),
     }, { status: 200 });
 
@@ -714,8 +932,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error: "Internal server error",
-        details: error.message,
-        stack: error.stack,
+        ...(process.env.NODE_ENV === 'development' && {
+          details: error.message,
+          stack: error.stack,
+        }),
         ...(isDebug && { logs: debugLogs })
       },
       { status: 500 }
@@ -734,6 +954,10 @@ async function loadImage(src: string): Promise<any> {
 
     // Handle different URL formats
     if (src.startsWith('http://') || src.startsWith('https://')) {
+      if (!isSafeImageUrl(src)) {
+        reject(new Error(`Blocked unsafe image URL (SSRF protection): ${src}`));
+        return;
+      }
       // Fetch the image data
       fetch(src)
         .then(res => {
@@ -763,7 +987,8 @@ export async function GET() {
     authentication: "Bearer token in Authorization header",
     requestBody: {
       templateId: "string (required) - ID of the template to render",
-      layers: "object (optional) - Dynamic data to merge with template elements"
+      layers: "object (optional) - Dynamic data to merge with template elements",
+      scale: "number (optional, 1-3) - Output resolution multiplier; defaults to 3"
     },
     exampleRequest: {
       templateId: "your-template-id",

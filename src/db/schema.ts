@@ -16,7 +16,7 @@ export const users = pgTable("user", {
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
   name: text("name"),
-  email: text("email").notNull(),
+  email: text("email").notNull().unique(),
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
   password: text("password"),
@@ -109,8 +109,8 @@ export const projects = pgTable("project", {
   height: integer("height").notNull(),
   width: integer("width").notNull(),
   thumbnailUrl: text("thumbnailUrl"),
-  isTemplate: boolean("isTemplate"),
-  isPro: boolean("isPro"),
+  isTemplate: boolean("isTemplate").notNull().default(false),
+  isPro: boolean("isPro").notNull().default(false),
   createdAt: timestamp("createdAt", { mode: "date" }).notNull(),
   updatedAt: timestamp("updatedAt", { mode: "date" }).notNull(),
 });
@@ -186,7 +186,7 @@ export const subscriptions = pgTable("subscription", {
     .references(() => users.id, {
       onDelete: "cascade",
     }),
-  subscriptionId: text("subscriptionId").notNull(),
+  subscriptionId: text("subscriptionId").notNull().unique(),
   customerId: text("customerId").notNull(),
   priceId: text("priceId").notNull(),
   status: text("status").notNull(),

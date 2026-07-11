@@ -31,8 +31,8 @@ const ProjectThumbnail = ({ project }: { project: any }) => {
 
   // Placeholder si no hay thumbnail
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-blue-50 to-purple-50">
-      <div className="text-4xl text-blue-200">📐</div>
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#e9e5ff] [background-image:radial-gradient(rgba(91,53,213,.18)_1px,transparent_1px)] [background-size:18px_18px]">
+      <div className="text-4xl">📐</div>
       <div className="text-center">
         <p className="text-xs text-gray-600 font-medium">{project.width} × {project.height}</p>
         <p className="text-xs text-gray-400">{t("pixels")}</p>
@@ -136,25 +136,32 @@ export const ProjectsSection = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-7">
       <ConfirmDialog />
 
+      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#5b35d5]">Dynamic Canvas</p>
+          <h1 className="mt-2 text-4xl font-black tracking-[-0.04em] text-[#101426] sm:text-5xl">{t("my_templates")}</h1>
+          <p className="mt-2 text-sm font-medium text-[#101426]/50">{allProjects.length} {language === "es" ? "plantillas listas para editar y automatizar" : "templates ready to edit and automate"}</p>
+        </div>
+        <div className="rounded-full border-2 border-[#101426] bg-[#c9ff5a] px-4 py-2 text-xs font-black shadow-[4px_4px_0_#101426]">
+          {language === "es" ? "Editor + API en un solo lugar" : "Editor + API in one place"}
+        </div>
+      </div>
+
       {/* Search Bar - Centered */}
-      <div className="max-w-md mx-auto">
+      <div className="max-w-lg">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-300" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-[#5b35d5]" />
           <Input
             placeholder={t("search_placeholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 placeholder:text-gray-300 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-blue-600"
+            className="h-12 border-2 border-[#101426] bg-white pl-11 placeholder:text-[#101426]/30"
           />
         </div>
       </div>
-
-      <h3 className="font-semibold text-lg">
-        {t("my_templates")}
-      </h3>
 
       {filteredProjects.length === 0 && searchQuery && (
         <div className="flex flex-col gap-y-4 items-center justify-center h-32 border-2 border-dashed rounded-lg">
@@ -175,12 +182,12 @@ export const ProjectsSection = () => {
       )}
 
       {filteredProjects.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
           {filteredProjects.map((project) => (
-            <Card key={project.id} className="group relative overflow-hidden border-2 hover:border-blue-500 transition-all">
+            <Card key={project.id} className="group relative overflow-hidden rounded-[22px] border-2 border-[#101426] bg-white transition-all hover:-translate-y-1 hover:shadow-[7px_7px_0_#101426]">
               {/* Thumbnail */}
               <div
-                className="aspect-[3/4] bg-white relative cursor-pointer overflow-hidden p-2"
+                className="relative aspect-[3/4] cursor-pointer overflow-hidden border-b-2 border-[#101426] bg-[#e9e5ff]"
                 onClick={() => router.push(`/editor/${project.id}`)}
               >
                 <ProjectThumbnail project={project} />
@@ -227,9 +234,9 @@ export const ProjectsSection = () => {
               </div>
 
               {/* Info */}
-              <div className="p-3 space-y-2">
+              <div className="space-y-3 p-4">
                 <div>
-                  <p className="font-medium text-sm truncate">{project.name}</p>
+                  <p className="truncate text-base font-black">{project.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {project.width} x {project.height} px
                   </p>
@@ -238,7 +245,7 @@ export const ProjectsSection = () => {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="w-full text-xs"
+                  className="w-full border-[#101426]/20 bg-[#f6f5ef] text-xs hover:bg-[#c9ff5a]"
                   onClick={() => router.push(`/editor/${project.id}`)}
                 >
                   {t("open_in_editor")}

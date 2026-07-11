@@ -1,11 +1,14 @@
 import Link from "next/link";
+import { BrandMark } from "@/components/brand-mark";
 
 export const Logo = () => {
   return (
-    <Link href="/dashboard" className="hover:opacity-75 transition">
-      <div className="w-8 h-8 bg-[#135bec] rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0">
-        DC
-      </div>
+    <Link
+      href="/dashboard"
+      aria-label="Ir al dashboard"
+      className="transition hover:-translate-y-0.5"
+    >
+      <BrandMark />
     </Link>
   );
 };

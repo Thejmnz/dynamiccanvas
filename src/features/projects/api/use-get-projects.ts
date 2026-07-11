@@ -1,17 +1,17 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
-import { useAuth } from "@/lib/contexts/AuthContext";
+import { useUserRole } from "@/hooks/use-user-role";
 
 export const useGetProjects = () => {
-  const { user } = useAuth();
+  const { userId } = useUserRole();
   const LIMIT = 5;
 
   const query = useInfiniteQuery({
     initialPageParam: 0,
     getNextPageParam: (lastPage: any) => lastPage.nextPage,
-    queryKey: ["projects"],
+    queryKey: ["projects", { userId }],
     queryFn: async ({ pageParam = 0 }) => {
-      if (!user) return { data: [], nextPage: null };
+      if (!userId) return { data: [], nextPage: null };
 
       const from = (pageParam as number) * LIMIT;
       const to = from + LIMIT - 1;
@@ -19,7 +19,7 @@ export const useGetProjects = () => {
       const { data, error } = await supabase
         .from('dynamic_canvas_templates')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .order('lastModified', { ascending: false, nullsFirst: false })
         .range(from, to);
 
@@ -46,7 +46,7 @@ export const useGetProjects = () => {
         nextPage: data && data.length === LIMIT ? (pageParam as number) + 1 : null,
       };
     },
-    enabled: !!user,
+    enabled: !!userId,
   });
 
   return query;

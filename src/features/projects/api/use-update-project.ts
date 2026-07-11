@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabaseClient";
+import { useLanguage } from "@/lib/contexts/LanguageContext";
 
 // Función auxiliar para generar y subir thumbnail a Supabase Storage
 async function generateAndUploadThumbnail(
@@ -53,6 +54,7 @@ async function generateAndUploadThumbnail(
 
 export const useUpdateProject = (id: string) => {
   const queryClient = useQueryClient();
+  const { t } = useLanguage();
 
   const mutation = useMutation({
     mutationFn: async (values: {
@@ -125,12 +127,12 @@ export const useUpdateProject = (id: string) => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       queryClient.invalidateQueries({ queryKey: ["project", { id }] });
       if (!variables.silent) {
-        toast.success("Project saved");
+        toast.success(t("project_saved"));
       }
     },
     onError: (error) => {
       console.error("Mutation error:", error);
-      toast.error("Failed to save project");
+      toast.error(t("failed_to_save_project"));
     }
   });
 

@@ -8,7 +8,6 @@ interface SidebarItemProps {
   label: string;
   isActive?: boolean;
   onClick: () => void;
-  disabled?: boolean;
 };
 
 export const SidebarItem = ({
@@ -16,21 +15,18 @@ export const SidebarItem = ({
   label,
   isActive,
   onClick,
-  disabled,
 }: SidebarItemProps) => {
   return (
     <Button
       variant="ghost"
       onClick={onClick}
-      disabled={disabled}
       className={cn(
-        "w-full h-full aspect-video p-3 py-4 flex flex-col rounded-none group transition-all duration-200",
-        isActive && "bg-muted text-primary",
-        disabled && "opacity-50 cursor-not-allowed"
+        "mx-1.5 my-0.5 h-[58px] w-[calc(100%-12px)] shrink flex-col rounded-xl p-1.5 text-white/60 hover:bg-white/10 hover:text-white",
+        isActive && "bg-[#c9ff5a] text-[#101426] hover:bg-[#c9ff5a] hover:text-[#101426]"
       )}
     >
-      <Icon className="size-5 stroke-2 shrink-0 transition-transform duration-200 group-hover:scale-110 group-active:scale-95" />
-      <span className="mt-2 text-xs transition-all duration-200 group-hover:font-medium">
+      <Icon className="size-4 shrink-0 stroke-2" />
+      <span className="mt-1 text-[10px] leading-none">
         {label}
       </span>
     </Button>

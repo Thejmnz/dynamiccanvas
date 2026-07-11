@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { ActiveTool, Editor } from "@/features/editor/types";
 import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
 import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-header";
@@ -23,7 +22,6 @@ export const SettingsSidebar = ({
   activeTool,
   onChangeActiveTool,
 }: SettingsSidebarProps) => {
-  const { t } = useLanguage();
   const workspace = editor?.getWorkspace();
 
   const initialWidth = useMemo(() => `${workspace?.width ?? 0}`, [workspace]);
@@ -38,12 +36,12 @@ export const SettingsSidebar = ({
     setWidth(initialWidth);
     setHeight(initialHeight);
     setBackground(initialBackground);
-  },
-    [
-      initialWidth,
-      initialHeight,
-      initialBackground
-    ]);
+  }, 
+  [
+    initialWidth,
+    initialHeight,
+    initialBackground
+  ]);
 
   const changeWidth = (value: string) => setWidth(value);
   const changeHeight = (value: string) => setHeight(value);
@@ -55,10 +53,10 @@ export const SettingsSidebar = ({
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    editor?.changeSize(
-      parseInt(width, 10),
-      parseInt(height, 10)
-    );
+    editor?.changeSize({
+      width: parseInt(width, 10),
+      height: parseInt(height, 10),
+    });
   }
 
   const onClose = () => {
@@ -68,40 +66,42 @@ export const SettingsSidebar = ({
   return (
     <aside
       className={cn(
-        "absolute left-0 top-0 bg-white border-r z-[40] w-[360px] h-full flex flex-col shadow-lg",
+        "bg-white relative border-r z-[40] w-[320px] h-full flex flex-col",
         activeTool === "settings" ? "visible" : "hidden",
       )}
     >
       <ToolSidebarHeader
-        title={t("sidebar_settings_title")}
-        description={t("sidebar_settings_desc")}
+        title="Settings"
+        description="Change the look of your workspace"
       />
       <ScrollArea>
         <form className="space-y-4 p-4" onSubmit={onSubmit}>
           <div className="space-y-2">
             <Label>
-              {t("height")}
+              Height
             </Label>
             <Input
-              placeholder={t("height")}
+              placeholder="Height"
               value={height}
               type="number"
+              min={1}
               onChange={(e) => changeHeight(e.target.value)}
             />
           </div>
           <div className="space-y-2">
             <Label>
-              {t("width")}
+              Width
             </Label>
             <Input
-              placeholder={t("width")}
+              placeholder="Width"
               value={width}
               type="number"
+              min={1}
               onChange={(e) => changeWidth(e.target.value)}
             />
           </div>
           <Button type="submit" className="w-full">
-            {t("resize")}
+            Resize
           </Button>
         </form>
         <div className="p-4">

@@ -23,11 +23,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const router = useRouter();
 
     useEffect(() => {
+        let isMounted = true;
+        const initializationTimeout = window.setTimeout(() => {
+            if (!isMounted) return;
+
+            console.warn("Supabase auth initialization timed out");
+            setLoading(false);
+        }, 5000);
+
+        // Supabase emits INITIAL_SESSION immediately after subscribing. Using
+        // that single source avoids competing session locks during hydration.
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
+            if (!isMounted) return;
+
+            window.clearTimeout(initializationTimeout);
             setUser(session?.user ?? null);
             setLoading(false);
         });
+
         return () => {
+            isMounted = false;
+            window.clearTimeout(initializationTimeout);
             subscription.unsubscribe();
         };
     }, []);

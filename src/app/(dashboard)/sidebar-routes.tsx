@@ -1,18 +1,18 @@
 "use client";
 
-import { Home, Code, Shield, Plus, KeyRound } from "lucide-react";
+import { Home, Code, Shield, KeyRound } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { useState } from "react";
 
 import { SidebarItem } from "./sidebar-item";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { CreateTemplateModal } from "./create-template-modal";
+import { useUserRole } from "@/hooks/use-user-role";
 
 export const SidebarRoutes = () => {
   const { t } = useLanguage();
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { role } = useUserRole();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
@@ -36,14 +36,14 @@ export const SidebarRoutes = () => {
           isActive={pathname === "/api-key"}
         />
         <SidebarItem
-          href="/api-integration"
+          href="/playground"
           icon={Code}
           label={t("api_integration")}
-          isActive={pathname === "/api-integration"}
+          isActive={pathname === "/playground"}
         />
 
         {/* Admin button - only visible for superadmins */}
-        {session?.user?.role === "superadmin" && (
+        {role === "superadmin" && (
           <SidebarItem
             href="/admin"
             icon={Shield}

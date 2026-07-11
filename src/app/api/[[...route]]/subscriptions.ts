@@ -111,55 +111,67 @@ const app = new Hono()
         return c.json({ error: "Invalid signature" }, 400);
       }
 
-      const session = event.data.object as Stripe.Checkout.Session;
+      try {
+        if (event.type === "checkout.session.completed") {
+          const session = event.data.object as Stripe.Checkout.Session;
 
-      if (event.type === "checkout.session.completed") {
-        const subscription = await stripe.subscriptions.retrieve(
-          session.subscription as string,
-        );
+          if (!session?.metadata?.userId) {
+            return c.json({ error: "Invalid session: missing userId metadata" }, 400);
+          }
 
-        if (!session?.metadata?.userId) {
-          return c.json({ error: "Invalid session" }, 400);
+          const subscription = await stripe.subscriptions.retrieve(
+            session.subscription as string,
+          );
+
+          const priceItem = subscription.items.data[0];
+
+          await db
+            .insert(subscriptions)
+            .values({
+              status: subscription.status,
+              userId: session.metadata.userId,
+              subscriptionId: subscription.id,
+              customerId: subscription.customer as string,
+              priceId: priceItem?.price?.id ?? "",
+              currentPeriodEnd: new Date(
+                subscription.current_period_end * 1000
+              ),
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .onConflictDoNothing({ target: subscriptions.subscriptionId });
         }
 
-        await db
-          .insert(subscriptions)
-          .values({
-            status: subscription.status,
-            userId: session.metadata.userId,
-            subscriptionId: subscription.id,
-            customerId: subscription.customer as string,
-            priceId: subscription.items.data[0].price.product as string,
-            currentPeriodEnd: new Date(
-              subscription.current_period_end * 1000
-            ),
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          });
-      }
+        if (event.type === "invoice.payment_succeeded") {
+          const invoice = event.data.object as Stripe.Invoice;
 
-      if (event.type === "invoice.payment_succeeded") {
-        const subscription = await stripe.subscriptions.retrieve(
-          session.subscription as string,
-        );
+          // Retrieve the subscription to get fresh status
+          if (!invoice.subscription) {
+            return c.json({ error: "Invalid invoice: no subscription" }, 400);
+          }
 
-        if (!session?.metadata?.userId) {
-          return c.json({ error: "Invalid session" }, 400);
+          const subscription = await stripe.subscriptions.retrieve(
+            invoice.subscription as string,
+          );
+
+          await db
+            .update(subscriptions)
+            .set({
+              status: subscription.status,
+              currentPeriodEnd: new Date(
+                subscription.current_period_end * 1000
+              ),
+              updatedAt: new Date(),
+            })
+            .where(eq(subscriptions.subscriptionId, subscription.id));
         }
 
-        await db
-          .update(subscriptions)
-          .set({
-            status: subscription.status,
-            currentPeriodEnd: new Date(
-              subscription.current_period_end * 1000,
-            ),
-            updatedAt: new Date(),
-          })
-          .where(eq(subscriptions.id, subscription.id))
+        return c.json(null, 200);
+      } catch (error: any) {
+        console.error("[Stripe Webhook] Error processing event:", error);
+        // Return 500 so Stripe retries
+        return c.json({ error: "Webhook processing failed" }, 500);
       }
-
-      return c.json(null, 200);
     },
   );
 

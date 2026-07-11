@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { BrandMark } from "@/components/brand-mark";
 
 export default function TermsPage() {
   const { t } = useLanguage();
@@ -17,12 +18,7 @@ export default function TermsPage() {
               href="/"
               className="flex items-center gap-2 group cursor-pointer"
             >
-              <div className="w-8 h-8 bg-[#135bec] rounded-lg flex items-center justify-center text-white font-bold text-sm">
-                DC
-              </div>
-              <span className="text-xl font-extrabold tracking-tight text-white">
-                Dynamic Canvas
-              </span>
+              <BrandMark />
             </Link>
             <LanguageSwitcher />
           </div>
@@ -35,7 +31,7 @@ export default function TermsPage() {
           {t("terms_title")}
         </h1>
         <p className="text-slate-400 mb-8">
-          {t("last_updated")}: {new Date().toLocaleDateString()}
+          {t("last_updated")}: January 2025
         </p>
 
         <div className="prose prose-invert prose-slate max-w-none">

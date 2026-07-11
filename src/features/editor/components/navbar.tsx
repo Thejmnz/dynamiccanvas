@@ -1,49 +1,41 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { CiFileOn } from "react-icons/ci";
-import { BsCloudCheck, BsCloudSlash } from "react-icons/bs";
 import { useFilePicker } from "use-file-picker";
-import { useMutationState } from "@tanstack/react-query";
 import {
   ChevronDown,
-  Download,
-  Loader,
   Copy,
-  Save,
-  Grid3X3,
-  Keyboard,
+  Download,
   FileText,
-  Tag,
   Globe,
-  Square,
-  Layers,
+  Grid3X3,
   Info,
-  Maximize2,
+  Keyboard,
+  Layers,
+  Loader,
+  Redo2,
+  Save,
+  Square,
+  Tag,
+  Undo2,
 } from "lucide-react";
+import { toast } from "sonner";
 
+import { useCreateProject } from "@/features/projects/api/use-create-project";
+import { useGetProject } from "@/features/projects/api/use-get-project";
+import { useUpdateProject } from "@/features/projects/api/use-update-project";
 import { UserButton } from "@/features/auth/components/user-button";
-
-import { ActiveTool, Editor } from "@/features/editor/types";
+import { useLanguage } from "@/lib/contexts/LanguageContext";
+import { Editor } from "@/features/editor/types";
 import { Logo } from "@/features/editor/components/logo";
 
-import { cn } from "@/lib/utils";
+import { Hint } from "@/components/hint";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import {
-  DropdownMenu,
-  DropdownMenuItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-  DropdownMenuCheckboxItem,
-  DropdownMenuGroup,
-} from "@/components/ui/dropdown-menu";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -52,33 +44,37 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-
-import { useAuth } from "@/lib/contexts/AuthContext";
-import { useRouter } from "next/navigation";
-import { useGetProject } from "@/features/projects/api/use-get-project";
-import { useUpdateProject } from "@/features/projects/api/use-update-project";
-import { useCreateProject } from "@/features/projects/api/use-create-project";
-
-import { useLanguage } from "@/lib/contexts/LanguageContext";
-
-import { useState, useEffect, useRef } from "react";
-import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface NavbarProps {
   id: string;
+  initialProject: {
+    name: string;
+    width: number;
+    height: number;
+    json: string;
+    updatedAt?: Date | string;
+    description?: string;
+    tags?: string[];
+  };
   editor: Editor | undefined;
-  activeTool: ActiveTool;
-  onChangeActiveTool: (tool: ActiveTool) => void;
-  onSave?: () => void;
-  onAutoSave?: () => void;
-  showGrid?: boolean;
-  onShowGridChange?: (value: boolean) => void;
-  showPrintSafeZone?: boolean;
-  onShowPrintSafeZoneChange?: (value: boolean) => void;
+  showGrid: boolean;
+  onShowGridChange: (value: boolean) => void;
+  showPrintSafeZone: boolean;
+  onShowPrintSafeZoneChange: (value: boolean) => void;
 }
 
-// Preset sizes
 const presetSizes = [
   { nameKey: "preset_square", width: 1080, height: 1080 },
   { nameKey: "preset_instagram_post", width: 1080, height: 1350 },
@@ -100,497 +96,328 @@ const presetSizes = [
 
 export const Navbar = ({
   id,
+  initialProject,
   editor,
-  activeTool,
-  onChangeActiveTool,
-  onSave,
-  onAutoSave,
-  showGrid = false,
+  showGrid,
   onShowGridChange,
-  showPrintSafeZone = false,
+  showPrintSafeZone,
   onShowPrintSafeZoneChange,
 }: NavbarProps) => {
   const { t, language, setLanguage } = useLanguage();
-  const { user } = useAuth();
-  const router = useRouter();
-
-  // Fetch project data
-  const { data: project } = useGetProject(id);
+  const { data: fetchedProject } = useGetProject(id);
+  const project = fetchedProject || initialProject;
   const { mutate: updateProject } = useUpdateProject(id);
   const { mutate: createProject, isPending: isDuplicating } = useCreateProject();
 
-  const [autoSave, setAutoSave] = useState(true);
-  const [projectDescription, setProjectDescription] = useState("");
-  const [templateWidth, setTemplateWidth] = useState(editor?.getWorkspace?.()?.width || 1080);
-  const [templateHeight, setTemplateHeight] = useState(editor?.getWorkspace?.()?.height || 1350);
-
-  // Modal states
-  const [isDescriptionModalOpen, setIsDescriptionModalOpen] = useState(false);
-  const [tempDescription, setTempDescription] = useState("");
-  const [isTagsModalOpen, setIsTagsModalOpen] = useState(false);
-  const [tempTags, setTempTags] = useState<string[]>([]);
+  const [templateWidth, setTemplateWidth] = useState(initialProject.width || 1080);
+  const [templateHeight, setTemplateHeight] = useState(initialProject.height || 1350);
+  const [descriptionOpen, setDescriptionOpen] = useState(false);
+  const [description, setDescription] = useState("");
+  const [tagsOpen, setTagsOpen] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
-
-  const autoSaveRef = useRef<NodeJS.Timeout | null>(null);
-
-  const data = useMutationState({
-    filters: {
-      mutationKey: ["project", { id }],
-      exact: true,
-    },
-    select: (mutation) => mutation.state.status,
-  });
-
-  const currentStatus = data[data.length - 1];
-  const isError = currentStatus === "error";
-  const isPending = currentStatus === "pending";
 
   const { openFilePicker } = useFilePicker({
     accept: ".json",
     onFilesSuccessfullySelected: ({ plainFiles }: any) => {
-      if (plainFiles && plainFiles.length > 0) {
-        const file = plainFiles[0];
-        const reader = new FileReader();
-        reader.readAsText(file, "UTF-8");
-        reader.onload = () => {
-          editor?.loadJson(reader.result as string);
-        };
-      }
+      const file = plainFiles?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.readAsText(file, "UTF-8");
+      reader.onload = () => editor?.loadJson(reader.result as string);
     },
   });
 
-  // Update template dimensions when workspace changes
   useEffect(() => {
-    const workspace = editor?.getWorkspace?.();
-    if (workspace) {
-      setTemplateWidth(workspace.width);
-      setTemplateHeight(workspace.height);
-    }
-  }, [editor?.getWorkspace?.()?.width, editor?.getWorkspace?.()?.height]);
+    if (!project) return;
+    setTemplateWidth(project.width || 1080);
+    setTemplateHeight(project.height || 1350);
+    setDescription(project.description || "");
+    setTags(project.tags || []);
+  }, [project]);
 
-  // Auto-save every 10 seconds (silently, no toasts)
-  useEffect(() => {
-    if (autoSave && onAutoSave) {
-      autoSaveRef.current = setInterval(() => {
-        onAutoSave();
-      }, 10000); // 10 seconds
-    }
+  const formatLastSaved = () => {
+    if (!project?.updatedAt) return t("menu_not_saved_yet");
 
-    return () => {
-      if (autoSaveRef.current) {
-        clearInterval(autoSaveRef.current);
-      }
-    };
-  }, [autoSave, onAutoSave]);
+    const elapsed = Date.now() - new Date(project.updatedAt).getTime();
+    const minutes = Math.max(0, Math.floor(elapsed / 60000));
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
 
-  const handleNameChange = (e: React.FocusEvent<HTMLInputElement>) => {
-    const newName = e.target.value;
-    if (newName && newName !== project?.name) {
-      updateProject({ name: newName });
+    if (minutes <= 1) return t("menu_just_now");
+    if (hours < 1) return `${minutes} ${t("menu_minutes_ago")}`;
+    if (days < 1) return `${hours} ${t("menu_hours_ago")}`;
+    if (days === 1) return t("menu_yesterday");
+    return `${days} ${t("menu_days_ago")}`;
+  };
+
+  const copyTemplateId = async () => {
+    try {
+      await navigator.clipboard.writeText(id);
+      toast.success(t("menu_template_id_copied"));
+    } catch {
+      toast.error(language === "es" ? "No se pudo copiar" : "Could not copy");
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.currentTarget.blur();
+  const resizeCanvas = (width: number, height: number) => {
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width < 1 || height < 1) {
+      toast.error(language === "es" ? "Ingresa dimensiones válidas" : "Enter valid dimensions");
+      return;
     }
+
+    setTemplateWidth(width);
+    setTemplateHeight(height);
+    editor?.changeSize({ width, height });
+    toast.success(`${t("menu_canvas_resized")} ${width} × ${height}px`);
   };
 
-  const copyTemplateId = () => {
-    navigator.clipboard.writeText(id);
-    toast.success(t("menu_template_id_copied"));
+  const addTag = () => {
+    const value = tagInput.trim().toLowerCase();
+    if (!value || tags.includes(value)) return;
+    setTags((current) => [...current, value]);
+    setTagInput("");
   };
 
   const duplicateTemplate = () => {
     if (!project) return;
-
-    const projectData = {
-      name: `${project.name || "Untitled"} (Copy)`,
+    createProject({
+      name: `${project.name || t("menu_unnamed_template")} (${language === "es" ? "copia" : "copy"})`,
       width: templateWidth,
       height: templateHeight,
-      json: project.json || JSON.stringify({ version: "2.0", workspace: { width: templateWidth, height: templateHeight }, elements: [] }),
-    };
-
-    createProject(projectData);
-  };
-
-  const openDescriptionModal = () => {
-    setTempDescription(projectDescription);
-    setIsDescriptionModalOpen(true);
-  };
-
-  const saveDescription = () => {
-    setProjectDescription(tempDescription);
-    updateProject({ description: tempDescription });
-    setIsDescriptionModalOpen(false);
-    toast.success(t("menu_description_saved"));
-  };
-
-  const openTagsModal = () => {
-    setTempTags(project?.tags || []);
-    setIsTagsModalOpen(true);
-  };
-
-  const addTag = () => {
-    const trimmedTag = tagInput.trim().toLowerCase();
-    if (trimmedTag && !tempTags.includes(trimmedTag)) {
-      setTempTags([...tempTags, trimmedTag]);
-      setTagInput("");
-    }
-  };
-
-  const removeTag = (tagToRemove: string) => {
-    setTempTags(tempTags.filter(tag => tag !== tagToRemove));
-  };
-
-  const handleTagKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      addTag();
-    }
-  };
-
-  const saveTags = () => {
-    updateProject({ tags: tempTags });
-    setIsTagsModalOpen(false);
-    toast.success(t("menu_tags_saved"));
-  };
-
-  const handleResize = (width: number, height: number) => {
-    setTemplateWidth(width);
-    setTemplateHeight(height);
-    editor?.changeSize?.(width, height);
-    toast.success(`${t("menu_canvas_resized")} ${width} x ${height}px`);
-  };
-
-  const handleCustomResize = () => {
-    const width = Number(templateWidth);
-    const height = Number(templateHeight);
-    if (width > 0 && height > 0) {
-      handleResize(width, height);
-    }
-  };
-
-  // Format last updated date
-  const formatLastSaved = () => {
-    if (!project?.updatedAt) return t("menu_not_saved_yet");
-    const date = new Date(project.updatedAt);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) {
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-      if (diffHours === 0) {
-        const diffMinutes = Math.floor(diffMs / (1000 * 60));
-        return diffMinutes <= 1 ? t("menu_just_now") : `${diffMinutes} ${t("menu_minutes_ago")}`;
-      }
-      return `${diffHours} ${t("menu_hours_ago")}`;
-    } else if (diffDays === 1) {
-      return t("menu_yesterday");
-    } else {
-      return `${diffDays} ${t("menu_days_ago")}`;
-    }
+      json: project.json,
+    });
   };
 
   return (
-    <nav className="w-full flex items-center p-4 h-[68px] gap-x-8 border-b lg:pl-[34px]">
+    <nav className="flex h-[60px] w-full items-center gap-x-3 border-b-2 border-[#101426] bg-[#f6f5ef] px-3 lg:pl-5">
       <Logo />
-      <div className="w-full flex items-center gap-x-1 h-full">
-        {/* File Menu */}
+      <div className="w-full min-w-0 flex items-center gap-x-1 h-full">
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="ghost">
+            <Button size="sm" variant="ghost" className="font-medium">
               {t("menu_file")}
               <ChevronDown className="size-4 ml-2" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="min-w-72">
-            {/* Template Info Section */}
-            <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">
-                  {project?.name || t("menu_unnamed_template")}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {templateWidth} x {templateHeight} px
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {t("menu_saved")} {formatLastSaved()}
-                </p>
-              </div>
+          <DropdownMenuContent align="start" className="w-[320px] p-2">
+            <DropdownMenuLabel className="font-normal px-3 py-2">
+              <p className="font-semibold truncate">
+                {project?.name || t("menu_unnamed_template")}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {templateWidth} × {templateHeight} px
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {t("menu_saved")} {formatLastSaved()}
+              </p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
 
-            {/* Template ID */}
-            <DropdownMenuItem className="flex items-center justify-between gap-x-2" onSelect={(e) => e.preventDefault()}>
-              <div className="flex items-center gap-x-2">
-                <Info className="size-4" />
-                <span className="text-sm">{t("menu_template_id")}</span>
-              </div>
+            <DropdownMenuItem
+              className="h-10 justify-between"
+              onSelect={(event) => event.preventDefault()}
+            >
+              <span className="flex items-center gap-3">
+                <Info className="size-5" />
+                {t("menu_template_id")}
+              </span>
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-6 px-2 text-xs"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  copyTemplateId();
+                className="h-8 px-2"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void copyTemplateId();
                 }}
               >
-                <Copy className="size-3 mr-1" />
+                <Copy className="size-4 mr-1.5" />
                 {language === "es" ? "Copiar" : "Copy"}
               </Button>
             </DropdownMenuItem>
-
-            {/* Set Description */}
-            <DropdownMenuItem
-              className="flex items-center gap-x-2"
-              onClick={openDescriptionModal}
-            >
-              <FileText className="size-4" />
+            <DropdownMenuItem className="h-10 gap-3" onClick={() => setDescriptionOpen(true)}>
+              <FileText className="size-5" />
               {t("menu_set_description")}
             </DropdownMenuItem>
-
-            {/* Add Tags */}
-            <DropdownMenuItem
-              className="flex items-center gap-x-2"
-              onClick={openTagsModal}
-            >
-              <Tag className="size-4" />
+            <DropdownMenuItem className="h-10 gap-3" onClick={() => setTagsOpen(true)}>
+              <Tag className="size-5" />
               {t("menu_add_tags")}
             </DropdownMenuItem>
-
-            {/* Language */}
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger className="flex items-center gap-x-2">
-                <Globe className="size-4" />
-                <span>{t("menu_language")}</span>
+              <DropdownMenuSubTrigger className="h-10 gap-3">
+                <Globe className="size-5" />
+                {t("menu_language")}
               </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="min-w-40">
-                <DropdownMenuCheckboxItem
-                  checked={language === "en"}
-                  onCheckedChange={() => setLanguage("en")}
-                >
-                  English
-                </DropdownMenuCheckboxItem>
+              <DropdownMenuSubContent>
                 <DropdownMenuCheckboxItem
                   checked={language === "es"}
                   onCheckedChange={() => setLanguage("es")}
                 >
                   Español
                 </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={language === "en"}
+                  onCheckedChange={() => setLanguage("en")}
+                >
+                  English
+                </DropdownMenuCheckboxItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
 
             <DropdownMenuSeparator />
-
-            {/* Grid */}
             <DropdownMenuItem
-              className="flex items-center justify-between gap-x-4"
-              onSelect={(e) => e.preventDefault()}
+              className="h-11 justify-between"
+              onSelect={(event) => event.preventDefault()}
             >
-              <div className="flex items-center gap-x-2">
-                <Grid3X3 className="size-4" />
+              <span className="flex items-center gap-3">
+                <Grid3X3 className="size-5" />
                 {t("menu_grid")}
-              </div>
-              <Switch
-                checked={showGrid}
-                onCheckedChange={onShowGridChange}
-              />
+              </span>
+              <Switch checked={showGrid} onCheckedChange={onShowGridChange} />
             </DropdownMenuItem>
-
-            {/* Print Safe Zone */}
             <DropdownMenuItem
-              className="flex items-center justify-between gap-x-4"
-              onSelect={(e) => e.preventDefault()}
+              className="h-11 justify-between"
+              onSelect={(event) => event.preventDefault()}
             >
-              <div className="flex items-center gap-x-2">
-                <Square className="size-4" />
+              <span className="flex items-center gap-3">
+                <Square className="size-5" />
                 {t("menu_print_safe_zone")}
-              </div>
-              <Switch
-                checked={showPrintSafeZone}
-                onCheckedChange={onShowPrintSafeZoneChange}
-              />
-            </DropdownMenuItem>
-
-            {/* Auto-save */}
-            <DropdownMenuItem
-              className="flex items-center justify-between gap-x-4"
-              onSelect={(e) => e.preventDefault()}
-            >
-              <div className="flex items-center gap-x-2">
-                <BsCloudCheck className="size-4" />
-                {t("menu_auto_save")}
-              </div>
-              <Switch
-                checked={autoSave}
-                onCheckedChange={setAutoSave}
-              />
+              </span>
+              <Switch checked={showPrintSafeZone} onCheckedChange={onShowPrintSafeZoneChange} />
             </DropdownMenuItem>
 
             <DropdownMenuSeparator />
-
-            {/* Shortcuts */}
             <DropdownMenuItem
-              className="flex items-center gap-x-2"
+              className="h-10 gap-3"
               onClick={() => toast.info(t("menu_shortcuts_info"))}
             >
-              <Keyboard className="size-4" />
+              <Keyboard className="size-5" />
               {t("menu_shortcuts")}
             </DropdownMenuItem>
-
             <DropdownMenuSeparator />
-
-            {/* Duplicate Template */}
             <DropdownMenuItem
-              className="flex items-center gap-x-2"
+              className="h-10 gap-3"
+              disabled={isDuplicating || !project}
               onClick={duplicateTemplate}
             >
-              <Layers className="size-4" />
-              {t("menu_duplicate_template")}
+              {isDuplicating ? <Loader className="size-5 animate-spin" /> : <Layers className="size-5" />}
+              {isDuplicating ? t("menu_duplicating") : t("menu_duplicate_template")}
             </DropdownMenuItem>
-
-            {/* Save */}
-            <DropdownMenuItem
-              className="flex items-center gap-x-2"
-              onClick={onSave}
-            >
-              <Save className="size-4" />
+            <DropdownMenuItem className="h-10 gap-3" onClick={() => editor?.save()}>
+              <Save className="size-5" />
               {t("menu_save")}
               <span className="ml-auto text-xs text-muted-foreground">Ctrl+S</span>
             </DropdownMenuItem>
-
             <DropdownMenuSeparator />
-
-            {/* Open JSON */}
-            <DropdownMenuItem
-              onClick={() => openFilePicker()}
-              className="flex items-center gap-x-2"
-            >
-              <CiFileOn className="size-4" />
+            <DropdownMenuItem className="gap-3 py-2" onClick={() => openFilePicker()}>
+              <CiFileOn className="size-5" />
               <div>
                 <p>{t("menu_open")}</p>
-                <p className="text-xs text-muted-foreground">
-                  {t("menu_open_json_desc")}
-                </p>
+                <p className="text-xs text-muted-foreground">{t("menu_open_json_desc")}</p>
               </div>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Resize Menu */}
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="ghost">
+            <Button size="sm" variant="ghost" className="font-medium">
               {t("menu_resize")}
               <ChevronDown className="size-4 ml-2" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="min-w-64 max-h-[80vh] overflow-y-auto">
-            {/* Template Dimensions */}
-            <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-3">
-                <p className="text-sm font-medium">{t("menu_template_dimensions")}</p>
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground w-12">{t("menu_width")}</span>
-                    <Input
-                      type="number"
-                      value={templateWidth}
-                      onChange={(e) => setTemplateWidth(Number(e.target.value))}
-                      className="h-8 w-20 text-xs"
-                    />
-                    <span className="text-xs text-muted-foreground">px</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground w-12">{t("menu_height")}</span>
-                    <Input
-                      type="number"
-                      value={templateHeight}
-                      onChange={(e) => setTemplateHeight(Number(e.target.value))}
-                      className="h-8 w-20 text-xs"
-                    />
-                    <span className="text-xs text-muted-foreground">px</span>
-                  </div>
-                  <Button size="sm" onClick={handleCustomResize} className="h-8 w-full">
-                    {t("menu_apply")}
-                  </Button>
-                </div>
+          <DropdownMenuContent
+            align="start"
+            className="w-[410px] max-w-[calc(100vw-16px)] max-h-[80vh] overflow-y-auto p-0"
+          >
+            <DropdownMenuLabel className="font-normal p-5">
+              <p className="text-lg font-semibold mb-4">{t("menu_template_dimensions")}</p>
+              <div className="space-y-3">
+                <label className="flex items-center gap-3 text-muted-foreground">
+                  <span className="w-20">{t("menu_width")}</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={templateWidth}
+                    onChange={(event) => setTemplateWidth(Number(event.target.value))}
+                    className="w-32"
+                  />
+                  <span>px</span>
+                </label>
+                <label className="flex items-center gap-3 text-muted-foreground">
+                  <span className="w-20">{t("menu_height")}</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={templateHeight}
+                    onChange={(event) => setTemplateHeight(Number(event.target.value))}
+                    className="w-32"
+                  />
+                  <span>px</span>
+                </label>
+                <Button
+                  className="w-full text-base"
+                  onClick={() => resizeCanvas(Number(templateWidth), Number(templateHeight))}
+                >
+                  {t("menu_apply")}
+                </Button>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-
-            {/* Preset Sizes */}
-            <DropdownMenuLabel className="font-normal">
-              <p className="text-sm font-medium">{t("menu_preset_sizes")}</p>
+            <DropdownMenuSeparator className="m-0" />
+            <DropdownMenuLabel className="px-5 pt-4 pb-2 text-lg">
+              {t("menu_preset_sizes")}
             </DropdownMenuLabel>
-            {presetSizes.map((preset) => (
-              <DropdownMenuItem
-                key={preset.nameKey}
-                className="flex items-center justify-between"
-                onClick={() => handleResize(preset.width, preset.height)}
-              >
-                <span className="text-sm">{t(preset.nameKey)}</span>
-                <span className="text-xs text-muted-foreground">
-                  {preset.width}x{preset.height}
-                </span>
-              </DropdownMenuItem>
-            ))}
+            <div className="px-2 pb-3">
+              {presetSizes.map((preset) => (
+                <DropdownMenuItem
+                  key={preset.nameKey}
+                  className="h-11 px-3 justify-between text-base"
+                  onClick={() => resizeCanvas(preset.width, preset.height)}
+                >
+                  <span>{t(preset.nameKey)}</span>
+                  <span className="text-muted-foreground">
+                    {preset.width}×{preset.height}
+                  </span>
+                </DropdownMenuItem>
+              ))}
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
 
         <Separator orientation="vertical" className="mx-2" />
-
-        {/* Project Name Input */}
-        <div className="flex items-center gap-x-3">
-          {!project ? (
-            <div className="w-20 h-8 bg-gray-200 animate-pulse rounded" />
-          ) : (
-            <>
-              <Input
-                defaultValue={project.name}
-                onBlur={handleNameChange}
-                onKeyDown={handleKeyDown}
-                className="h-8 w-[200px] border border-gray-200 hover:border-gray-300 focus:border-blue-500 transition px-2 font-medium"
-              />
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                {templateWidth} x {templateHeight}px
-              </span>
-            </>
-          )}
+        <div className="flex min-w-0 items-center gap-2">
+          <Input
+            key={project.name}
+            defaultValue={project.name}
+            aria-label={language === "es" ? "Nombre del proyecto" : "Project name"}
+            className="h-8 w-[200px] min-w-[140px] rounded-lg font-semibold"
+            onKeyDown={(event) => event.key === "Enter" && event.currentTarget.blur()}
+            onBlur={(event) => {
+              const name = event.currentTarget.value.trim();
+              if (name && name !== project.name) updateProject({ name });
+            }}
+          />
+          <span className="whitespace-nowrap text-sm text-muted-foreground">
+            {templateWidth} × {templateHeight}px
+          </span>
         </div>
 
-        {/* Save Status - only show when saving or error */}
-        {isPending && (
-          <div className="flex items-center gap-x-2">
-            <Loader className="size-4 animate-spin text-muted-foreground" />
-            <div className="text-xs text-muted-foreground">
-              {t("status_saving")}
-            </div>
-          </div>
-        )}
-        {!isPending && isError && (
-          <div className="flex items-center gap-x-2">
-            <BsCloudSlash className="size-[20px] text-red-500" />
-            <div className="text-xs text-red-500">
-              {t("status_failed_save")}
-            </div>
-          </div>
-        )}
-
-        <div className="ml-auto flex items-center gap-x-4">
-          {/* Save Button */}
-          <Button
-            size="sm"
-            className="bg-blue-600 text-white hover:bg-blue-700"
-            onClick={onSave}
-          >
+        <div className="ml-auto flex items-center gap-x-2">
+          <Hint label={language === "es" ? "Deshacer" : "Undo"} side="bottom" sideOffset={10}>
+            <Button disabled={!editor?.canUndo()} variant="ghost" size="icon" onClick={() => editor?.onUndo()}>
+              <Undo2 className="size-4" />
+            </Button>
+          </Hint>
+          <Hint label={language === "es" ? "Rehacer" : "Redo"} side="bottom" sideOffset={10}>
+            <Button disabled={!editor?.canRedo()} variant="ghost" size="icon" onClick={() => editor?.onRedo()}>
+              <Redo2 className="size-4" />
+            </Button>
+          </Hint>
+          <Button size="sm" disabled={!editor} onClick={() => editor?.save()}>
             <Save className="size-4 mr-2" />
             {t("menu_save")}
           </Button>
-
-          {/* Export Menu */}
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button size="sm" variant="ghost">
@@ -599,151 +426,106 @@ export const Navbar = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-60">
-              <DropdownMenuItem
-                className="flex items-center gap-x-2"
-                onClick={() => editor?.saveJson()}
-              >
-                <CiFileOn className="size-8" />
-                <div>
-                  <p>{t("export_json")}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {t("export_json_desc")}
-                  </p>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="flex items-center gap-x-2"
-                onClick={() => editor?.savePng()}
-              >
-                <CiFileOn className="size-8" />
-                <div>
-                  <p>{t("export_png")}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {t("export_png_desc")}
-                  </p>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="flex items-center gap-x-2"
-                onClick={() => editor?.saveJpg()}
-              >
-                <CiFileOn className="size-8" />
-                <div>
-                  <p>{t("export_jpg")}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {t("export_jpg_desc")}
-                  </p>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="flex items-center gap-x-2"
-                onClick={() => editor?.saveSvg()}
-              >
-                <CiFileOn className="size-8" />
-                <div>
-                  <p>{t("export_svg")}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {t("export_svg_desc")}
-                  </p>
-                </div>
-              </DropdownMenuItem>
+              {[
+                ["JSON", () => editor?.saveJson(), t("export_json_desc")],
+                ["PNG", () => editor?.savePng(), t("export_png_desc")],
+                ["JPG", () => editor?.saveJpg(), t("export_jpg_desc")],
+                ["SVG", () => editor?.saveSvg(), t("export_svg_desc")],
+              ].map(([label, action, description]) => (
+                <DropdownMenuItem
+                  key={label as string}
+                  className="gap-3 py-2"
+                  onClick={action as () => void}
+                >
+                  <CiFileOn className="size-5" />
+                  <div>
+                    <p>{label as string}</p>
+                    <p className="text-xs text-muted-foreground">{description as string}</p>
+                  </div>
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
           <UserButton />
-          {!user && (
-            <Button size="sm" onClick={() => router.push("/sign-in")}>
-              {t("sign_in")}
-            </Button>
-          )}
         </div>
       </div>
 
-      {/* Description Modal */}
-      <Dialog open={isDescriptionModalOpen} onOpenChange={setIsDescriptionModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+      <Dialog open={descriptionOpen} onOpenChange={setDescriptionOpen}>
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("menu_set_description")}</DialogTitle>
             <DialogDescription>
-              {language === "es"
-                ? "Agrega una descripción para tu proyecto."
-                : "Add a description for your project."}
+              {language === "es" ? "Agrega una descripción para tu proyecto." : "Add a description to your project."}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Textarea
-              value={tempDescription}
-              onChange={(e) => setTempDescription(e.target.value)}
-              placeholder={language === "es" ? "Escribe la descripción aquí..." : "Write the description here..."}
-              rows={4}
-              className="resize-none"
-            />
-          </div>
+          <Textarea
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            rows={5}
+            className="resize-none"
+          />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDescriptionModalOpen(false)}>
+            <Button variant="outline" onClick={() => setDescriptionOpen(false)}>
               {language === "es" ? "Cancelar" : "Cancel"}
             </Button>
-            <Button onClick={saveDescription}>
-              {language === "es" ? "Guardar" : "Save"}
+            <Button
+              onClick={() => {
+                updateProject({ description });
+                setDescriptionOpen(false);
+              }}
+            >
+              {t("menu_save")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Tags Modal */}
-      <Dialog open={isTagsModalOpen} onOpenChange={setIsTagsModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+      <Dialog open={tagsOpen} onOpenChange={setTagsOpen}>
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("menu_add_tags")}</DialogTitle>
             <DialogDescription>
-              {language === "es"
-                ? "Agrega etiquetas para organizar tu proyecto."
-                : "Add tags to organize your project."}
+              {language === "es" ? "Agrega etiquetas para organizar tu proyecto." : "Add tags to organize your project."}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4 space-y-4">
-            {/* Input para agregar tags */}
-            <div className="flex gap-2">
-              <Input
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyPress={handleTagKeyPress}
-                placeholder={language === "es" ? "Escribe una etiqueta..." : "Type a tag..."}
-                className="flex-1"
-              />
-              <Button onClick={addTag} variant="outline" size="sm">
-                {language === "es" ? "Agregar" : "Add"}
-              </Button>
-            </div>
-            {/* Tags existentes */}
-            <div className="flex flex-wrap gap-2">
-              {tempTags.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  {language === "es" ? "Sin etiquetas" : "No tags"}
-                </p>
-              ) : (
-                tempTags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                  >
-                    {tag}
-                    <button
-                      onClick={() => removeTag(tag)}
-                      className="ml-1 hover:text-red-600 transition-colors"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))
-              )}
-            </div>
+          <div className="flex gap-2">
+            <Input
+              value={tagInput}
+              onChange={(event) => setTagInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  addTag();
+                }
+              }}
+            />
+            <Button variant="outline" onClick={addTag}>
+              {language === "es" ? "Agregar" : "Add"}
+            </Button>
+          </div>
+          <div className="flex min-h-10 flex-wrap gap-2">
+            {tags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                className="rounded-full bg-blue-100 px-3 py-1 text-sm text-blue-800"
+                onClick={() => setTags((current) => current.filter((item) => item !== tag))}
+              >
+                {tag} ×
+              </button>
+            ))}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsTagsModalOpen(false)}>
+            <Button variant="outline" onClick={() => setTagsOpen(false)}>
               {language === "es" ? "Cancelar" : "Cancel"}
             </Button>
-            <Button onClick={saveTags}>
-              {language === "es" ? "Guardar" : "Save"}
+            <Button
+              onClick={() => {
+                updateProject({ tags });
+                setTagsOpen(false);
+              }}
+            >
+              {t("menu_save")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -10,8 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { toast } from "sonner";
 import { Copy, ExternalLink, KeyRound, BookOpen, Lightbulb, Code, Braces, FileJson, Puzzle, RefreshCw, Play, Loader2, Check, X, AlertCircle, ChevronRight, Zap } from "lucide-react";
 import React, { useState, useEffect, useMemo, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { useLanguage } from "@/lib/contexts/LanguageContext";
 
 // --- Types Definition ---
 export interface AnyCanvasElement {
@@ -66,6 +67,43 @@ interface TemplateElement {
     image_url?: string;
     [key: string]: any;
 }
+
+const extractTemplateElements = (parsed: any): TemplateElement[] => {
+    if (parsed?.version === "2.0" && Array.isArray(parsed.elements)) {
+        return parsed.elements;
+    }
+
+    if (!Array.isArray(parsed?.objects)) return [];
+
+    const workspace = parsed.objects.find((object: any) => object?.name === "clip");
+    const workspaceLeft = Number(workspace?.left || 0);
+    const workspaceTop = Number(workspace?.top || 0);
+
+    return parsed.objects
+        .filter((object: any) => object?.name !== "clip" && object?.visible !== false)
+        .map((object: any, index: number) => {
+            const originalType = String(object.type || "").toLowerCase();
+            const type = ["textbox", "i-text", "text"].includes(originalType)
+                ? "text"
+                : originalType === "image"
+                    ? "image"
+                    : originalType;
+
+            return {
+                ...object,
+                id: object.konvaId || object.name || `fabric-element-${index + 1}`,
+                name: object.name,
+                type,
+                x: Number(object.left || 0) - workspaceLeft,
+                y: Number(object.top || 0) - workspaceTop,
+                rotation: Number(object.angle || 0),
+                src: object.src,
+                image_url: object.src,
+                text: object.text,
+                color: object.fill,
+            } as TemplateElement;
+        });
+};
 
 interface ApiResponse {
     type?: 'success' | 'error';
@@ -833,8 +871,6 @@ const getFullJavaSnippet = (absoluteApiEndpoint: string, apiKey: string, templat
     return code;
 };
 
-import { useLanguage } from "@/lib/contexts/LanguageContext";
-
 function ApiIntegrationContent() {
     const { t, language } = useLanguage();
     const searchParams = useSearchParams();
@@ -853,9 +889,25 @@ function ApiIntegrationContent() {
     const [requestBody, setRequestBody] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
 
+    const handleModalOpenChange = (open: boolean) => {
+        setIsModalOpen(open);
+
+        if (!open) {
+            window.requestAnimationFrame(() => {
+                document.body.style.removeProperty("pointer-events");
+            });
+        }
+    };
+
+    useEffect(() => {
+        return () => {
+            document.body.style.removeProperty("pointer-events");
+        };
+    }, []);
+
     // Sync request body with form data
     useEffect(() => {
-        if (selectedTemplate && Object.keys(layersDataForSnippets).length > 0) {
+        if (selectedTemplate) {
             // Build layers object from form data - only include editable fields
             const layers: Record<string, { text?: string; src?: string; image_url?: string }> = {};
             Object.entries(layersDataForSnippets).forEach(([id, el]) => {
@@ -967,9 +1019,7 @@ function ApiIntegrationContent() {
                         if (t.json) {
                             try {
                                 const parsed = JSON.parse(t.json);
-                                if (parsed.version === "2.0" && parsed.elements) {
-                                    elements = parsed.elements;
-                                }
+                                elements = extractTemplateElements(parsed);
                             } catch (e) {
                                 console.error("Error parsing JSON:", e);
                             }
@@ -1065,7 +1115,6 @@ function ApiIntegrationContent() {
                 }, {} as Record<string, TemplateElement>);
                 setLayersDataForSnippets(updatedLayers);
             }
-            setIsModalOpen(true); // Open modal when template is selected
         }
     };
 
@@ -1146,9 +1195,10 @@ function ApiIntegrationContent() {
     };
 
     return (
-        <div className="container mx-auto py-10 max-w-4xl">
-            <div className="mb-8">
-                <h1 className="text-4xl font-bold mb-2">{language === "es" ? "Playground" : "Playground"}</h1>
+        <div className="container mx-auto max-w-5xl py-8">
+            <div className="mb-9 rounded-[28px] border-2 border-[#101426] bg-[#e9e5ff] p-7 shadow-[7px_7px_0_#101426]">
+                <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-[#5b35d5]">API LAB</p>
+                <h1 className="mb-2 text-4xl font-black tracking-[-0.04em] text-[#101426]">{language === "es" ? "Playground" : "Playground"}</h1>
                 <p className="text-lg text-muted-foreground">
                     {language === "es"
                         ? "Selecciona una plantilla para generar imágenes a través de la API."
@@ -1172,7 +1222,7 @@ function ApiIntegrationContent() {
                 </Select>
                 {selectedTemplate && (
                     <Button
-                        className="h-12 bg-[#135bec] hover:bg-[#0d4ad9]"
+                        className="h-12 bg-[#5b35d5] hover:bg-[#101426]"
                         onClick={() => setIsModalOpen(true)}
                     >
                         <Play className="h-4 w-4 mr-2" />
@@ -1188,8 +1238,8 @@ function ApiIntegrationContent() {
             )}
 
             {/* Modal with all options */}
-            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className="max-w-[95vw] w-[95vw] h-[95vh] max-h-[95vh] overflow-hidden flex flex-col">
+            <Dialog modal={false} open={isModalOpen} onOpenChange={handleModalOpenChange}>
+                <DialogContent className="flex h-[95vh] max-h-[95vh] w-[95vw] max-w-[95vw] flex-col overflow-hidden rounded-[24px] border-2 border-[#101426] bg-[#f6f5ef] shadow-[10px_10px_0_#101426]">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <Play className="h-5 w-5" />
@@ -1332,7 +1382,7 @@ function ApiIntegrationContent() {
                                             </span>
                                         )}
                                     </div>
-                                    <pre className="overflow-x-auto whitespace-pre-wrap">{JSON.stringify(apiResponse.data || { error: apiResponse.error }, null, 2)}</pre>
+                                    <pre className="overflow-x-auto overflow-y-auto max-h-[300px] whitespace-pre-wrap text-xs">{JSON.stringify(apiResponse.data || { error: apiResponse.error }, null, 2)}</pre>
                                 </div>
                             )}
                         </div>
@@ -1450,6 +1500,15 @@ function ApiIntegrationContent() {
 }
 
 export default function ApiIntegrationPage() {
+    const pathname = usePathname();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (pathname === "/api-integration") {
+            router.replace(`/playground${window.location.search}`);
+        }
+    }, [pathname, router]);
+
     return (
         <Suspense fallback={<div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>}>
             <ApiIntegrationContent />

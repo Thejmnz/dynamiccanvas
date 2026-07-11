@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { Search, Loader2, AlertCircle } from "lucide-react";
 
 import { useLanguage } from "@/lib/contexts/LanguageContext";
@@ -171,6 +171,11 @@ export const VectorSidebar = ({
     [searchIcons]
   );
 
+  // Cancel pending debounce on unmount
+  useEffect(() => {
+    return () => debouncedSearch.cancel();
+  }, [debouncedSearch]);
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchQuery(value);
@@ -199,8 +204,8 @@ export const VectorSidebar = ({
   return (
     <aside
       className={cn(
-        "absolute left-0 top-0 bg-white border-r z-[40] w-[360px] h-full flex flex-col shadow-lg",
-        activeTool === "vectors" ? "visible" : "hidden"
+        "bg-white relative border-r z-[40] w-[320px] h-full flex flex-col shrink-0",
+        activeTool === "vector" ? "visible" : "hidden"
       )}
     >
       <ToolSidebarHeader

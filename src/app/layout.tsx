@@ -21,6 +21,16 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Dynamic Canvas - Crea Diseños a Escala con una Simple API",
   description: "Automatiza tu flujo de trabajo creativo. Integra herramientas de diseño directamente en tu stack tecnológico y genera visuales dinámicos en segundos.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    shortcut: "/icon.svg",
+  },
+  openGraph: {
+    title: "Dynamic Canvas",
+    description: "Genera visuales dinámicos en segundos con una simple API.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
@@ -29,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <head>
         <link
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700&display=swap"

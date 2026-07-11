@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { Hono } from "hono";
-import { eq, desc, asc } from "drizzle-orm";
+import { eq, desc, asc, and } from "drizzle-orm";
 import { verifyAuth } from "@hono/auth-js";
 import { zValidator } from "@hono/zod-validator";
 
@@ -14,8 +14,8 @@ const app = new Hono()
     zValidator(
       "query",
       z.object({
-        page: z.coerce.number().default(1),
-        limit: z.coerce.number().default(20),
+        page: z.coerce.number().int().min(1).default(1),
+        limit: z.coerce.number().int().min(1).max(100).default(20),
         category: z.string().optional(),
       }),
     ),
@@ -115,8 +115,25 @@ const app = new Hono()
       const { id } = c.req.valid("param");
       const values = c.req.valid("json");
 
-      // Por ahora, cualquiera autenticado puede actualizar templates
-      // TODO: Agregar verificación de permisos si es necesario
+      if (!auth.token?.id) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Verify ownership: user must own the template or be superadmin
+      const [existing] = await db
+        .select({ userId: templates.user_id })
+        .from(templates)
+        .where(eq(templates.id, id));
+
+      if (!existing) {
+        return c.json({ error: "Not found" }, 404);
+      }
+
+      const isOwner = existing.userId === auth.token.id;
+      const isSuperadmin = auth.token.role === "superadmin";
+      if (!isOwner && !isSuperadmin) {
+        return c.json({ error: "Forbidden: you do not own this template" }, 403);
+      }
 
       const data = await db
         .update(templates)
@@ -145,6 +162,22 @@ const app = new Hono()
 
       if (!auth.token?.id) {
         return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      // Verify ownership: user must own the template or be superadmin
+      const [existing] = await db
+        .select({ userId: templates.user_id })
+        .from(templates)
+        .where(eq(templates.id, id));
+
+      if (!existing) {
+        return c.json({ error: "Not found" }, 404);
+      }
+
+      const isOwner = existing.userId === auth.token.id;
+      const isSuperadmin = auth.token.role === "superadmin";
+      if (!isOwner && !isSuperadmin) {
+        return c.json({ error: "Forbidden: you do not own this template" }, 403);
       }
 
       const data = await db

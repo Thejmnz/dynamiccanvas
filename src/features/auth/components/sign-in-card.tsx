@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/contexts/AuthContext";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { toast } from "sonner";
+import { BrandMark } from "@/components/brand-mark";
 
 export const SignInCard = () => {
   const { signIn } = useAuth();
@@ -33,8 +34,10 @@ export const SignInCard = () => {
     setLoadingLogin(true);
 
     try {
+      // 1. Sign in with Supabase (sets Supabase session cookie)
       await signIn(email, password);
 
+      // 2. Sign in with NextAuth (creates JWT session + fetches role from DB)
       const result = await signInWithNextAuth("credentials", {
         email,
         password,
@@ -57,20 +60,17 @@ export const SignInCard = () => {
   return (
     <div className="w-full">
       {/* Logo */}
-      <Link href="/" className="flex items-center justify-center gap-2 mb-8 cursor-pointer">
-        <div className="w-10 h-10 bg-[#135bec] rounded-lg flex items-center justify-center text-white font-bold text-base">
-          DC
-        </div>
-        <span className="text-2xl font-extrabold tracking-tight text-white">Dynamic Canvas</span>
+      <Link href="/" aria-label="Dynamic Canvas" className="mx-auto mb-7 flex w-fit">
+        <BrandMark className="size-14 text-lg shadow-[5px_5px_0_#c9ff5a]" />
       </Link>
 
       {/* Card */}
-      <div className="bg-slate-800/40 border border-white/10 rounded-2xl p-8">
+      <div className="rounded-[28px] border-2 border-[#101426] bg-white p-7 shadow-[9px_9px_0_#101426] sm:p-8">
         {/* Header with Language Switcher */}
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h1 className="text-xl font-bold text-white mb-1">{t("login_title")}</h1>
-            <p className="text-slate-400 text-sm">{t("login_subtitle")}</p>
+            <h1 className="mb-1 text-2xl font-black text-[#101426]">{t("login_title")}</h1>
+            <p className="text-sm text-[#101426]/50">{t("login_subtitle")}</p>
           </div>
           <LanguageSwitcher />
         </div>
@@ -93,7 +93,7 @@ export const SignInCard = () => {
               type="email"
               disabled={loading || loadingLogin}
               required
-              className="bg-slate-900/50 border-white/10 text-white placeholder:text-slate-500 focus:border-[#135bec]"
+              className="border-[#101426]/20 bg-[#f6f5ef] text-[#101426]"
             />
           </div>
           <div>
@@ -104,14 +104,14 @@ export const SignInCard = () => {
               type="password"
               disabled={loading || loadingLogin}
               required
-              className="bg-slate-900/50 border-white/10 text-white placeholder:text-slate-500 focus:border-[#135bec]"
+              className="border-[#101426]/20 bg-[#f6f5ef] text-[#101426]"
             />
           </div>
           <Button
             type="submit"
             size="lg"
             disabled={loading}
-            className="w-full bg-[#135bec] hover:bg-[#135bec]/90 text-white font-bold shadow-lg shadow-[#135bec]/20"
+            className="w-full bg-[#5b35d5] font-bold text-white hover:bg-[#101426]"
           >
             {loadingLogin ? (
               <Loader2 className="mr-2 size-5 animate-spin" />
@@ -122,10 +122,10 @@ export const SignInCard = () => {
         </form>
 
         {/* Sign Up Link */}
-        <p className="text-sm text-slate-400 mt-6 text-center">
+        <p className="mt-6 text-center text-sm text-[#101426]/50">
           {t("no_account")}{" "}
           <Link href="/sign-up" onClick={() => setLoading(true)}>
-            <span className="text-[#135bec] hover:underline font-semibold">{t("sign_up")}</span>
+            <span className="font-bold text-[#5b35d5] hover:underline">{t("sign_up")}</span>
           </Link>
         </p>
       </div>

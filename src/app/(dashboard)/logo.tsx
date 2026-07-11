@@ -1,14 +1,10 @@
 import Link from "next/link";
+import { BrandMark } from "@/components/brand-mark";
 
 export const Logo = () => {
   return (
-    <Link href="/dashboard">
-      <div className="flex items-center gap-2 hover:opacity-75 transition px-6 py-4">
-        <div className="w-8 h-8 bg-[#135bec] rounded-lg flex items-center justify-center text-white font-bold text-sm">
-          DC
-        </div>
-        <span className="text-lg font-bold text-slate-900">Dynamic Canvas</span>
-      </div>
+    <Link href="/dashboard" aria-label="Dynamic Canvas" className="m-5 flex w-fit transition hover:-translate-y-0.5">
+      <BrandMark className="size-12 text-base shadow-[4px_4px_0_#c9ff5a]" />
     </Link>
   );
 };

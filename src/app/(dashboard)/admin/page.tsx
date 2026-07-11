@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
   Users,
@@ -19,6 +18,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { DesignsSection } from "./designs-section";
+import { useUserRole } from "@/hooks/use-user-role";
 
 interface UserStats {
   id: string;
@@ -42,7 +42,7 @@ interface AdminStats {
 }
 
 export default function AdminDashboard() {
-  const { data: session, status } = useSession();
+  const { role, loading: roleLoading, isAuthenticated } = useUserRole();
   const router = useRouter();
   const { t } = useLanguage();
   const [users, setUsers] = useState<UserStats[]>([]);
@@ -54,20 +54,20 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<"users" | "designs">("designs");
 
   useEffect(() => {
-    if (status === "loading") return;
+    if (roleLoading) return;
 
-    if (!session?.user) {
+    if (!isAuthenticated) {
       router.push("/sign-in");
       return;
     }
 
-    if (session.user.role !== "superadmin") {
+    if (role !== "superadmin") {
       router.push("/dashboard");
       return;
     }
 
     fetchAdminData();
-  }, [session, status, router]);
+  }, [role, roleLoading, isAuthenticated, router]);
 
   const fetchAdminData = async () => {
     try {

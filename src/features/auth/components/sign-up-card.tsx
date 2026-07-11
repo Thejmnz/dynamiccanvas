@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { BrandMark } from "@/components/brand-mark";
 
 export const SignUpCard = () => {
   const [loading, setLoading] = useState(false);
@@ -25,12 +26,18 @@ export const SignUpCard = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const onProviderSignUp = (provider: "github" | "google") => {
+  const onProviderSignUp = async (provider: "github" | "google") => {
     setLoading(true);
     setLoadingGithub(provider === "github");
     setLoadingGoogle(provider === "google");
 
-    signIn(provider, { callbackUrl: "/" });
+    try {
+      await signIn(provider, { callbackUrl: "/" });
+    } catch {
+      setLoading(false);
+      setLoadingGithub(false);
+      setLoadingGoogle(false);
+    }
   };
 
   const onCredentialSignUp = (e: React.FormEvent<HTMLFormElement>) => {
@@ -58,22 +65,19 @@ export const SignUpCard = () => {
   return (
     <div className="w-full">
       {/* Logo */}
-      <Link href="/" className="flex items-center justify-center gap-2 mb-8 cursor-pointer">
-        <div className="w-10 h-10 bg-[#135bec] rounded-lg flex items-center justify-center text-white font-bold text-base">
-          DC
-        </div>
-        <span className="text-2xl font-extrabold tracking-tight text-white">Dynamic Canvas</span>
+      <Link href="/" aria-label="Dynamic Canvas" className="mx-auto mb-7 flex w-fit">
+        <BrandMark className="size-14 text-lg shadow-[5px_5px_0_#c9ff5a]" />
       </Link>
 
       {/* Card */}
-      <div className="bg-slate-800/40 border border-white/10 rounded-2xl p-8">
+      <div className="rounded-[28px] border-2 border-[#101426] bg-white p-7 shadow-[9px_9px_0_#101426] sm:p-8">
         {/* Header with Language Switcher */}
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h1 className="text-xl font-bold text-white mb-1">
+            <h1 className="mb-1 text-2xl font-black text-[#101426]">
               {showSuccess ? t("registration_successful") : t("signup_title")}
             </h1>
-            <p className="text-slate-400 text-sm">
+            <p className="text-sm text-[#101426]/50">
               {showSuccess ? t("check_email_confirm") : t("signup_subtitle")}
             </p>
           </div>
@@ -90,7 +94,7 @@ export const SignUpCard = () => {
             <Link href="/sign-in" className="block">
               <Button
                 size="lg"
-                className="w-full bg-[#135bec] hover:bg-[#135bec]/90 text-white font-bold shadow-lg shadow-[#135bec]/20"
+                className="w-full bg-[#5b35d5] font-bold text-white hover:bg-[#101426]"
               >
                 {t("go_to_signin")}
               </Button>
@@ -116,7 +120,7 @@ export const SignUpCard = () => {
                   type="text"
                   disabled={loading || mutation.isPending}
                   required
-                  className="bg-slate-900/50 border-white/10 text-white placeholder:text-slate-500 focus:border-[#135bec]"
+                  className="border-[#101426]/20 bg-[#f6f5ef] text-[#101426]"
                 />
               </div>
               <div>
@@ -127,7 +131,7 @@ export const SignUpCard = () => {
                   type="email"
                   disabled={loading || mutation.isPending}
                   required
-                  className="bg-slate-900/50 border-white/10 text-white placeholder:text-slate-500 focus:border-[#135bec]"
+                  className="border-[#101426]/20 bg-[#f6f5ef] text-[#101426]"
                 />
               </div>
               <div>
@@ -140,14 +144,14 @@ export const SignUpCard = () => {
                   required
                   minLength={3}
                   maxLength={20}
-                  className="bg-slate-900/50 border-white/10 text-white placeholder:text-slate-500 focus:border-[#135bec]"
+                  className="border-[#101426]/20 bg-[#f6f5ef] text-[#101426]"
                 />
               </div>
               <Button
                 type="submit"
                 size="lg"
                 disabled={loading || mutation.isPending}
-                className="w-full bg-[#135bec] hover:bg-[#135bec]/90 text-white font-bold shadow-lg shadow-[#135bec]/20"
+                className="w-full bg-[#5b35d5] font-bold text-white hover:bg-[#101426]"
               >
                 {mutation.isPending ? (
                   <Loader2 className="mr-2 size-5 animate-spin" />
@@ -158,10 +162,10 @@ export const SignUpCard = () => {
             </form>
 
             {/* Sign In Link */}
-            <p className="text-sm text-slate-400 mt-6 text-center">
+            <p className="mt-6 text-center text-sm text-[#101426]/50">
               {t("already_have_account")}{" "}
               <Link href="/sign-in" onClick={() => setLoading(true)}>
-                <span className="text-[#135bec] hover:underline font-semibold">{t("sign_in")}</span>
+                <span className="font-bold text-[#5b35d5] hover:underline">{t("sign_in")}</span>
               </Link>
             </p>
           </>

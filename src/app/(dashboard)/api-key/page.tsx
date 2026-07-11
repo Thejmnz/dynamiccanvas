@@ -147,10 +147,11 @@ export default function ApiKeyPage() {
     : '';
 
   return (
-    <div className="container mx-auto py-10 max-w-2xl">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2 flex items-center gap-3">
-          <KeyRound className="h-10 w-10 text-blue-600" />
+    <div className="container mx-auto max-w-3xl py-8">
+      <div className="mb-9 rounded-[28px] border-2 border-[#101426] bg-[#c9ff5a] p-7 shadow-[7px_7px_0_#101426]">
+        <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-[#5b35d5]">DEVELOPER ACCESS</p>
+        <h1 className="mb-2 flex items-center gap-3 text-4xl font-black tracking-[-0.04em]">
+          <KeyRound className="h-10 w-10 text-[#5b35d5]" />
           {language === "es" ? "API Key" : "API Key"}
         </h1>
         <p className="text-lg text-muted-foreground">
@@ -160,7 +161,7 @@ export default function ApiKeyPage() {
         </p>
       </div>
 
-      <Card>
+      <Card className="rounded-[24px] border-2 border-[#101426] bg-white shadow-[7px_7px_0_#d9ccff]">
         <CardHeader>
           <CardTitle>{language === "es" ? "Tu API Key" : "Your API Key"}</CardTitle>
           <CardDescription>
@@ -215,17 +216,18 @@ export default function ApiKeyPage() {
               {/* Actions */}
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button
+                  variant="ghost"
                   onClick={copyApiKey}
-                  className="flex-1"
+                  className="flex-1 h-12 rounded-full border-2 border-[#101426] bg-[#c9ff5a] text-[#101426] font-black shadow-[5px_5px_0_#101426] transition hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#101426] hover:bg-[#c9ff5a] hover:text-[#101426]"
                 >
                   <Copy className="h-4 w-4 mr-2" />
                   {language === "es" ? "Copiar API Key" : "Copy API Key"}
                 </Button>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={regenerateApiKey}
                   disabled={isRegenerating}
-                  className="flex-1"
+                  className="flex-1 h-12 rounded-full border-2 border-[#101426] bg-white text-[#101426] font-black shadow-[5px_5px_0_#101426] transition hover:-translate-y-0.5 hover:bg-[#c9ff5a] hover:shadow-[3px_3px_0_#101426] hover:text-[#101426] disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_#101426]"
                 >
                   {isRegenerating ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />

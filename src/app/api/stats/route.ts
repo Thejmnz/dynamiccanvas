@@ -15,6 +15,6 @@ export async function GET() {
     return NextResponse.json({ totalRenders });
   } catch (error) {
     console.error("Error fetching public stats:", error);
-    return NextResponse.json({ totalRenders: 0 });
+    return NextResponse.json({ error: "Failed to fetch stats" }, { status: 500 });
   }
 }

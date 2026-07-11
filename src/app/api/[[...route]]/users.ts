@@ -12,7 +12,7 @@ const app = new Hono()
       z.object({
         name: z.string(),
         email: z.string().email(),
-        password: z.string().min(3).max(20),
+        password: z.string().min(8).max(100),
       })
     ),
     async (c) => {
@@ -26,14 +26,19 @@ const app = new Hono()
         }
 
         // Create user in Supabase Auth (this automatically creates entry in auth.users table)
-        const origin = c.req.header("origin") || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const originHeader = c.req.header("origin");
+        // Only allow redirect to the app's own URL to prevent open redirect
+        const safeRedirect = originHeader && originHeader.startsWith(new URL(appUrl).origin)
+          ? originHeader
+          : appUrl;
         const { data, error: authError } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${origin}`,
+            emailRedirectTo: safeRedirect,
             data: {
-              name, // Store name in user metadata
+              name,
             }
           }
         });

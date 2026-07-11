@@ -1,27 +1,37 @@
-import { useState, useEffect } from "react";
-import {
-  ActiveTool,
-  Editor,
-  fonts,
-} from "@/features/editor/types";
-import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
-import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-header";
+"use client";
 
-import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
-import { Upload } from "lucide-react";
-import { createClient } from "@supabase/supabase-js";
+import { Loader2, Upload } from "lucide-react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
+import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-header";
+import { ActiveTool, Editor, fonts } from "@/features/editor/types";
+import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabaseClient";
 
 interface FontSidebarProps {
   editor: Editor | undefined;
   activeTool: ActiveTool;
   onChangeActiveTool: (tool: ActiveTool) => void;
+}
+
+interface UploadedFont {
+  displayName: string;
+  publicUrl: string;
+}
+
+const FONT_EXTENSIONS = [".ttf", ".otf", ".woff", ".woff2"];
+
+const loadFontFace = async (fontName: string, fontUrl: string) => {
+  const isLoaded = Array.from(document.fonts).some((face) => face.family === fontName);
+  if (isLoaded) return;
+
+  const fontFace = new FontFace(fontName, `url("${fontUrl}")`);
+  await fontFace.load();
+  document.fonts.add(fontFace);
 };
 
 export const FontSidebar = ({
@@ -29,207 +39,142 @@ export const FontSidebar = ({
   activeTool,
   onChangeActiveTool,
 }: FontSidebarProps) => {
-  const value = editor?.getActiveFontFamily();
+  const inputRef = useRef<HTMLInputElement>(null);
   const [customFonts, setCustomFonts] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const selectedFont = editor?.getActiveFontFamily();
 
   useEffect(() => {
-    const loadLocalFonts = async () => {
+    let mounted = true;
+
+    const discoverFonts = async () => {
+      const discovered: string[] = [];
+
       try {
-        const response = await fetch("/api/fonts");
-        if (!response.ok) return;
-
-        const fontFiles = await response.json();
-
-        if (Array.isArray(fontFiles)) {
-          const loadedFonts: string[] = [];
-
-          for (const file of fontFiles) {
-            const fontName = file.replace(/\.[^/.]+$/, "");
-            const fontUrl = `/fonts/${file}`;
-
-            // Check if font is already loaded/available to avoid errors
-            const isLoaded = Array.from(document.fonts).some(f => f.family === fontName);
-            if (!isLoaded) {
+        const localResponse = await fetch("/api/fonts");
+        if (localResponse.ok) {
+          const localFiles = await localResponse.json();
+          if (Array.isArray(localFiles)) {
+            await Promise.all(localFiles.map(async (file: string) => {
+              const fontName = file.replace(/\.[^/.]+$/, "");
               try {
-                const fontFace = new FontFace(fontName, `url('${fontUrl}')`);
-                await fontFace.load();
-                document.fonts.add(fontFace);
-                loadedFonts.push(fontName);
-              } catch (e) {
-                // Silent fail - font not available
-              }
-            } else {
-              // If already in document.fonts, we still might want it in our list if it's not in 'fonts' constant
-              loadedFonts.push(fontName);
-            }
+                await loadFontFace(fontName, `/fonts/${file}`);
+                discovered.push(fontName);
+              } catch {}
+            }));
           }
-
-          setCustomFonts((prev) => {
-            // Avoid duplicates with existing custom fonts or default fonts
-            // Note: 'fonts' array from types is static.
-            const newFonts = loadedFonts.filter(f => !prev.includes(f) && !fonts.includes(f));
-            return [...prev, ...newFonts];
-          });
         }
-      } catch (error) {
-        // Silent fail - local fonts not available
+      } catch {}
+
+      try {
+        const uploadedResponse = await fetch(`/api/uploaded-fonts?_t=${Date.now()}`);
+        if (uploadedResponse.ok) {
+          const uploaded = await uploadedResponse.json() as UploadedFont[];
+          if (Array.isArray(uploaded)) {
+            await Promise.all(uploaded.map(async (font) => {
+              try {
+                await loadFontFace(font.displayName, `${font.publicUrl}?_t=${Date.now()}`);
+                discovered.push(font.displayName);
+              } catch {}
+            }));
+          }
+        }
+      } catch {}
+
+      if (mounted) {
+        setCustomFonts(Array.from(new Set(discovered.filter((font) => !fonts.includes(font)))));
       }
     };
 
-    const loadUploadedFonts = async () => {
-      try {
-        // Add cache-busting parameter
-        const response = await fetch(`/api/uploaded-fonts?_t=${Date.now()}`);
-        if (!response.ok) return;
-
-        const uploadedFonts = await response.json();
-
-        if (Array.isArray(uploadedFonts)) {
-          const loadedFonts: string[] = [];
-
-          for (const font of uploadedFonts) {
-            const fontName = font.displayName;
-
-            // Check if font is already loaded/available to avoid errors
-            const isLoaded = Array.from(document.fonts).some(f => f.family === fontName);
-            if (!isLoaded) {
-              try {
-                // Add cache-busting to font URL
-                const fontUrlWithCache = `${font.publicUrl}?_t=${Date.now()}`;
-                const fontFace = new FontFace(fontName, `url('${fontUrlWithCache}')`);
-                await fontFace.load();
-                document.fonts.add(fontFace);
-                loadedFonts.push(fontName);
-              } catch (e) {
-                // Silent fail - uploaded font not available
-              }
-            } else {
-              loadedFonts.push(fontName);
-            }
-          }
-
-          setCustomFonts((prev) => {
-            // Avoid duplicates with existing custom fonts or default fonts
-            const newFonts = loadedFonts.filter(f => !prev.includes(f) && !fonts.includes(f));
-            return [...prev, ...newFonts];
-          });
-        }
-      } catch (error) {
-        // Silent fail - uploaded fonts not available
-      }
-    };
-
-    loadLocalFonts();
-    loadUploadedFonts();
+    void discoverFonts();
+    return () => { mounted = false; };
   }, []);
 
-  const onClose = () => {
-    onChangeActiveTool("select");
-  };
+  const allFonts = useMemo(
+    () => Array.from(new Set([...fonts, ...customFonts])),
+    [customFonts],
+  );
 
-  const handleFontUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const uploadFont = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    const validTypes = ['.ttf', '.otf', '.woff', '.woff2'];
-    const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-
-    if (!validTypes.includes(fileExt)) {
-      toast.error("Please upload a valid font file (.ttf, .otf, .woff, .woff2)");
+    const extension = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+    if (!FONT_EXTENSIONS.includes(extension)) {
+      toast.error("Sube una fuente .ttf, .otf, .woff o .woff2");
+      event.target.value = "";
       return;
     }
 
     setIsUploading(true);
 
     try {
-      // Upload to Supabase Storage
-      const fileName = `${Date.now()}-${file.name}`;
-      const { data, error } = await supabase.storage
-        .from('media')
-        .upload(`fonts/${fileName}`, file);
-
+      const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+      const storagePath = `fonts/${Date.now()}-${safeFileName}`;
+      const { error } = await supabase.storage.from("media").upload(storagePath, file, {
+        cacheControl: "31536000",
+        upsert: false,
+      });
       if (error) throw error;
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('media')
-        .getPublicUrl(`fonts/${fileName}`);
-
-      // Get font name without extension
+      const { data } = supabase.storage.from("media").getPublicUrl(storagePath);
       const fontName = file.name.replace(/\.[^/.]+$/, "");
+      await loadFontFace(fontName, data.publicUrl);
 
-      // Dynamically load the font
-      const fontFace = new FontFace(fontName, `url(${publicUrl})`);
-      await fontFace.load();
-      document.fonts.add(fontFace);
-
-      // Add to custom fonts list
-      setCustomFonts(prev => [...prev, fontName]);
-
-      toast.success("Font uploaded successfully!");
+      setCustomFonts((current) => Array.from(new Set([...current, fontName])));
+      editor?.changeFontFamily(fontName);
+      editor?.canvas.requestRenderAll();
+      toast.success(`Fuente “${fontName}” subida`);
     } catch (error) {
-      toast.error("Failed to upload font");
+      console.error("Failed to upload font:", error);
+      toast.error("No se pudo subir la fuente");
     } finally {
       setIsUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
     }
   };
-
-  const allFonts = [...fonts, ...customFonts];
 
   return (
     <aside
       className={cn(
-        "absolute left-0 top-0 bg-white border-r z-[40] w-[360px] h-full flex flex-col shadow-lg",
+        "relative z-[40] flex h-full w-[320px] flex-col border-r bg-white",
         activeTool === "font" ? "visible" : "hidden",
       )}
     >
-      <ToolSidebarHeader
-        title="Font"
-        description="Change the text font"
-      />
+      <ToolSidebarHeader title="Fuentes" description="Cambia o sube una fuente" />
       <ScrollArea>
-        <div className="p-4 space-y-2">
-          {/* Upload Custom Font Button */}
-          <label htmlFor="font-upload">
-            <Button
-              variant="outline"
-              size="lg"
-              className="w-full h-16 justify-center gap-2 border-dashed"
-              disabled={isUploading}
-              asChild
-            >
-              <div>
-                <Upload className="h-4 w-4" />
-                {isUploading ? "Uploading..." : "Upload Custom Font"}
-              </div>
-            </Button>
-          </label>
+        <div className="space-y-3 p-4">
           <input
+            ref={inputRef}
             id="font-upload"
             type="file"
             accept=".ttf,.otf,.woff,.woff2"
             className="hidden"
-            onChange={handleFontUpload}
+            onChange={uploadFont}
           />
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="h-16 w-full gap-2 border-dashed"
+            disabled={isUploading}
+            onClick={() => inputRef.current?.click()}
+          >
+            {isUploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+            {isUploading ? "Subiendo fuente..." : "Subir fuente personalizada"}
+          </Button>
 
-          {/* Font List */}
-          <div className="space-y-1 border-t pt-2">
+          <div className="space-y-1 border-t pt-3">
             {allFonts.map((font) => (
               <Button
                 key={font}
                 variant="secondary"
                 size="lg"
                 className={cn(
-                  "w-full h-16 justify-start text-left",
-                  value === font && "border-2 border-blue-500",
+                  "h-14 w-full justify-start px-4 text-left text-base",
+                  selectedFont === font && "border-2 border-blue-500 bg-blue-50",
                 )}
-                style={{
-                  fontFamily: font,
-                  fontSize: "16px",
-                  padding: "8px 16px"
-                }}
+                style={{ fontFamily: font }}
                 onClick={() => editor?.changeFontFamily(font)}
               >
                 {font}
@@ -238,7 +183,7 @@ export const FontSidebar = ({
           </div>
         </div>
       </ScrollArea>
-      <ToolSidebarClose onClick={onClose} />
+      <ToolSidebarClose onClick={() => onChangeActiveTool("select")} />
     </aside>
   );
 };

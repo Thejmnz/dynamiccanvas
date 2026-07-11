@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  reactStrictMode: true,
+  // Keep development assets separate from production builds. Running
+  // `next build` while the local editor is open must not invalidate its CSS.
+  distDir: process.env.NODE_ENV === "development" ? ".next-dev" : ".next",
   webpack: (config) => {
     config.externals.push({
       "utf-8-validate": "commonjs utf-8-validate",
@@ -21,27 +25,15 @@ const nextConfig = {
       },
       {
         protocol: "https",
+        hostname: "*.ufs.sh",
+      },
+      {
+        protocol: "https",
         hostname: "replicate.delivery",
       },
       {
         protocol: "https",
-        hostname: "canva-clone-ali.vercel.app",
-      },
-      {
-        protocol: "https",
-        hostname: "xsjtlbmaazrhwhoorubk.supabase.co",
-      },
-      {
-        protocol: "https",
         hostname: "qhfbwqijhefoeebxnota.supabase.co",
-      },
-      {
-        protocol: "https",
-        hostname: "*.supabase.co",
-      },
-      {
-        protocol: "https",
-        hostname: "*.ufs.sh",
       },
     ],
   },

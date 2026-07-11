@@ -1,11 +1,19 @@
-import { Loader, RefreshCw, Search } from "lucide-react";
-import { useState, useEffect, useRef, useCallback } from "react";
+"use client";
+
+import { FormEvent, useCallback, useEffect, useState } from "react";
+import { AlertTriangle, Loader, Plus, RefreshCw, Search } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { ActiveTool, Editor } from "@/features/editor/types";
 import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
 import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-header";
+
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ImageSidebarProps {
   editor: Editor | undefined;
@@ -13,436 +21,303 @@ interface ImageSidebarProps {
   onChangeActiveTool: (tool: ActiveTool) => void;
 }
 
-// Categorías de Pixabay
-const PIXABAY_CATEGORIES = [
-  { id: "varied", name: "Varied", nameEs: "Variado", query: "nature,landscape,people,animals,food,technology" },
-  { id: "animals", name: "Animals", nameEs: "Animales", query: "animals" },
-  { id: "nature", name: "Nature", nameEs: "Naturaleza", query: "nature,landscape,flowers" },
-  { id: "people", name: "People", nameEs: "Personas", query: "people,portrait,woman,man" },
-  { id: "food", name: "Food", nameEs: "Comida", query: "food,restaurant,cooking" },
-  { id: "technology", name: "Technology", nameEs: "Tecnología", query: "technology,computer,tech" },
-  { id: "business", name: "Business", nameEs: "Negocios", query: "business,office,work" },
-  { id: "architecture", name: "Architecture", nameEs: "Arquitectura", query: "architecture,building,city" },
-  { id: "travel", name: "Travel", nameEs: "Viajes", query: "travel,beach,mountain,city" },
-  { id: "space", name: "Space", nameEs: "Espacio", query: "space,galaxy,stars,universe" },
-];
-
-interface PixabayImage {
+type PixabayImage = {
   id: number;
+  pageURL: string;
+  tags: string;
+  previewURL: string;
   webformatURL: string;
   largeImageURL: string;
-  tags: string;
-  user: string;
   webformatWidth: number;
   webformatHeight: number;
-}
+  user: string;
+  userId: number;
+};
 
-interface PixabayResponse {
-  hits: PixabayImage[];
+type PixabayResponse = {
+  total: number;
   totalHits: number;
-}
+  hits: PixabayImage[];
+  error?: string;
+};
+
+const CATEGORIES = [
+  { id: "all", en: "Featured", es: "Destacadas", value: "" },
+  { id: "backgrounds", en: "Backgrounds", es: "Fondos", value: "backgrounds" },
+  { id: "nature", en: "Nature", es: "Naturaleza", value: "nature" },
+  { id: "people", en: "People", es: "Personas", value: "people" },
+  { id: "animals", en: "Animals", es: "Animales", value: "animals" },
+  { id: "food", en: "Food", es: "Comida", value: "food" },
+  { id: "computer", en: "Technology", es: "Tecnología", value: "computer" },
+  { id: "business", en: "Business", es: "Negocios", value: "business" },
+  { id: "buildings", en: "Architecture", es: "Arquitectura", value: "buildings" },
+  { id: "travel", en: "Travel", es: "Viajes", value: "travel" },
+];
 
 export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSidebarProps) => {
   const { t, language } = useLanguage();
+  const queryClient = useQueryClient();
+  const [searchInput, setSearchInput] = useState("");
+  const [appliedQuery, setAppliedQuery] = useState("");
+  const [activeCategory, setActiveCategory] = useState("all");
+  const [images, setImages] = useState<PixabayImage[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalHits, setTotalHits] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [importingId, setImportingId] = useState<number | null>(null);
+  const [error, setError] = useState("");
+  const [hasLoaded, setHasLoaded] = useState(false);
 
-  // Categoría activa
-  const [activeCategory, setActiveCategory] = useState<string>("varied");
+  const loadImages = useCallback(async ({
+    query,
+    categoryId,
+    nextPage,
+    append,
+  }: {
+    query: string;
+    categoryId: string;
+    nextPage: number;
+    append: boolean;
+  }) => {
+    append ? setIsLoadingMore(true) : setIsLoading(true);
+    setError("");
 
-  // Estado para búsqueda
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<PixabayImage[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showSearchResults, setShowSearchResults] = useState(false);
+    const category = CATEGORIES.find((item) => item.id === categoryId)?.value || "";
+    const params = new URLSearchParams({
+      page: String(nextPage),
+      lang: language === "es" ? "es" : "en",
+    });
+    if (query) params.set("q", query);
+    if (!query && category) params.set("category", category);
 
-  // Estado para paginación de categorías
-  const [categoryImages, setCategoryImages] = useState<PixabayImage[]>([]);
-  const [categoryPage, setCategoryPage] = useState(1);
-  const [isLoadingCategory, setIsLoadingCategory] = useState(false);
-  const [hasMoreCategory, setHasMoreCategory] = useState(true);
-  const [totalCategoryHits, setTotalCategoryHits] = useState(0);
-
-  // Estado para paginación de búsqueda
-  const [searchPage, setSearchPage] = useState(1);
-  const [hasMoreSearch, setHasMoreSearch] = useState(true);
-  const [totalSearchHits, setTotalSearchHits] = useState(0);
-
-  // Ref para evitar cargas múltiples
-  const isLoadingMoreRef = useRef(false);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const savedScrollPositionRef = useRef<number>(0);
-  const isRestoringScrollRef = useRef(false);
-
-  const IMAGES_PER_PAGE = 10;
-
-  const onClose = () => {
-    onChangeActiveTool("select");
-  };
-
-  // Fetch images from Pixabay
-  const fetchImages = async (
-    query: string,
-    page: number
-  ): Promise<{ images: PixabayImage[]; totalHits: number } | null> => {
     try {
-      const PIXABAY_API_KEY = process.env.NEXT_PUBLIC_PIXABAY_API_KEY;
-      const response = await fetch(
-        `https://pixabay.com/api/?key=${PIXABAY_API_KEY}&q=${encodeURIComponent(query)}&image_type=photo&per_page=${IMAGES_PER_PAGE}&page=${page}&safesearch=true`
-      );
-      const data: PixabayResponse = await response.json();
-      return {
-        images: data.hits || [],
-        totalHits: data.totalHits || 0,
-      };
-    } catch (error) {
-      console.error("Error fetching Pixabay images:", error);
-      return null;
+      const response = await fetch(`/api/pixabay?${params}`);
+      const data = await response.json() as PixabayResponse;
+      if (!response.ok) throw new Error(data.error || "Pixabay request failed");
+
+      setImages((current) => append ? [...current, ...data.hits] : data.hits);
+      setTotalHits(data.totalHits || 0);
+      setPage(nextPage);
+      setHasLoaded(true);
+    } catch (loadError) {
+      console.error(loadError);
+      setError(language === "es"
+        ? "No se pudieron cargar las imágenes de Pixabay."
+        : "Could not load Pixabay images.");
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
     }
+  }, [language]);
+
+  useEffect(() => {
+    if (activeTool === "images" && !hasLoaded && !isLoading) {
+      void loadImages({ query: "", categoryId: "all", nextPage: 1, append: false });
+    }
+  }, [activeTool, hasLoaded, isLoading, loadImages]);
+
+  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const query = searchInput.trim();
+    setAppliedQuery(query);
+    void loadImages({ query, categoryId: activeCategory, nextPage: 1, append: false });
   };
 
-  // Cargar imágenes de categoría (carga inicial)
-  const loadCategoryImages = useCallback(async (categoryId: string, page: number, reset: boolean = false) => {
-    const category = PIXABAY_CATEGORIES.find(c => c.id === categoryId);
-    if (!category) return;
-
-    setIsLoadingCategory(true);
-    isLoadingMoreRef.current = true;
-
-    const result = await fetchImages(category.query, page);
-
-    if (result) {
-      if (reset) {
-        setCategoryImages(result.images);
-        setCategoryPage(1);
-      } else {
-        setCategoryImages(result.images);
-      }
-      setTotalCategoryHits(result.totalHits);
-      setHasMoreCategory(result.images.length < result.totalHits);
-    }
-
-    setIsLoadingCategory(false);
-    setTimeout(() => {
-      isLoadingMoreRef.current = false;
-    }, 300);
-  }, []);
-
-  // Cargar más imágenes de categoría
-  const loadMoreCategoryImages = useCallback(async () => {
-    if (isLoadingMoreRef.current || !hasMoreCategory || isLoadingCategory) return;
-
-    const category = PIXABAY_CATEGORIES.find(c => c.id === activeCategory);
-    if (!category) return;
-
-    isLoadingMoreRef.current = true;
-    const nextPage = categoryPage + 1;
-
-    const result = await fetchImages(category.query, nextPage);
-
-    if (result && result.images.length > 0) {
-      setCategoryImages(prev => [...prev, ...result.images]);
-      setCategoryPage(nextPage);
-      setHasMoreCategory(categoryImages.length + result.images.length < result.totalHits);
-    } else {
-      setHasMoreCategory(false);
-    }
-
-    setTimeout(() => {
-      isLoadingMoreRef.current = false;
-    }, 300);
-  }, [hasMoreCategory, categoryPage, activeCategory, categoryImages.length, isLoadingCategory]);
-
-  // Cargar más resultados de búsqueda
-  const loadMoreSearchResults = useCallback(async () => {
-    if (isLoadingMoreRef.current || !hasMoreSearch || isSearching || !searchQuery.trim()) return;
-
-    isLoadingMoreRef.current = true;
-    const nextPage = searchPage + 1;
-
-    const result = await fetchImages(searchQuery, nextPage);
-
-    if (result && result.images.length > 0) {
-      setSearchResults(prev => [...prev, ...result.images]);
-      setSearchPage(nextPage);
-      setHasMoreSearch(searchResults.length + result.images.length < result.totalHits);
-    } else {
-      setHasMoreSearch(false);
-    }
-
-    setTimeout(() => {
-      isLoadingMoreRef.current = false;
-    }, 300);
-  }, [hasMoreSearch, searchPage, searchQuery, searchResults.length, isSearching]);
-
-  // Cambiar categoría
   const handleCategoryChange = (categoryId: string) => {
     setActiveCategory(categoryId);
-    setShowSearchResults(false);
-    isLoadingMoreRef.current = false;
-    loadCategoryImages(categoryId, 1, true);
+    setAppliedQuery("");
+    setSearchInput("");
+    void loadImages({ query: "", categoryId, nextPage: 1, append: false });
   };
 
-  // Búsqueda
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
+  const handleImport = async (image: PixabayImage) => {
+    if (!editor || importingId !== null) return;
+    setImportingId(image.id);
 
-    setIsSearching(true);
-    setShowSearchResults(true);
-    setSearchPage(1);
-    setSearchResults([]);
-    setHasMoreSearch(true);
-    isLoadingMoreRef.current = true;
+    try {
+      const response = await fetch("/api/pixabay", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: image.id, imageUrl: image.largeImageURL }),
+      });
+      const data = await response.json() as { url?: string; error?: string };
+      if (!response.ok || !data.url) throw new Error(data.error || "Import failed");
 
-    const result = await fetchImages(searchQuery, 1);
-
-    if (result) {
-      setSearchResults(result.images);
-      setTotalSearchHits(result.totalHits);
-      setHasMoreSearch(result.images.length < result.totalHits);
+      editor.addImage(data.url);
+      queryClient.invalidateQueries({ queryKey: ["images"] });
+      toast.success(language === "es" ? "Imagen agregada al lienzo" : "Image added to canvas");
+    } catch (importError) {
+      console.error(importError);
+      toast.error(language === "es"
+        ? "No se pudo agregar la imagen."
+        : "Could not add the image.");
+    } finally {
+      setImportingId(null);
     }
-
-    setIsSearching(false);
-    setTimeout(() => {
-      isLoadingMoreRef.current = false;
-    }, 300);
   };
 
-  const clearSearch = () => {
-    setSearchQuery("");
-    setSearchResults([]);
-    setShowSearchResults(false);
-    setSearchPage(1);
-    setHasMoreSearch(true);
-    isLoadingMoreRef.current = false;
-  };
-
-  const handleAddPixabayImage = (imageUrl: string) => {
-    editor?.addImage(imageUrl);
-  };
-
-  // Cargar categoría inicial
-  useEffect(() => {
-    loadCategoryImages("varied", 1);
-  }, []);
-
-  // Manejar scroll
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    if (isRestoringScrollRef.current) return;
-    
-    const target = e.target as HTMLDivElement;
-    const { scrollTop, scrollHeight, clientHeight } = target;
-
-    // Si está cerca del final (a 200px) y no está ya cargando
-    if (scrollHeight - scrollTop - clientHeight < 200 && !isLoadingMoreRef.current) {
-      // Guardar posición actual del scroll
-      savedScrollPositionRef.current = scrollTop;
-      
-      if (showSearchResults && hasMoreSearch) {
-        loadMoreSearchResults();
-      } else if (!showSearchResults && hasMoreCategory) {
-        loadMoreCategoryImages();
-      }
-    }
-  }, [showSearchResults, hasMoreSearch, hasMoreCategory, loadMoreCategoryImages, loadMoreSearchResults]);
-
-  // Restaurar posición del scroll después de cargar más imágenes
-  useEffect(() => {
-    if (!isLoadingCategory && !isSearching && savedScrollPositionRef.current > 0 && scrollContainerRef.current) {
-      isRestoringScrollRef.current = true;
-      scrollContainerRef.current.scrollTop = savedScrollPositionRef.current;
-      setTimeout(() => {
-        isRestoringScrollRef.current = false;
-      }, 100);
-    }
-  }, [categoryImages, searchResults, isLoadingCategory, isSearching]);
-
-  // Componente para renderizar grid de imágenes
-  const ImageGrid = ({ images }: { images: PixabayImage[] }) => (
-    <div className="grid grid-cols-2 gap-2 pr-1">
-      {images.map((image, index) => (
-        <button
-          onClick={() => handleAddPixabayImage(image.largeImageURL)}
-          key={`${image.id}-${index}`}
-          className={cn(
-            "relative w-full group hover:opacity-75 transition bg-muted rounded-sm overflow-hidden border",
-            index % 6 === 1 && "row-span-2",
-            index % 6 === 3 && "col-span-2"
-          )}
-          style={{
-            height: index % 6 === 1 ? '140px' : index % 6 === 3 ? '70px' : '90px'
-          }}
-        >
-          <img
-            src={image.webformatURL}
-            alt={image.tags}
-            className="object-cover w-full h-full"
-            loading="lazy"
-          />
-          <div className="opacity-0 group-hover:opacity-100 absolute left-0 bottom-0 w-full text-[9px] truncate text-white p-1 bg-black/50 text-left">
-            {image.tags.split(',')[0]}
-          </div>
-        </button>
-      ))}
-    </div>
-  );
+  const canLoadMore = images.length > 0 && images.length < totalHits;
 
   return (
     <aside
       className={cn(
-        "absolute left-0 top-0 bg-white border-r z-[40] w-[360px] h-full flex flex-col shadow-lg",
-        activeTool === "images" ? "visible" : "hidden"
+        "bg-white relative border-r z-[40] w-[320px] h-full flex flex-col shrink-0",
+        activeTool === "images" ? "visible" : "hidden",
       )}
     >
       <ToolSidebarHeader
-        title={t("sidebar_images_title")}
-        description={t("sidebar_images_gallery_desc") || "Search images from Pixabay gallery"}
+        title={language === "es" ? "Imágenes" : "Images"}
+        description={t("sidebar_images_gallery_desc") || "Search images from Pixabay"}
       />
 
-      {/* Search bar */}
-      <form onSubmit={handleSearch} className="px-3 py-2 border-b">
+      <form onSubmit={handleSearch} className="p-3 border-b">
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-gray-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t("search_images")}
-              className="w-full pl-8 pr-3 py-2 text-xs border border-gray-200 rounded-md focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder={t("search_images") || "Search images..."}
+              className="h-9 pl-8 text-xs"
+              maxLength={100}
             />
           </div>
-          <button
-            type="submit"
-            disabled={isSearching || !searchQuery.trim()}
-            className="px-3 py-2 bg-[#135bec] text-white text-xs font-medium rounded-md hover:bg-[#0d4bc9] transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSearching ? <Loader className="size-3.5 animate-spin" /> : t("search")}
-          </button>
+          <Button type="submit" size="sm" disabled={isLoading}>
+            {isLoading ? <Loader className="size-4 animate-spin" /> : t("search")}
+          </Button>
         </div>
-        {showSearchResults && (
-          <button
-            type="button"
-            onClick={clearSearch}
-            className="mt-2 text-[10px] text-gray-400 hover:text-gray-600 transition"
-          >
-            {t("clear_search")}
-          </button>
-        )}
       </form>
 
-      {/* Category buttons */}
-      {!showSearchResults && (
-        <div className="px-3 py-2 border-b">
-          <p className="text-[10px] text-gray-400 mb-2">{t("powered_by_pixabay")}</p>
-          <div className="flex flex-wrap gap-1.5">
-            {PIXABAY_CATEGORIES.map((category) => (
-              <button
-                key={category.id}
-                onClick={() => handleCategoryChange(category.id)}
-                className={cn(
-                  "px-2.5 py-1 text-[11px] font-medium rounded-full transition",
-                  activeCategory === category.id
-                    ? "bg-[#135bec] text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                )}
-              >
-                {language === "es" ? category.nameEs : category.name}
-              </button>
-            ))}
-          </div>
+      <div className="px-3 py-2 border-b">
+        <div className="mb-2 flex items-center justify-between">
+          <a
+            href="https://pixabay.com/"
+            target="_blank"
+            rel="noreferrer"
+            className="text-[10px] text-muted-foreground hover:underline"
+          >
+            {t("powered_by_pixabay") || "Powered by Pixabay"}
+          </a>
+          {totalHits > 0 && (
+            <span className="text-[10px] text-muted-foreground">{totalHits}</span>
+          )}
         </div>
-      )}
-
-      {/* Scrollable content */}
-      <div
-        ref={scrollContainerRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto"
-      >
-        <div className="p-3">
-          {/* Search Results */}
-          {showSearchResults && (
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-gray-700">
-                  {t("search_results")} ({searchResults.length}/{totalSearchHits})
-                </span>
-              </div>
-              {isSearching && searchResults.length === 0 && (
-                <div className="flex items-center justify-center py-8">
-                  <Loader className="size-5 text-muted-foreground animate-spin" />
-                </div>
+        <div className="flex flex-wrap gap-1.5">
+          {CATEGORIES.map((category) => (
+            <button
+              key={category.id}
+              type="button"
+              onClick={() => handleCategoryChange(category.id)}
+              className={cn(
+                "rounded-full px-2.5 py-1 text-[11px] font-medium transition",
+                activeCategory === category.id && !appliedQuery
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/70",
               )}
-              {!isSearching && searchResults.length === 0 && (
-                <p className="text-xs text-gray-400 text-center py-4">{t("no_results_found")}</p>
-              )}
-              {searchResults.length > 0 && (
-                <ImageGrid images={searchResults} />
-              )}
-              {/* Loading more indicator */}
-              {hasMoreSearch && (
-                <div className="flex items-center justify-center py-4">
-                  <Loader className="size-5 text-muted-foreground animate-spin" />
-                </div>
-              )}
-              {!hasMoreSearch && searchResults.length > 0 && (
-                <p className="text-xs text-gray-400 text-center py-4">
-                  {language === "es" ? "No hay más imágenes" : "No more images"}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Category Images */}
-          {!showSearchResults && (
-            <div>
-              {/* Initial loading */}
-              {isLoadingCategory && categoryImages.length === 0 && (
-                <div className="flex items-center justify-center py-8">
-                  <Loader className="size-5 text-muted-foreground animate-spin" />
-                </div>
-              )}
-
-              {/* Images grid */}
-              {categoryImages.length > 0 && (
-                <>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] text-gray-500">
-                      {categoryImages.length}/{totalCategoryHits}
-                    </span>
-                    <button
-                      onClick={() => {
-                        isLoadingMoreRef.current = false;
-                        loadCategoryImages(activeCategory, 1, true);
-                      }}
-                      className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-600 transition"
-                    >
-                      <RefreshCw className="size-3" />
-                      {t("refresh")}
-                    </button>
-                  </div>
-                  <ImageGrid images={categoryImages} />
-                </>
-              )}
-
-              {/* Loading more indicator */}
-              {hasMoreCategory && categoryImages.length > 0 && (
-                <div className="flex items-center justify-center py-4">
-                  <Loader className="size-5 text-muted-foreground animate-spin" />
-                </div>
-              )}
-
-              {/* No more images */}
-              {!hasMoreCategory && categoryImages.length > 0 && (
-                <p className="text-xs text-gray-400 text-center py-4">
-                  {language === "es" ? "No hay más imágenes" : "No more images"}
-                </p>
-              )}
-            </div>
-          )}
+            >
+              {language === "es" ? category.es : category.en}
+            </button>
+          ))}
         </div>
       </div>
-      <ToolSidebarClose onClick={onClose} />
+
+      <ScrollArea className="flex-1">
+        <div className="p-3">
+          {isLoading && images.length === 0 && (
+            <div className="flex items-center justify-center py-16">
+              <Loader className="size-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {error && (
+            <div className="flex flex-col items-center gap-3 py-12 text-center">
+              <AlertTriangle className="size-6 text-amber-500" />
+              <p className="text-xs text-muted-foreground">{error}</p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void loadImages({
+                  query: appliedQuery,
+                  categoryId: activeCategory,
+                  nextPage: 1,
+                  append: false,
+                })}
+              >
+                <RefreshCw className="mr-2 size-3.5" />
+                {language === "es" ? "Reintentar" : "Try again"}
+              </Button>
+            </div>
+          )}
+
+          {!isLoading && !error && images.length === 0 && (
+            <p className="py-12 text-center text-xs text-muted-foreground">
+              {t("no_results_found") || "No images found"}
+            </p>
+          )}
+
+          {images.length > 0 && (
+            <div className="grid grid-cols-2 gap-2">
+              {images.map((image) => (
+                <div key={image.id} className="group overflow-hidden rounded-md border bg-muted">
+                  <button
+                    type="button"
+                    disabled={importingId !== null}
+                    onClick={() => void handleImport(image)}
+                    className="relative block h-28 w-full overflow-hidden text-left hover:opacity-90 disabled:cursor-wait"
+                  >
+                    <img
+                      src={image.webformatURL}
+                      alt={image.tags}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition group-hover:bg-black/20">
+                      {importingId === image.id ? (
+                        <Loader className="size-6 animate-spin text-white" />
+                      ) : (
+                        <Plus className="size-6 text-white opacity-0 drop-shadow group-hover:opacity-100" />
+                      )}
+                    </span>
+                  </button>
+                  <a
+                    href={image.pageURL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block truncate px-2 py-1.5 text-[10px] text-muted-foreground hover:underline"
+                    title={`${image.tags} — ${image.user}`}
+                  >
+                    {image.tags.split(",")[0]} · {image.user}
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {canLoadMore && (
+            <Button
+              variant="outline"
+              className="mt-3 w-full"
+              disabled={isLoadingMore}
+              onClick={() => void loadImages({
+                query: appliedQuery,
+                categoryId: activeCategory,
+                nextPage: page + 1,
+                append: true,
+              })}
+            >
+              {isLoadingMore ? (
+                <Loader className="mr-2 size-4 animate-spin" />
+              ) : (
+                <Plus className="mr-2 size-4" />
+              )}
+              {language === "es" ? "Cargar más" : "Load more"}
+            </Button>
+          )}
+        </div>
+      </ScrollArea>
+
+      <ToolSidebarClose onClick={() => onChangeActiveTool("select")} />
     </aside>
   );
 };

@@ -1,14 +1,12 @@
 import { z } from "zod";
 import { Hono } from "hono";
-import { eq, and, desc, asc } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { verifyAuth } from "@hono/auth-js";
 import { zValidator } from "@hono/zod-validator";
 
 import { db } from "@/db/drizzle";
 import { projects, projectsInsertSchema } from "@/db/schema";
 
-type Project = typeof projects.$inferSelect;
-const MOCK_PROJECTS: Project[] = [];
 const app = new Hono()
   .delete(
     "/:id",
@@ -20,15 +18,6 @@ const app = new Hono()
 
       if (!auth.token?.id) {
         return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      if (auth.token.id === "temp-user-id") {
-        const index = MOCK_PROJECTS.findIndex((p) => p.id === id && p.userId === auth.token!.id);
-        if (index === -1) {
-          return c.json({ error: "Not found" }, 404);
-        }
-        MOCK_PROJECTS.splice(index, 1);
-        return c.json({ data: { id } });
       }
 
       const data = await db
@@ -60,23 +49,6 @@ const app = new Hono()
         return c.json({ error: "Unauthorized" }, 401);
       }
 
-      if (auth.token.id === "temp-user-id") {
-        const project = MOCK_PROJECTS.find((p) => p.id === id && p.userId === auth.token!.id);
-        if (!project) {
-          return c.json({ error: "Not found" }, 404);
-        }
-
-        const duplicate = {
-          ...project,
-          id: `mock-project-${Date.now()}-${Math.random()}`,
-          name: `Copy of ${project.name}`,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-        MOCK_PROJECTS.push(duplicate);
-        return c.json({ data: duplicate });
-      }
-
       const data = await db
         .select()
         .from(projects)
@@ -88,7 +60,7 @@ const app = new Hono()
         );
 
       if (data.length === 0) {
-        return c.json({ error: " Not found" }, 404);
+        return c.json({ error: "Not found" }, 404);
       }
 
       const project = data[0];
@@ -115,8 +87,8 @@ const app = new Hono()
     zValidator(
       "query",
       z.object({
-        page: z.coerce.number(),
-        limit: z.coerce.number(),
+        page: z.coerce.number().int().min(1).default(1),
+        limit: z.coerce.number().int().min(1).max(100).default(20),
       }),
     ),
     async (c) => {
@@ -125,16 +97,6 @@ const app = new Hono()
 
       if (!auth.token?.id) {
         return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      if (auth.token.id === "temp-user-id") {
-        const userProjects = MOCK_PROJECTS.filter((p) => p.userId === auth.token!.id)
-          .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
-        const data = userProjects.slice((page - 1) * limit, page * limit);
-        return c.json({
-          data,
-          nextPage: userProjects.length > page * limit ? page + 1 : null,
-        });
       }
 
       const data = await db
@@ -174,29 +136,8 @@ const app = new Hono()
       const { id } = c.req.valid("param");
       const values = c.req.valid("json");
 
-      console.log("💾 PATCH /projects/:id");
-      console.log("  - Project ID:", id);
-      console.log("  - User ID:", auth.token?.id);
-      console.log("  - Values:", JSON.stringify(values).substring(0, 200));
-
       if (!auth.token?.id) {
-        console.log("❌ No auth token");
         return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      if (auth.token.id === "temp-user-id") {
-        const index = MOCK_PROJECTS.findIndex((p) => p.id === id && p.userId === auth.token!.id);
-        if (index === -1) {
-          return c.json({ error: "Unauthorized" }, 401);
-        }
-
-        MOCK_PROJECTS[index] = {
-          ...MOCK_PROJECTS[index],
-          ...values,
-          updatedAt: new Date(),
-        };
-
-        return c.json({ data: MOCK_PROJECTS[index] });
       }
 
       const data = await db
@@ -213,14 +154,8 @@ const app = new Hono()
         )
         .returning();
 
-      console.log("  - Updated:", data.length, "rows");
-      if (data.length > 0) {
-        console.log("  - Result:", data[0]);
-      }
-
       if (data.length === 0) {
-        console.log("❌ No rows updated - project not found or wrong user");
-        return c.json({ error: "Unauthorized" }, 401);
+        return c.json({ error: "Not found" }, 404);
       }
 
       return c.json({ data: data[0] });
@@ -236,14 +171,6 @@ const app = new Hono()
 
       if (!auth.token?.id) {
         return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      if (auth.token.id === "temp-user-id") {
-        const project = MOCK_PROJECTS.find((p) => p.id === id && p.userId === auth.token!.id);
-        if (!project) {
-          return c.json({ error: "Not found" }, 404);
-        }
-        return c.json({ data: project });
       }
 
       const data = await db
@@ -281,24 +208,6 @@ const app = new Hono()
 
       if (!auth.token?.id) {
         return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      if (auth.token.id === "temp-user-id") {
-        const newProject = {
-          id: `mock-project-${Date.now()}-${Math.random()}`,
-          name,
-          json,
-          width,
-          height,
-          userId: auth.token.id,
-          isTemplate: false,
-          isPro: false,
-          thumbnailUrl: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-        MOCK_PROJECTS.push(newProject);
-        return c.json({ data: newProject });
       }
 
       const data = await db

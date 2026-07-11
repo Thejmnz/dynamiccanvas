@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/lib/contexts/AuthContext";
+import { useUserRole } from "@/hooks/use-user-role";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Loader } from "lucide-react";
@@ -13,40 +13,37 @@ interface DashboardLayoutProps {
 };
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const { user, loading } = useAuth();
+  const { isAuthenticated, loading } = useUserRole();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
-      const timeout = setTimeout(() => {
-        router.push("/sign-in");
-      }, 150);
-      return () => clearTimeout(timeout);
+    if (!loading && !isAuthenticated) {
+      router.replace("/sign-in");
     }
-  }, [loading, user, router]);
+  }, [isAuthenticated, loading, router]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100">
-        <Loader className="animate-spin size-6 text-[#135bec]" />
+      <div className="brand-dots min-h-screen flex items-center justify-center">
+        <Loader className="animate-spin size-7 text-[#5b35d5]" />
       </div>
     )
   }
 
-  if (!user) {
+  if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100">
-        <Loader className="animate-spin size-6 text-[#135bec]" />
+      <div className="brand-dots min-h-screen flex items-center justify-center">
+        <Loader className="animate-spin size-7 text-[#5b35d5]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[#f6f5ef] text-[#101426]">
       <Sidebar />
-      <div className="lg:pl-[300px] flex flex-col min-h-screen">
+      <div className="lg:pl-[280px] flex flex-col min-h-screen">
         <Navbar />
-        <main className="bg-slate-50 flex-1 overflow-auto p-6">
+        <main className="brand-dots flex-1 overflow-auto p-5 sm:p-8 lg:p-10">
           {children}
         </main>
       </div>
