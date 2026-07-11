@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { Sparkles } from "lucide-react";
+
+import { PlansModal } from "./plans-modal";
 
 interface CreditData {
   plan: string;
@@ -15,6 +16,7 @@ interface CreditData {
 
 export const CreditUsage = () => {
   const [data, setData] = useState<CreditData | null>(null);
+  const [showPlans, setShowPlans] = useState(false);
 
   useEffect(() => {
     fetch("/api/user-credits")
@@ -23,7 +25,11 @@ export const CreditUsage = () => {
       .catch(() => {});
   }, []);
 
-  if (!data) return null;
+  if (!data) return (
+    <>
+      <PlansModal open={showPlans} onClose={() => setShowPlans(false)} />
+    </>
+  );
 
   const percent = data.totalCredits > 0
     ? Math.round((data.usedCredits / data.totalCredits) * 100)
@@ -32,45 +38,49 @@ export const CreditUsage = () => {
   const barColor = percent >= 90 ? "bg-[#ff6b57]" : percent >= 70 ? "bg-[#ffd166]" : "bg-[#c9ff5a]";
 
   return (
-    <div className="mx-3 mb-3 rounded-2xl border border-white/10 bg-white/5 p-4">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-bold uppercase tracking-wider text-white/40">Credit usage</span>
-        <span className="text-[10px] font-black uppercase rounded-full bg-white/10 px-2 py-0.5 text-white/60">
-          {data.plan}
-        </span>
+    <>
+      <div className="mx-3 mb-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-wider text-white/40">Credit usage</span>
+          <span className="text-[10px] font-black uppercase rounded-full bg-white/10 px-2 py-0.5 text-white/60">
+            {data.plan}
+          </span>
+        </div>
+
+        <div className="mt-3 flex items-baseline gap-1.5">
+          <span className="text-2xl font-black text-white">{data.usedCredits}</span>
+          <span className="text-sm font-semibold text-white/40">of {data.totalCredits === Infinity ? "∞" : data.totalCredits}</span>
+        </div>
+
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+          <div
+            className={`h-full rounded-full transition-all ${barColor}`}
+            style={{ width: `${Math.min(percent, 100)}%` }}
+          />
+        </div>
+
+        <div className="mt-2 flex items-center justify-between text-[11px] text-white/35">
+          <span>{percent}% used</span>
+          <span>{data.creditsBalance} left</span>
+        </div>
+
+        {isFree && (
+          <>
+            <p className="mt-3 text-[11px] leading-snug text-white/50">
+              Upgrade now to unlock more templates, folders, tags, custom fonts and more credits.
+            </p>
+            <button
+              onClick={() => setShowPlans(true)}
+              className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-full bg-[#c9ff5a] px-3 py-2 text-xs font-black text-[#101426] transition hover:bg-white"
+            >
+              <Sparkles className="size-3.5" />
+              See pricing
+            </button>
+          </>
+        )}
       </div>
 
-      <div className="mt-3 flex items-baseline gap-1.5">
-        <span className="text-2xl font-black text-white">{data.usedCredits}</span>
-        <span className="text-sm font-semibold text-white/40">of {data.totalCredits === Infinity ? "∞" : data.totalCredits}</span>
-      </div>
-
-      <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
-        <div
-          className={`h-full rounded-full transition-all ${barColor}`}
-          style={{ width: `${Math.min(percent, 100)}%` }}
-        />
-      </div>
-
-      <div className="mt-2 flex items-center justify-between text-[11px] text-white/35">
-        <span>{percent}% used</span>
-        <span>{data.creditsBalance} left</span>
-      </div>
-
-      {isFree && (
-        <>
-          <p className="mt-3 text-[11px] leading-snug text-white/50">
-            Upgrade now to unlock more templates, folders, tags, custom fonts and more credits.
-          </p>
-          <Link
-            href="/dashboard?upgrade=1#pricing"
-            className="mt-2.5 flex items-center justify-center gap-1.5 rounded-full bg-[#c9ff5a] px-3 py-2 text-xs font-black text-[#101426] transition hover:bg-white"
-          >
-            <Sparkles className="size-3.5" />
-            See plans
-          </Link>
-        </>
-      )}
-    </div>
+      <PlansModal open={showPlans} onClose={() => setShowPlans(false)} />
+    </>
   );
 };
