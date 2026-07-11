@@ -73,7 +73,7 @@ export const UserButton = () => {
             <Settings className="size-4 mr-2 text-[#5b35d5]" />
             {t("settings") || "Settings"}
           </DropdownMenuItem>
-          <DropdownMenuItem className="h-9 cursor-pointer rounded-lg" onClick={() => router.push("/dashboard/settings#team")}>
+          <DropdownMenuItem className="h-9 cursor-pointer rounded-lg" onClick={() => router.push("/dashboard/team")}>
             <Users className="size-4 mr-2 text-[#5b35d5]" />
             {t("team_members") || "Team Members"}
           </DropdownMenuItem>
