@@ -956,8 +956,9 @@ export async function POST(req: NextRequest) {
     // failures must never make an otherwise successful image request fail.
     try {
       await db.insert(renders).values({
+        id: crypto.randomUUID(),
         userId: apiKeyData.user_id,
-        templateId,
+        templateId: templateId || null,
         templateName: template.name || null,
         status: "success",
         imageUrl: publicUrl || null,
@@ -967,8 +968,10 @@ export async function POST(req: NextRequest) {
         renderTimeMs: Date.now() - _t0,
         createdAt: new Date(),
       });
-    } catch (historyError) {
-      console.error("[API Render] Failed to save render history:", historyError);
+      log("Render history saved.");
+    } catch (historyError: any) {
+      console.error("[API Render] Failed to save render history:", historyError?.message || historyError);
+      log(`Failed to save render history: ${historyError?.message || historyError}`);
     }
 
     return NextResponse.json({
