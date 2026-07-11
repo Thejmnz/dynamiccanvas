@@ -7,7 +7,20 @@ import { checkIsActive } from "@/features/subscriptions/lib";
 
 import { stripe } from "@/lib/stripe";
 import { db } from "@/db/drizzle";
-import { subscriptions } from "@/db/schema";
+import { subscriptions, users } from "@/db/schema";
+
+const PLAN_CREDITS = {
+  creator: 1000,
+  agency: 5000,
+  business: 25000,
+} as const;
+
+export const PLAN_TEMPLATE_LIMITS = {
+  free: 3,
+  creator: 15,
+  agency: 100,
+  business: Infinity,
+} as const;
 
 const app = new Hono()
   .post("/billing", verifyAuth(), async (c) => {
@@ -67,21 +80,59 @@ const app = new Hono()
       return c.json({ error: "Unauthorized" }, 401);
     }
 
+    type CheckoutBody = {
+      plan?: "creator" | "agency" | "business";
+      billing?: "monthly" | "yearly";
+    };
+    const body = await c.req.json<CheckoutBody>().catch((): CheckoutBody => ({}));
+    const plan = body.plan || "creator";
+    const billing = body.billing || "monthly";
+    const priceIds = {
+      creator: {
+        monthly: process.env.STRIPE_CREATOR_MONTHLY_PRICE_ID,
+        yearly: process.env.STRIPE_CREATOR_YEARLY_PRICE_ID,
+      },
+      agency: {
+        monthly: process.env.STRIPE_AGENCY_MONTHLY_PRICE_ID,
+        yearly: process.env.STRIPE_AGENCY_YEARLY_PRICE_ID,
+      },
+      business: {
+        monthly: process.env.STRIPE_BUSINESS_MONTHLY_PRICE_ID,
+        yearly: process.env.STRIPE_BUSINESS_YEARLY_PRICE_ID,
+      },
+    } as const;
+    const priceId = priceIds[plan]?.[billing];
+
+    if (!priceId) {
+      return c.json({ error: "Invalid plan or missing Stripe price" }, 400);
+    }
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const session = await stripe.checkout.sessions.create({
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}?success=1`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}?canceled=1`,
+      success_url: `${appUrl}/dashboard?success=1`,
+      cancel_url: `${appUrl}/dashboard?canceled=1`,
       payment_method_types: ["card", "paypal"],
       mode: "subscription",
       billing_address_collection: "auto",
       customer_email: auth.token.email || "",
       line_items: [
         {
-          price: process.env.STRIPE_PRICE_ID,
+          price: priceId,
           quantity: 1,
         },
       ],
       metadata: {
         userId: auth.token.id,
+        plan,
+        billing,
+      },
+      subscription_data: {
+        metadata: {
+          userId: auth.token.id,
+          plan,
+          billing,
+          credits: String(PLAN_CREDITS[plan]),
+        },
       },
     });
 
@@ -140,6 +191,17 @@ const app = new Hono()
               updatedAt: new Date(),
             })
             .onConflictDoNothing({ target: subscriptions.subscriptionId });
+
+          const plan = (session.metadata.plan || subscription.metadata.plan || "creator") as keyof typeof PLAN_CREDITS;
+          const credits = PLAN_CREDITS[plan] || PLAN_CREDITS.creator;
+          const nextReset = new Date();
+          nextReset.setMonth(nextReset.getMonth() + 1);
+          await db.update(users).set({
+            plan,
+            creditsBalance: credits,
+            creditsPerMonth: credits,
+            creditsResetAt: nextReset,
+          }).where(eq(users.id, session.metadata.userId));
         }
 
         if (event.type === "invoice.payment_succeeded") {
@@ -164,6 +226,36 @@ const app = new Hono()
               updatedAt: new Date(),
             })
             .where(eq(subscriptions.subscriptionId, subscription.id));
+
+          const plan = (subscription.metadata.plan || "creator") as keyof typeof PLAN_CREDITS;
+          const credits = PLAN_CREDITS[plan] || PLAN_CREDITS.creator;
+          const nextReset = new Date();
+          nextReset.setMonth(nextReset.getMonth() + 1);
+          if (subscription.metadata.userId) {
+            await db.update(users).set({
+              plan,
+              creditsBalance: credits,
+              creditsPerMonth: credits,
+              creditsResetAt: nextReset,
+            }).where(eq(users.id, subscription.metadata.userId));
+          }
+        }
+
+        if (event.type === "customer.subscription.deleted") {
+          const subscription = event.data.object as Stripe.Subscription;
+          await db.update(subscriptions).set({
+            status: subscription.status,
+            updatedAt: new Date(),
+          }).where(eq(subscriptions.subscriptionId, subscription.id));
+
+          if (subscription.metadata.userId) {
+            await db.update(users).set({
+              plan: "free",
+              creditsBalance: 0,
+              creditsPerMonth: 0,
+              creditsResetAt: null,
+            }).where(eq(users.id, subscription.metadata.userId));
+          }
         }
 
         return c.json(null, 200);

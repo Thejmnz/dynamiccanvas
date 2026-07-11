@@ -68,7 +68,7 @@ export const SubscriptionModal = () => {
         <DialogFooter className="pt-2 mt-4 gap-y-2">
           <Button
             className="w-full"
-            onClick={() => mutation.mutate()}
+            onClick={() => mutation.mutate({ plan: "creator", billing: "monthly" })}
             disabled={mutation.isPending}
           >
             Upgrade

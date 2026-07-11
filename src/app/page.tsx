@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -50,7 +51,7 @@ const copy = {
     heroPrimary: "Empieza a diseñar",
     heroSecondary: "Ver Playground",
     noCard: "Sin tarjeta de crédito",
-    freeRenders: "100 renders gratis al mes",
+    freeRenders: "50 créditos de bienvenida",
     hdExport: "Exportación HD",
     live: "Render completado",
     renderTime: "respuesta lista",
@@ -110,21 +111,52 @@ const copy = {
       "Tu equipo creativo controla la plantilla. Tu aplicación solo envía los datos. Nosotros resolvemos el render.",
     viewDocs: "Explorar documentación",
     plansKicker: "Crece a tu ritmo",
-    plansTitle: "Empieza gratis. Escala cuando el volumen lo pida.",
-    free: "Gratis",
-    pro: "Pro",
+    plansTitle: "El precio anual de otras plataformas, sin obligarte a pagar un año.",
+    free: "Starter",
+    pro: "Scale",
     scale: "Enterprise",
-    monthly: "renders / mes",
-    current: "Para empezar",
+    monthly: "/ mes",
+    current: "Automatiza tu creación de imágenes",
     popular: "Más elegido",
-    custom: "Volumen personalizado",
-    freeItems: ["100 renders al mes", "10 solicitudes por minuto", "Editor y Playground", "Exportación HD"],
-    proItems: ["5.000 renders al mes", "60 solicitudes por minuto", "Automatizaciones", "Soporte prioritario"],
-    scaleItems: ["Renders ilimitados", "500 solicitudes por minuto", "Límites y soporte a medida", "Uso para equipos"],
-    planAction: "Comenzar ahora",
+    custom: "Potencia tu producción de imágenes",
+    freeItems: [
+      "1.000 renders de imágenes por mes",
+      "JPG, PNG o WebP · Exporta en múltiples formatos",
+      "Hasta 15 plantillas · Diseños reutilizables",
+      "2 miembros de equipo · Colabora",
+      "Carpetas y etiquetas · Organiza tus plantillas",
+      "Fuentes personalizadas + Google Fonts",
+      "Acceso API · Genera desde tus apps",
+      "Soporte por email y chat",
+    ],
+    proItems: [
+      "5.000 renders de imágenes por mes",
+      "5× más renders para alto volumen",
+      "Todo lo de Starter incluido",
+      "Hasta 100 plantillas · Escala tu biblioteca",
+      "5 miembros de equipo · Amplía la colaboración",
+      "Límites API más altos · Procesamiento más rápido",
+      "Editor embebido · Integra el editor en tu app",
+      "Soporte prioritario · Respuestas más rápidas",
+    ],
+    scaleItems: [
+      "25.000 renders de imágenes por mes",
+      "Alta capacidad para cargas empresariales",
+      "Todo lo de Scale incluido",
+      "Plantillas ilimitadas · Construye sin límites",
+      "20 miembros de equipo · Colaboración empresarial",
+      "API avanzada · Límites superiores",
+      "Funciones e integraciones personalizadas",
+      "Soporte dedicado · Línea directa con el equipo",
+    ],
+    planAction: "Elegir plan",
     contactAction: "Hablar con nosotros",
+    billingMonthly: "Mensual",
+    billingYearly: "Anual",
+    annualDiscount: "Ahorra 20%",
+    billedYearly: "cobrado anualmente",
     ctaTitle: "Deja de diseñar la misma pieza una y otra vez.",
-    ctaText: "Crea tu primera plantilla dinámica y genera 100 imágenes gratis este mes.",
+    ctaText: "Crea tu primera plantilla dinámica y empieza con 50 créditos de bienvenida gratis.",
     ctaButton: "Crear mi cuenta gratis",
     footerText: "Infraestructura creativa para equipos que necesitan diseñar, automatizar y crecer.",
     product: "Producto",
@@ -150,7 +182,7 @@ const copy = {
     heroPrimary: "Start designing",
     heroSecondary: "View Playground",
     noCard: "No credit card",
-    freeRenders: "100 free renders per month",
+    freeRenders: "50 free welcome credits",
     hdExport: "HD export",
     live: "Render completed",
     renderTime: "response ready",
@@ -207,21 +239,52 @@ const copy = {
     devText: "Your creative team owns the template. Your application only sends data. We handle the render.",
     viewDocs: "Explore documentation",
     plansKicker: "Grow at your pace",
-    plansTitle: "Start free. Scale when volume demands it.",
-    free: "Free",
-    pro: "Pro",
+    plansTitle: "Get annual pricing elsewhere without committing to a full year.",
+    free: "Starter",
+    pro: "Scale",
     scale: "Enterprise",
-    monthly: "renders / month",
-    current: "For starters",
-    popular: "Most popular",
-    custom: "Custom volume",
-    freeItems: ["100 renders per month", "10 requests per minute", "Editor and Playground", "HD export"],
-    proItems: ["5,000 renders per month", "60 requests per minute", "Automations", "Priority support"],
-    scaleItems: ["Unlimited renders", "500 requests per minute", "Custom limits and support", "Team usage"],
-    planAction: "Get started",
+    monthly: "/ month",
+    current: "Automate your image creation",
+    popular: "Popular",
+    custom: "Power your image production",
+    freeItems: [
+      "1,000 image renders per month",
+      "JPG, PNG or WebP · Export in multiple formats",
+      "Up to 15 Templates · Reusable designs",
+      "2 Team Members · Collaborate with your team",
+      "Folders & Tags · Keep templates organized",
+      "Custom Fonts + Google Fonts",
+      "API Access · Generate from your apps",
+      "Email + Chat Support",
+    ],
+    proItems: [
+      "5,000 image renders per month",
+      "5x more renders for high-volume creation",
+      "All Starter Plan Benefits",
+      "Up to 100 Templates · Scale your library",
+      "5 Team Members · Expand collaboration",
+      "Higher API Limits · Faster processing",
+      "Embedded Editor · Add editor to your app",
+      "Priority Support · Faster response times",
+    ],
+    scaleItems: [
+      "25,000 image renders per month",
+      "High-capacity for enterprise workloads",
+      "All Scale Plan Benefits",
+      "Unlimited Templates · Build without limits",
+      "20 Team Members · Enterprise collaboration",
+      "Advanced API Access · Higher limits",
+      "Custom Features & Integrations",
+      "Dedicated Support · Direct line to our team",
+    ],
+    planAction: "Choose plan",
     contactAction: "Talk to us",
+    billingMonthly: "Monthly",
+    billingYearly: "Annual",
+    annualDiscount: "Save 20%",
+    billedYearly: "billed annually",
     ctaTitle: "Stop designing the same asset again and again.",
-    ctaText: "Create your first dynamic template and generate 100 images free this month.",
+    ctaText: "Create your first dynamic template and start with 50 free welcome credits.",
     ctaButton: "Create my free account",
     footerText: "Creative infrastructure for teams that need to design, automate and grow.",
     product: "Product",
@@ -247,6 +310,7 @@ export default function HomePage() {
   const { user } = useAuth();
   const { language } = useLanguage();
   const c = copy[language];
+  const [yearlyBilling, setYearlyBilling] = useState(false);
 
   const primaryHref = user ? "/dashboard" : "/sign-up";
 
@@ -414,16 +478,20 @@ export default function HomePage() {
 
       <section id="pricing" className="mx-auto max-w-[1440px] px-5 py-24 sm:px-8 lg:px-12 lg:py-32">
         <div className="text-center"><p className="text-xs font-black uppercase tracking-[0.2em] text-[#5b35d5]">{c.plansKicker}</p><h2 className="mx-auto mt-5 max-w-4xl text-4xl font-black leading-none tracking-[-0.045em] sm:text-6xl">{c.plansTitle}</h2></div>
-        <div className="mt-16 grid items-stretch gap-5 lg:grid-cols-3">
+        <div className="mx-auto mt-9 flex w-fit items-center rounded-full border-2 border-[#101426] bg-white p-1 shadow-[4px_4px_0_#101426]">
+          <button onClick={() => setYearlyBilling(false)} className={`rounded-full px-5 py-2 text-sm font-black transition ${!yearlyBilling ? "bg-[#101426] text-white" : "text-[#101426]/55"}`}>{c.billingMonthly}</button>
+          <button onClick={() => setYearlyBilling(true)} className={`flex items-center gap-2 rounded-full px-5 py-2 text-sm font-black transition ${yearlyBilling ? "bg-[#5b35d5] text-white" : "text-[#101426]/55"}`}>{c.billingYearly}<span className={`rounded-full px-2 py-0.5 text-[9px] ${yearlyBilling ? "bg-[#c9ff5a] text-[#101426]" : "bg-[#e9e5ff] text-[#5b35d5]"}`}>{c.annualDiscount}</span></button>
+        </div>
+        <div className="mt-12 grid items-stretch gap-5 lg:grid-cols-3">
           {[
-            [c.free, c.current, "100", c.freeItems, false],
-            [c.pro, c.popular, "5.000", c.proItems, true],
-            [c.scale, c.custom, "∞", c.scaleItems, false],
-          ].map(([name, badge, amount, items, featured]) => <article key={String(name)} className={`relative flex flex-col rounded-[28px] border-2 border-[#101426] p-7 ${featured ? "bg-[#101426] text-white shadow-[10px_10px_0_#c9ff5a]" : "bg-white"}`}><span className={`w-fit rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${featured ? "bg-[#c9ff5a] text-[#101426]" : "bg-[#e9e5ff] text-[#5b35d5]"}`}>{badge}</span><h3 className="mt-7 text-3xl font-black">{name}</h3><div className="mt-5 flex items-end gap-2"><strong className="text-5xl font-black tracking-tight">{amount}</strong><span className={`pb-1 text-xs ${featured ? "text-white/45" : "text-[#101426]/45"}`}>{c.monthly}</span></div><div className={`my-7 border-t ${featured ? "border-white/15" : "border-[#101426]/10"}`} /><ul className="flex-1 space-y-4">{(items as string[]).map(item => <li key={item} className="flex gap-2 text-sm font-semibold"><BadgeCheck className={`size-5 shrink-0 ${featured ? "text-[#c9ff5a]" : "text-[#5b35d5]"}`} />{item}</li>)}</ul><Link href={primaryHref} className={`mt-8 flex h-12 items-center justify-center rounded-full font-black transition ${featured ? "bg-[#c9ff5a] text-[#101426] hover:bg-white" : "bg-[#101426] text-white hover:bg-[#5b35d5]"}`}>{name === c.scale ? c.contactAction : c.planAction}</Link></article>)}
+            ["creator", c.free, c.current, 29, 23, 276, c.freeItems, false],
+            ["agency", c.pro, c.popular, 79, 63, 756, c.proItems, true],
+            ["business", c.scale, c.custom, 179, 143, 1716, c.scaleItems, false],
+          ].map(([slug, name, badge, monthlyPrice, annualMonthlyPrice, annualTotal, items, featured]) => <article key={String(slug)} className={`relative flex flex-col rounded-[28px] border-2 border-[#101426] p-7 ${featured ? "bg-[#101426] text-white shadow-[10px_10px_0_#c9ff5a]" : "bg-white"}`}><span className={`w-fit rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${featured ? "bg-[#c9ff5a] text-[#101426]" : "bg-[#e9e5ff] text-[#5b35d5]"}`}>{String(badge)}</span><h3 className="mt-7 text-3xl font-black">{String(name)}</h3><p className={`mt-2 text-sm font-medium ${featured ? "text-white/55" : "text-[#101426]/55"}`}>{String(badge) === c.current ? (language === "es" ? "Automatiza tu creación de imágenes" : "Automate your image creation") : String(badge) === c.popular ? (language === "es" ? "Escala tus automatizaciones de imágenes" : "Scale your image automations") : (language === "es" ? "Potencia tu producción de imágenes" : "Power your image production")}</p><div className="mt-5 flex items-end gap-2"><span className="pb-2 text-xl font-black">$</span><strong className="text-5xl font-black tracking-tight">{yearlyBilling ? String(annualMonthlyPrice) : String(monthlyPrice)}</strong><span className={`pb-1 text-xs ${featured ? "text-white/45" : "text-[#101426]/45"}`}>{c.monthly}</span></div>{yearlyBilling && <p className={`mt-2 text-xs font-semibold ${featured ? "text-white/45" : "text-[#101426]/45"}`}>USD {Number(annualTotal).toLocaleString(language === "es" ? "es-CO" : "en-US")} · {c.billedYearly}</p>}<div className={`my-7 border-t ${featured ? "border-white/15" : "border-[#101426]/10"}`} /><ul className="flex-1 space-y-3">{(items as string[]).map(item => <li key={item} className="flex gap-2 text-[13px] font-semibold leading-snug"><BadgeCheck className={`size-5 shrink-0 ${featured ? "text-[#c9ff5a]" : "text-[#5b35d5]"}`} />{item}</li>)}</ul><Link href={`${user ? "/dashboard" : "/sign-up"}?plan=${String(slug)}&billing=${yearlyBilling ? "yearly" : "monthly"}`} className={`mt-8 flex h-12 items-center justify-center rounded-full font-black transition ${featured ? "bg-[#c9ff5a] text-[#101426] hover:bg-white" : "bg-[#101426] text-white hover:bg-[#5b35d5]"}`}>{c.planAction}</Link></article>)}
         </div>
       </section>
 
-      <section className="px-5 pb-24 sm:px-8 lg:px-12 lg:pb-32"><div className="relative mx-auto max-w-[1344px] overflow-hidden rounded-[36px] border-2 border-[#101426] bg-[#c9ff5a] px-6 py-16 text-center shadow-[12px_12px_0_#101426] sm:px-12 lg:py-24"><div className="absolute -left-12 -top-12 size-40 rounded-full border-[28px] border-[#5b35d5]" /><Sparkles className="absolute right-10 top-10 size-10 text-[#5b35d5]" /><h2 className="relative mx-auto max-w-4xl text-4xl font-black leading-[0.95] tracking-[-0.05em] sm:text-6xl lg:text-7xl">{c.ctaTitle}</h2><p className="relative mx-auto mt-6 max-w-2xl text-lg font-semibold text-[#101426]/60">{c.ctaText}</p><Link href={primaryHref} className="relative mt-9 inline-flex h-14 items-center gap-2 rounded-full bg-[#5b35d5] px-7 font-black text-white transition hover:-translate-y-1 hover:bg-[#101426]">{c.ctaButton}<ArrowRight className="size-4" /></Link></div></section>
+      <section className="px-5 pb-24 sm:px-8 lg:px-12 lg:pb-32"><div className="relative mx-auto max-w-[1344px] overflow-hidden rounded-[36px] border-2 border-[#101426] bg-[#c9ff5a] px-6 py-16 text-center shadow-[12px_12px_0_#101426] sm:px-12 lg:py-24"><div className="absolute -left-12 -top-12 size-40 rounded-full border-[28px] border-[#5b35d5]" /><Sparkles className="absolute right-10 top-10 size-10 text-[#5b35d5]" /><h2 className="relative mx-auto max-w-4xl text-4xl font-black leading-[0.95] tracking-[-0.05em] sm:text-6xl lg:text-7xl">{c.ctaTitle}</h2><p className="relative mx-auto mt-6 max-w-2xl text-lg font-semibold text-[#101426]/60 text-balance">{c.ctaText}</p><Link href={primaryHref} className="relative mt-9 inline-flex h-14 items-center gap-2 rounded-full bg-[#5b35d5] px-7 font-black text-white transition hover:-translate-y-1 hover:bg-[#101426]">{c.ctaButton}<ArrowRight className="size-4" /></Link></div></section>
 
       <footer className="bg-[#101426] text-white"><div className="mx-auto max-w-[1440px] px-5 py-16 sm:px-8 lg:px-12"><div className="grid gap-12 border-b border-white/10 pb-14 md:grid-cols-2 lg:grid-cols-5"><div className="lg:col-span-2"><BrandMark className="size-12 text-base" /><p className="mt-5 max-w-sm text-sm leading-relaxed text-white/45">{c.footerText}</p></div><div><h3 className="text-xs font-black uppercase tracking-wider text-[#c9ff5a]">{c.product}</h3><div className="mt-5 space-y-3 text-sm text-white/55"><a className="block hover:text-white" href="#product">{c.navProduct}</a><a className="block hover:text-white" href="#templates">{c.navTemplates}</a><a className="block hover:text-white" href="#pricing">{c.navPlans}</a></div></div><div><h3 className="text-xs font-black uppercase tracking-wider text-[#c9ff5a]">{c.resources}</h3><div className="mt-5 space-y-3 text-sm text-white/55"><Link className="block hover:text-white" href="/docs">{c.navDocs}</Link><Link className="block hover:text-white" href="/playground">Playground</Link><Link className="block hover:text-white" href="/dashboard">Dashboard</Link></div></div><div><h3 className="text-xs font-black uppercase tracking-wider text-[#c9ff5a]">{c.legal}</h3><div className="mt-5 space-y-3 text-sm text-white/55"><Link className="block hover:text-white" href="/privacy">{c.privacy}</Link><Link className="block hover:text-white" href="/terms">{c.terms}</Link><Link className="block hover:text-white" href="/security">{c.security}</Link></div></div></div><div className="flex flex-col gap-4 pt-8 text-xs text-white/35 sm:flex-row sm:items-center sm:justify-between"><p>© {new Date().getFullYear()} Dynamic Canvas. {c.rights}</p><div className="flex items-center gap-2"><ShieldCheck className="size-4" /> Secure API infrastructure</div></div></div></footer>
     </main>

@@ -15,6 +15,20 @@
       "when": 1769988537293,
       "tag": "0001_bored_blue_blade",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783740000000,
+      "tag": "0002_render_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1783742000000,
+      "tag": "0003_user_credits",
+      "breakpoints": true
     }
   ]
 }

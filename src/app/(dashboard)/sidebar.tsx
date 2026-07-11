@@ -1,5 +1,6 @@
 import { Logo } from "./logo";
 import { SidebarRoutes } from "./sidebar-routes";
+import { CreditUsage } from "./credit-usage";
 
 export const Sidebar = () => {
   return (
@@ -7,6 +8,7 @@ export const Sidebar = () => {
       <Logo />
       <div className="mx-5 h-px bg-white/10" />
       <SidebarRoutes />
+      <CreditUsage />
     </aside>
   );
 };

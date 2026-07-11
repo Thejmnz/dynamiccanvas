@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Code, Shield, KeyRound } from "lucide-react";
+import { Home, Code, Shield, KeyRound, BookOpen, Images } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
@@ -41,6 +41,12 @@ export const SidebarRoutes = () => {
           label={t("api_integration")}
           isActive={pathname === "/playground"}
         />
+        <SidebarItem
+          href="/renders"
+          icon={Images}
+          label="Renders"
+          isActive={pathname === "/renders"}
+        />
 
         {/* Admin button - only visible for superadmins */}
         {role === "superadmin" && (
@@ -52,6 +58,15 @@ export const SidebarRoutes = () => {
           />
         )}
       </ul>
+
+      <div className="mt-auto border-t border-white/10 pb-5 pt-4">
+        <SidebarItem
+          href="/docs"
+          icon={BookOpen}
+          label={t("documentation")}
+          isActive={pathname === "/docs"}
+        />
+      </div>
     </div>
   );
 };

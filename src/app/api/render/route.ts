@@ -6,7 +6,7 @@ import * as path from 'path';
 import * as os from 'os';
 
 import { db } from "@/db/drizzle";
-import { sql, eq } from "drizzle-orm";
+import { and, gt, sql, eq } from "drizzle-orm";
 import { users, renders } from "@/db/schema";
 // Type for canvas elements
 interface CanvasElement {
@@ -369,20 +369,17 @@ async function registerCustomFont(
 }
 
 export async function POST(req: NextRequest) {
-  const isDebug = process.env.DEBUG === "true";
-  const debugLogs: string[] | undefined = isDebug ? [] : undefined;
   const _t0 = Date.now();
   const log = (msg: string) => {
     const elapsed = Date.now() - _t0;
     const line = `[${elapsed}ms] ${msg}`;
     console.log(`[API Render] ${line}`);
-    if (isDebug) {
-      debugLogs!.push(line);
-    }
   };
 
   let apiKeyData: { user_id: string } | null = null;
   let templateId: string | undefined;
+  let creditReserved = false;
+  let creditsRemaining: number | null = null;
 
   try {
     // Pre-register local fonts (scans public/fonts once per cold start)
@@ -402,7 +399,9 @@ export async function POST(req: NextRequest) {
     templateId = body.templateId;
     const layers = body.layers;
     const requestedScale = Number(body.scale ?? body.pixelRatio ?? 2);
-    const outputFormat = String(body.format ?? "jpeg").toLowerCase() === "png" ? "png" : "jpeg";
+    const outputFormat = ["png", "webp"].includes(String(body.format ?? "jpeg").toLowerCase())
+      ? String(body.format).toLowerCase()
+      : "jpeg";
 
     log(`Received request for Template: ${templateId}`);
 
@@ -432,6 +431,57 @@ export async function POST(req: NextRequest) {
     const templateError = templateResult.error;
 
     if (templateError || !template) return NextResponse.json({ error: "Template not found" }, { status: 404 });
+
+    // Paid allowances renew monthly, including annual subscriptions. Free
+    // credits never renew: once their initial 50 are used an upgrade is
+    // required.
+    const [account] = await db
+      .select({
+        plan: users.plan,
+        creditsBalance: users.creditsBalance,
+        creditsPerMonth: users.creditsPerMonth,
+        creditsResetAt: users.creditsResetAt,
+      })
+      .from(users)
+      .where(eq(users.id, apiKeyData.user_id));
+
+    if (!account) {
+      return NextResponse.json({ error: "User account not found" }, { status: 403 });
+    }
+
+    if (
+      account.plan !== "free" &&
+      account.creditsResetAt &&
+      account.creditsResetAt.getTime() <= Date.now()
+    ) {
+      const nextReset = new Date();
+      nextReset.setMonth(nextReset.getMonth() + 1);
+      await db.update(users).set({
+        creditsBalance: account.creditsPerMonth,
+        creditsResetAt: nextReset,
+      }).where(eq(users.id, apiKeyData.user_id));
+    }
+
+    // Reserve exactly one credit atomically, preventing simultaneous n8n
+    // requests from spending the same final credit.
+    const [reservedAccount] = await db
+      .update(users)
+      .set({ creditsBalance: sql`${users.creditsBalance} - 1` })
+      .where(and(
+        eq(users.id, apiKeyData.user_id),
+        gt(users.creditsBalance, 0),
+      ))
+      .returning({ creditsBalance: users.creditsBalance });
+
+    if (!reservedAccount) {
+      return NextResponse.json({
+        error: "No credits remaining. A paid plan is required to continue rendering.",
+        code: "CREDITS_EXHAUSTED",
+        creditsRemaining: 0,
+      }, { status: 402 });
+    }
+    creditReserved = true;
+    creditsRemaining = reservedAccount.creditsBalance;
 
     log(`Template found: ${template.name}`);
 
@@ -551,15 +601,18 @@ export async function POST(req: NextRequest) {
     const layer = new Konva.default.Layer();
     stage.add(layer);
 
-    // Background
-    const background = new Konva.default.Rect({
-      x: 0,
-      y: 0,
-      width: canvasData.workspace.width,
-      height: canvasData.workspace.height,
-      fill: canvasData.workspace.background || '#ffffff',
-    });
-    layer.add(background);
+    // Background (skip if transparent requested and PNG/WebP format)
+    const wantsTransparent = body.transparent === true && outputFormat !== "jpeg";
+    if (!wantsTransparent) {
+      const background = new Konva.default.Rect({
+        x: 0,
+        y: 0,
+        width: canvasData.workspace.width,
+        height: canvasData.workspace.height,
+        fill: canvasData.workspace.background || '#ffffff',
+      });
+      layer.add(background);
+    }
 
     // Pre-load all images in parallel before rendering
     const imageElements = canvasData.elements.filter((el: any) => el.type === 'image' && el.src);
@@ -853,8 +906,8 @@ export async function POST(req: NextRequest) {
     const outputWidth = Math.round(canvasData.workspace.width * pixelRatio);
     const outputHeight = Math.round(canvasData.workspace.height * pixelRatio);
 
-    const mimeType = outputFormat === 'png' ? 'image/png' : 'image/jpeg';
-    const fileExt = outputFormat === 'png' ? 'png' : 'jpg';
+    const mimeType = outputFormat === 'png' ? 'image/png' : outputFormat === 'webp' ? 'image/webp' : 'image/jpeg';
+    const fileExt = outputFormat === 'png' ? 'png' : outputFormat === 'webp' ? 'webp' : 'jpg';
 
     log(`Converting to HD buffer at ${pixelRatio.toFixed(2)}x (${outputWidth}x${outputHeight}) as ${outputFormat}...`);
     const dataURL = stage.toDataURL({
@@ -888,6 +941,7 @@ export async function POST(req: NextRequest) {
       log(`Image uploaded: ${publicUrl}`);
     } else {
       log(`Upload error: ${uploadError?.message}`);
+      throw new Error(uploadError?.message || "Failed to upload rendered image");
     }
 
     // Increment render count (fire-and-forget, don't block response)
@@ -898,6 +952,25 @@ export async function POST(req: NextRequest) {
 
     log(`✅ TOTAL: ${Date.now() - _t0}ms`);
 
+    // Save successful renders for the user's private render history. History
+    // failures must never make an otherwise successful image request fail.
+    try {
+      await db.insert(renders).values({
+        userId: apiKeyData.user_id,
+        templateId,
+        templateName: template.name || null,
+        status: "success",
+        imageUrl: publicUrl || null,
+        width: outputWidth,
+        height: outputHeight,
+        format: outputFormat,
+        renderTimeMs: Date.now() - _t0,
+        createdAt: new Date(),
+      });
+    } catch (historyError) {
+      console.error("[API Render] Failed to save render history:", historyError);
+    }
+
     return NextResponse.json({
       status: "success",
       imageUrl: publicUrl,
@@ -905,10 +978,16 @@ export async function POST(req: NextRequest) {
       height: outputHeight,
       pixelRatio,
       totalTimeMs: Date.now() - _t0,
-      ...(isDebug && { logs: debugLogs }),
+      creditsRemaining,
     }, { status: 200 });
 
   } catch (error: any) {
+    if (creditReserved && apiKeyData) {
+      await db.update(users)
+        .set({ creditsBalance: sql`${users.creditsBalance} + 1` })
+        .where(eq(users.id, apiKeyData.user_id))
+        .catch((refundError) => console.error("Error refunding render credit:", refundError));
+    }
     // Register failed render in database
     try {
       if (apiKeyData) {
@@ -933,7 +1012,6 @@ export async function POST(req: NextRequest) {
           details: error.message,
           stack: error.stack,
         }),
-        ...(isDebug && { logs: debugLogs })
       },
       { status: 500 }
     );

@@ -175,7 +175,7 @@ const translations = {
 
     // Dashboard
     my_templates: "My Templates",
-    create_template: "Create a new template",
+    create_template: "Create template",
     search_placeholder: "Search templates...",
     no_results_found: "No templates found",
     open_in_editor: "Open in Editor",
@@ -1009,7 +1009,7 @@ const translations = {
 
     // Dashboard
     my_templates: "Mis Plantillas",
-    create_template: "Crear nueva plantilla",
+    create_template: "Crear plantilla",
     search_placeholder: "Buscar plantillas...",
     no_results_found: "No se encontraron plantillas",
     open_in_editor: "Abrir en Editor",

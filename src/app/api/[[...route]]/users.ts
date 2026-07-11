@@ -3,6 +3,8 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 
 import { supabase } from "@/lib/supabaseClient";
+import { db } from "@/db/drizzle";
+import { users } from "@/db/schema";
 
 const app = new Hono()
   .post(
@@ -55,7 +57,19 @@ const app = new Hono()
 
         console.log(`[Registration] User created successfully: ${data.user.id}`);
 
-        // No need to sync to separate table - Supabase Auth handles everything
+        // Keep the application user record in sync with Supabase Auth. Database
+        // defaults grant exactly 50 non-renewing free credits.
+        await db.insert(users).values({
+          id: data.user.id,
+          email,
+          name,
+          emailVerified: data.user.email_confirmed_at ? new Date(data.user.email_confirmed_at) : null,
+          role: "user",
+          plan: "free",
+          creditsBalance: 50,
+          creditsPerMonth: 0,
+        }).onConflictDoNothing({ target: users.id });
+
         return c.json({ success: true }, 200);
       } catch (error: any) {
         console.error("[Registration] Unexpected Error Stack:", error.stack);

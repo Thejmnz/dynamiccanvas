@@ -22,6 +22,10 @@ export const users = pgTable("user", {
   password: text("password"),
   role: text("role").default("user"), // "user", "admin", "superadmin"
   renderCount: integer("render_count").default(0).notNull(),
+  plan: text("plan").default("free").notNull(),
+  creditsBalance: integer("credits_balance").default(50).notNull(),
+  creditsPerMonth: integer("credits_per_month").default(0).notNull(),
+  creditsResetAt: timestamp("credits_reset_at", { mode: "date" }),
 });
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -208,6 +212,12 @@ export const renders = pgTable("render", {
   templateId: text("template_id"),
   status: text("status").notNull(), // "success", "failed"
   errorMessage: text("error_message"),
+  imageUrl: text("image_url"),
+  templateName: text("template_name"),
+  width: integer("width"),
+  height: integer("height"),
+  format: text("format"),
+  renderTimeMs: integer("render_time_ms"),
   createdAt: timestamp("createdAt", { mode: "date" }).notNull(),
 });
 
