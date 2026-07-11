@@ -27,7 +27,6 @@ import {
   WandSparkles,
   Zap,
 } from "lucide-react";
-import { useEffect, useState } from "react";
 
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { BrandMark } from "@/components/brand-mark";
@@ -248,14 +247,6 @@ export default function HomePage() {
   const { user } = useAuth();
   const { language } = useLanguage();
   const c = copy[language];
-  const [renders, setRenders] = useState(0);
-
-  useEffect(() => {
-    fetch("/api/stats")
-      .then((response) => response.json())
-      .then((data) => setRenders(Number(data.totalRenders || data.renders || 0)))
-      .catch(() => undefined);
-  }, []);
 
   const primaryHref = user ? "/dashboard" : "/sign-up";
 
@@ -356,12 +347,6 @@ export default function HomePage() {
           <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-5 text-lg font-black text-[#101426]/45 sm:gap-x-16">
             {integrationNames.map((name) => <span key={name} className="transition hover:text-[#5b35d5]">{name}</span>)}
           </div>
-        </div>
-      </section>
-
-      <section className="border-b border-[#101426]/10 bg-[#101426] text-white">
-        <div className="mx-auto grid max-w-[1440px] grid-cols-2 divide-x divide-white/10 px-5 sm:px-8 lg:grid-cols-4 lg:px-12">
-          {[["∞", c.metricTemplates], ["REST", c.metricApi], ["3×", c.metricFormats], [renders ? renders.toLocaleString() : "24/7", c.metricRenders]].map(([value, label]) => <div key={label} className="px-4 py-8 text-center"><div className="text-3xl font-black text-[#c9ff5a]">{value}</div><div className="mt-1 text-xs font-bold text-white/50">{label}</div></div>)}
         </div>
       </section>
 
