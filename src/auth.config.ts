@@ -1,12 +1,11 @@
 import { z } from "zod";
 import type { NextAuthConfig } from "next-auth";
-import GitHub from "next-auth/providers/github";
-import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/db/drizzle";
+import { users } from "@/db/schema";
 import { supabase } from "@/lib/supabaseClient";
 
 const CredentialsSchema = z.object({
@@ -67,8 +66,40 @@ export default {
         };
       },
     }),
-    GitHub,
-    Google,
+    Credentials({
+      id: "supabase-token",
+      name: "Supabase OAuth",
+      credentials: {
+        accessToken: { label: "Supabase access token", type: "text" },
+      },
+      async authorize(credentials) {
+        const accessToken = typeof credentials?.accessToken === "string"
+          ? credentials.accessToken
+          : "";
+        if (!accessToken) return null;
+
+        const { data, error } = await supabase.auth.getUser(accessToken);
+        if (error || !data.user?.email) return null;
+
+        const user = data.user;
+        const email = user.email;
+        if (!email) return null;
+        await db.insert(users).values({
+          id: user.id,
+          email,
+          name: user.user_metadata?.full_name || user.user_metadata?.name || email.split("@")[0],
+          image: user.user_metadata?.avatar_url || null,
+          emailVerified: user.email_confirmed_at ? new Date(user.email_confirmed_at) : null,
+        }).onConflictDoNothing({ target: users.id });
+
+        return {
+          id: user.id,
+          email,
+          name: user.user_metadata?.full_name || user.user_metadata?.name || email,
+          image: user.user_metadata?.avatar_url || null,
+        };
+      },
+    }),
   ],
   pages: {
     signIn: "/sign-in",

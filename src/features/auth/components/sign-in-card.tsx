@@ -30,6 +30,18 @@ export const SignInCard = () => {
   const params = useSearchParams();
   const error = params.get("error");
 
+  const onGoogleSignIn = async () => {
+    setLoading(true);
+    setLoadingGoogle(true);
+    try {
+      await signInWithGoogle();
+    } catch {
+      toast.error(t("invalid_credentials"));
+      setLoading(false);
+      setLoadingGoogle(false);
+    }
+  };
+
   const onCredentialSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -89,7 +101,7 @@ export const SignInCard = () => {
         <div className="space-y-3 mb-4">
           <button
             type="button"
-            onClick={() => { setLoadingGoogle(true); signInWithGoogle(); }}
+            onClick={onGoogleSignIn}
             disabled={loading}
             className="flex w-full items-center justify-center gap-2.5 rounded-xl border-2 border-[#101426]/15 bg-white px-4 py-2.5 text-sm font-bold text-[#101426] transition hover:border-[#101426]/30 hover:bg-[#f6f5ef] disabled:opacity-50"
           >

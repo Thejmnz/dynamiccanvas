@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const signInWithGoogle = async () => {
         try {
-            await supabase.auth.signInWithOAuth({
+            const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
                     redirectTo: typeof window !== 'undefined'
@@ -78,8 +78,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                         : undefined,
                 },
             });
+            if (error) throw error;
         } catch (error) {
             console.error('Error signing in with Google (Supabase):', error);
+            throw error;
         }
     };
 

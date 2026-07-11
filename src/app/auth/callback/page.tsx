@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn as signInWithNextAuth } from "next-auth/react";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function AuthCallbackPage() {
@@ -9,41 +10,45 @@ export default function AuthCallbackPage() {
   const [status, setStatus] = useState<"loading" | "error">("loading");
 
   useEffect(() => {
-    let done = false;
-    let timeout: ReturnType<typeof setTimeout>;
+    let cancelled = false;
 
-    // Listen for the session to be established
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (done) return;
-      if (session) {
-        done = true;
-        clearTimeout(timeout);
-        router.replace("/dashboard");
-      }
-    });
+    const finishSignIn = async () => {
+      try {
+        const code = new URLSearchParams(window.location.search).get("code");
+        let { data: { session } } = await supabase.auth.getSession();
 
-    // Also check if session already exists
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (done) return;
-      if (session) {
-        done = true;
-        clearTimeout(timeout);
-        router.replace("/dashboard");
-      }
-    });
+        if (!session && code) {
+          const exchanged = await supabase.auth.exchangeCodeForSession(code);
+          if (exchanged.error) throw exchanged.error;
+          session = exchanged.data.session;
+        }
 
-    // Timeout after 8s → redirect to sign-in
-    timeout = setTimeout(() => {
-      if (!done) {
-        done = true;
-        setStatus("error");
-        setTimeout(() => router.replace("/sign-in"), 1500);
+        if (!session?.access_token) {
+          throw new Error("Supabase did not return an OAuth session");
+        }
+
+        const result = await signInWithNextAuth("supabase-token", {
+          accessToken: session.access_token,
+          redirect: false,
+        });
+        if (result?.error) throw new Error(result.error);
+        if (!cancelled) {
+          router.replace("/dashboard");
+          router.refresh();
+        }
+      } catch (error) {
+        console.error("Google OAuth callback failed:", error);
+        if (!cancelled) {
+          setStatus("error");
+          window.setTimeout(() => router.replace("/sign-in?error=OAuthCallback"), 1500);
+        }
       }
-    }, 8000);
+    };
+
+    void finishSignIn();
 
     return () => {
-      subscription.unsubscribe();
-      clearTimeout(timeout);
+      cancelled = true;
     };
   }, [router]);
 

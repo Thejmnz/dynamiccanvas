@@ -27,9 +27,15 @@ export const SignUpCard = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const onGoogleSignUp = () => {
+  const onGoogleSignUp = async () => {
+    setLoading(true);
     setLoadingGoogle(true);
-    signInWithGoogle();
+    try {
+      await signInWithGoogle();
+    } catch {
+      setLoading(false);
+      setLoadingGoogle(false);
+    }
   };
 
   const onCredentialSignUp = (e: React.FormEvent<HTMLFormElement>) => {

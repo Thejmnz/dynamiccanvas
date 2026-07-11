@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const protectedPaths = ["/dashboard", "/editor", "/admin", "/api-key", "/playground", "/api-integration"];
+const protectedPaths = ["/dashboard", "/editor", "/admin", "/api-key", "/playground", "/api-integration", "/renders"];
 const authPaths = ["/sign-in", "/sign-up"];
 
 function hasAuthSession(req: NextRequest): boolean {
