@@ -221,7 +221,18 @@ export default function AdminDashboard() {
                               <label className="text-xs font-bold uppercase text-[#101426]/50 block mb-1">Plan</label>
                               <select
                                 value={editingUser.plan}
-                                onChange={(e) => setEditingUser({ ...editingUser, plan: e.target.value })}
+                                onChange={(e) => {
+                                  const newPlan = e.target.value;
+                                  const planDefaults: Record<string, { balance: number; monthly: number }> = {
+                                    free: { balance: 50, monthly: 0 },
+                                    creator: { balance: 1000, monthly: 1000 },
+                                    agency: { balance: 5000, monthly: 5000 },
+                                    business: { balance: 25000, monthly: 25000 },
+                                    unlimited: { balance: 999999999, monthly: 999999999 },
+                                  };
+                                  const d = planDefaults[newPlan] || planDefaults.free;
+                                  setEditingUser({ ...editingUser, plan: newPlan, creditsBalance: d.balance, creditsPerMonth: d.monthly });
+                                }}
                                 className="border-2 border-[#101426]/15 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-[#5b35d5]"
                               >
                                 <option value="free">Free (50 credits, 3 templates)</option>

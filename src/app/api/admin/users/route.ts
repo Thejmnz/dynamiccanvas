@@ -92,25 +92,17 @@ export async function PATCH(req: NextRequest) {
 
     if (plan !== undefined) {
       updates.plan = plan;
-      if (plan === "unlimited") {
-        updates.creditsPerMonth = 999999999;
-        updates.creditsBalance = 999999999;
-      } else if (creditsPerMonth === undefined && creditsBalance === undefined) {
-        updates.creditsPerMonth = PLAN_CREDITS[plan] ?? 0;
-        updates.creditsBalance = plan === "free" ? 50 : (PLAN_CREDITS[plan] ?? 0);
-      }
       const nextReset = new Date();
       nextReset.setMonth(nextReset.getMonth() + 1);
       updates.creditsResetAt = plan === "free" ? null : nextReset;
     }
 
-    if (plan !== "unlimited") {
-      if (creditsBalance !== undefined) {
-        updates.creditsBalance = Number(creditsBalance);
-      }
-      if (creditsPerMonth !== undefined) {
-        updates.creditsPerMonth = Number(creditsPerMonth);
-      }
+    if (creditsBalance !== undefined) {
+      updates.creditsBalance = Number(creditsBalance);
+    }
+
+    if (creditsPerMonth !== undefined) {
+      updates.creditsPerMonth = Number(creditsPerMonth);
     }
 
     await db.update(users).set(updates).where(eq(users.id, userId));
