@@ -19,7 +19,10 @@ body {
 }
 
 html {
-  zoom: 0.9;
+  transform: scale(0.9);
+  transform-origin: top left;
+  width: 111.11vw;
+  overflow-x: hidden;
 }
 
 /* Material Symbols Outlined */
