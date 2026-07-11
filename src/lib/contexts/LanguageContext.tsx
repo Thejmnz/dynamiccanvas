@@ -335,7 +335,6 @@ const translations = {
     home: "Home",
     // projects and templates are already defined in Admin section
     brand: "Brand",
-    settings: "Settings",
 
     // User Menu
     log_out: "Log out",
@@ -1178,7 +1177,6 @@ const translations = {
     home: "Inicio",
     // projects and templates already defined in Admin section
     brand: "Marca",
-    settings: "Ajustes",
 
     // User Menu
     log_out: "Cerrar sesión",
