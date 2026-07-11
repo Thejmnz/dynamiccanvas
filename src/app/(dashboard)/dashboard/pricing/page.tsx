@@ -7,10 +7,10 @@ import { toast } from "sonner";
 import { useCheckout } from "@/features/subscriptions/api/use-checkout";
 
 const CREDIT_PACKS = [
-  { pack: "1000" as const, credits: "1,000", price: 9 },
-  { pack: "5000" as const, credits: "5,000", price: 35 },
-  { pack: "10000" as const, credits: "10,000", price: 59 },
-  { pack: "25000" as const, credits: "25,000", price: 119 },
+  { pack: "1000" as const, credits: "1,000", price: 15 },
+  { pack: "5000" as const, credits: "5,000", price: 59 },
+  { pack: "10000" as const, credits: "10,000", price: 99 },
+  { pack: "25000" as const, credits: "25,000", price: 199 },
 ];
 
 const PLANS = [

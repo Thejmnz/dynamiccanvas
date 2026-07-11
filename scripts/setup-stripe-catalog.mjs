@@ -16,10 +16,10 @@ const plans = [
 ];
 
 const packs = [
-  { slug: "credits_1000", name: "Dynamic Canvas — 1,000 extra credits", credits: 1000, amount: 900 },
-  { slug: "credits_5000", name: "Dynamic Canvas — 5,000 extra credits", credits: 5000, amount: 3500 },
-  { slug: "credits_10000", name: "Dynamic Canvas — 10,000 extra credits", credits: 10000, amount: 5900 },
-  { slug: "credits_25000", name: "Dynamic Canvas — 25,000 extra credits", credits: 25000, amount: 11900 },
+  { slug: "credits_1000", name: "Dynamic Canvas — 1,000 extra credits", credits: 1000, amount: 1500 },
+  { slug: "credits_5000", name: "Dynamic Canvas — 5,000 extra credits", credits: 5000, amount: 5900 },
+  { slug: "credits_10000", name: "Dynamic Canvas — 10,000 extra credits", credits: 10000, amount: 9900 },
+  { slug: "credits_25000", name: "Dynamic Canvas — 25,000 extra credits", credits: 25000, amount: 19900 },
 ];
 
 const existingProducts = await stripe.products.list({ active: true, limit: 100 });
