@@ -3,21 +3,11 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Users,
-  FileCode,
-  Key,
-  Search,
-  ChevronDown,
-  ChevronUp,
-  Mail,
-  Calendar,
-  Shield,
-  Activity,
-  Eye,
-  Palette,
+  Users, FileCode, Key, Search, ChevronDown, ChevronUp, Mail,
+  Calendar, Shield, Activity, Sparkles, Save, X,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
-import { DesignsSection } from "./designs-section";
 import { useUserRole } from "@/hooks/use-user-role";
 
 interface UserStats {
@@ -27,6 +17,10 @@ interface UserStats {
   role: string | null;
   image: string | null;
   createdAt: string | null;
+  plan: string;
+  creditsBalance: number;
+  creditsPerMonth: number;
+  renderCount: number;
   templatesCount: number;
   projectsCount: number;
   hasApiKey: boolean;
@@ -41,346 +35,268 @@ interface AdminStats {
   templatesThisMonth: number;
 }
 
+const PLAN_LABELS: Record<string, string> = {
+  free: "Free",
+  creator: "Starter",
+  agency: "Scale",
+  business: "Enterprise",
+  unlimited: "Unlimited",
+};
+
+const PLAN_COLORS: Record<string, string> = {
+  free: "bg-gray-100 text-gray-700",
+  creator: "bg-blue-100 text-blue-700",
+  agency: "bg-purple-100 text-purple-700",
+  business: "bg-green-100 text-green-700",
+  unlimited: "bg-amber-100 text-amber-700",
+};
+
 export default function AdminDashboard() {
   const { role, loading: roleLoading, isAuthenticated } = useUserRole();
   const router = useRouter();
   const { t } = useLanguage();
-  const [users, setUsers] = useState<UserStats[]>([]);
+  const [usersList, setUsersList] = useState<UserStats[]>([]);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
-  const [roleFilter, setRoleFilter] = useState<string>("all");
-  const [activeTab, setActiveTab] = useState<"users" | "designs">("designs");
+  const [editingUser, setEditingUser] = useState<UserStats | null>(null);
 
   useEffect(() => {
     if (roleLoading) return;
-
-    if (!isAuthenticated) {
-      router.push("/sign-in");
-      return;
-    }
-
-    if (role !== "superadmin") {
-      router.push("/dashboard");
-      return;
-    }
-
-    fetchAdminData();
+    if (!isAuthenticated) { router.push("/sign-in"); return; }
+    if (role !== "superadmin") { router.push("/dashboard"); return; }
+    fetchData();
   }, [role, roleLoading, isAuthenticated, router]);
 
-  const fetchAdminData = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
       const [usersRes, statsRes] = await Promise.all([
         fetch("/api/admin/users"),
         fetch("/api/admin/stats"),
       ]);
+      if (usersRes.ok) setUsersList(await usersRes.json());
+      if (statsRes.ok) setStats(await statsRes.json());
+    } catch { } finally { setLoading(false); }
+  };
 
-      if (usersRes.ok) {
-        const usersData = await usersRes.json();
-        setUsers(usersData);
-      }
+  const filteredUsers = usersList.filter((u) =>
+    u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    u.email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        setStats(statsData);
+  const handleSaveUser = async () => {
+    if (!editingUser) return;
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: editingUser.id,
+          plan: editingUser.plan,
+          creditsBalance: editingUser.creditsBalance,
+          creditsPerMonth: editingUser.creditsPerMonth,
+        }),
+      });
+      if (res.ok) {
+        toast.success("User updated");
+        setEditingUser(null);
+        fetchData();
+      } else {
+        toast.error("Failed to update user");
       }
-    } catch (error) {
-      console.error("Error fetching admin data:", error);
-    } finally {
-      setLoading(false);
+    } catch {
+      toast.error("Failed to update user");
     }
   };
 
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesRole = roleFilter === "all" || user.role === roleFilter;
-    return matchesSearch && matchesRole;
-  });
-
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("es-ES", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  if (status === "loading" || loading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#135bec]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5b35d5]" />
       </div>
     );
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-          <Shield className="w-8 h-8 text-[#135bec]" />
-          {t("admin_panel")}
+        <h1 className="text-3xl font-black flex items-center gap-3">
+          <Shield className="w-8 h-8 text-[#5b35d5]" />
+          Admin Panel
         </h1>
-        <p className="text-gray-600 mt-2">{t("admin_panel_desc")}</p>
+        <p className="text-[#101426]/55 mt-2">Manage users, plans and credits.</p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => setActiveTab("designs")}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-            activeTab === "designs"
-              ? "bg-blue-600 text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-          }`}
-        >
-          <Palette className="w-4 h-4" />
-          {t("designs")}
-        </button>
-        <button
-          onClick={() => setActiveTab("users")}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-            activeTab === "users"
-              ? "bg-blue-600 text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          {t("users")}
-        </button>
-      </div>
-
-      {activeTab === "designs" ? (
-        <DesignsSection />
-      ) : (
-        <>
-          {stats && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">{t("total_users")}</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalUsers}</p>
-                    <p className="text-xs text-green-600 mt-2">+{stats.usersThisMonth} {t("this_month")}</p>
-                  </div>
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Users className="w-6 h-6 text-blue-600" />
-                  </div>
-                </div>
+      {stats && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {[
+            { label: "Users", value: stats.totalUsers, sub: `+${stats.usersThisMonth} this month`, icon: Users, color: "bg-[#e9e5ff]" },
+            { label: "Templates", value: stats.totalTemplates, sub: `+${stats.templatesThisMonth} this month`, icon: FileCode, color: "bg-[#c9ff5a]" },
+            { label: "Renders", value: stats.totalRenders, sub: "all time", icon: Activity, color: "bg-[#ffb7aa]" },
+            { label: "API Keys", value: stats.totalApiKeys, sub: "active", icon: Key, color: "bg-[#d9ccff]" },
+          ].map((s) => (
+            <div key={s.label} className={`rounded-[18px] border-2 border-[#101426] p-4 ${s.color}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase tracking-wider">{s.label}</span>
+                <s.icon className="size-4" />
               </div>
+              <div className="mt-3 text-3xl font-black">{s.value}</div>
+              <div className="mt-1 text-[11px] font-semibold text-[#101426]/50">{s.sub}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">{t("total_templates")}</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalTemplates}</p>
-                    <p className="text-xs text-green-600 mt-2">+{stats.templatesThisMonth} {t("this_month")}</p>
-                  </div>
-                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <FileCode className="w-6 h-6 text-purple-600" />
-                  </div>
-                </div>
-              </div>
+      <div className="rounded-[22px] border-2 border-[#101426] bg-white overflow-hidden">
+        <div className="p-4 border-b-2 border-[#101426]/10">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#101426]/30" />
+            <input
+              type="text"
+              placeholder="Search users..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border-2 border-[#101426]/15 rounded-xl focus:ring-2 focus:ring-[#5b35d5] focus:border-transparent text-sm"
+            />
+          </div>
+        </div>
 
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">{t("total_projects")}</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalRenders}</p>
-                  </div>
-                  <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                    <Activity className="w-6 h-6 text-orange-600" />
-                  </div>
-                </div>
-              </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-[#101426] text-white">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wider">User</th>
+                <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wider">Plan</th>
+                <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wider">Credits</th>
+                <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wider">Renders</th>
+                <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wider">Templates</th>
+                <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-wider"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#101426]/8">
+              {filteredUsers.map((user) => (
+                <>
+                  <tr
+                    key={user.id}
+                    className="hover:bg-[#101426]/3 transition-colors cursor-pointer"
+                    onClick={() => setExpandedUser(expandedUser === user.id ? null : user.id)}
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="size-9 rounded-full bg-gradient-to-br from-[#5b35d5] to-[#c9ff5a] flex items-center justify-center text-white font-black text-sm">
+                          {user.name?.[0]?.toUpperCase() || user.email[0]?.toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold">{user.name || "—"}</div>
+                          <div className="text-xs text-[#101426]/50 flex items-center gap-1">
+                            <Mail className="size-3" />{user.email}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2.5 py-1 inline-flex text-xs font-black rounded-full ${PLAN_COLORS[user.plan] || PLAN_COLORS.free}`}>
+                        {PLAN_LABELS[user.plan] || user.plan}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-sm font-bold">{user.creditsBalance.toLocaleString()}</div>
+                      <div className="text-xs text-[#101426]/40">/ {user.creditsPerMonth === 999999999 ? "∞" : user.creditsPerMonth.toLocaleString()} per mo</div>
+                    </td>
+                    <td className="px-4 py-3 text-sm font-bold">{user.renderCount.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-sm font-bold">{user.templatesCount}</td>
+                    <td className="px-4 py-3">
+                      {expandedUser === user.id ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+                    </td>
+                  </tr>
 
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">{t("active_api_keys")}</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-1">{stats.totalApiKeys}</p>
-                  </div>
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <Key className="w-6 h-6 text-green-600" />
-                  </div>
-                </div>
-              </div>
+                  {expandedUser === user.id && (
+                    <tr className="bg-[#101426]/3">
+                      <td colSpan={6} className="px-4 py-4">
+                        {editingUser?.id === user.id ? (
+                          <div className="flex flex-wrap items-end gap-4">
+                            <div>
+                              <label className="text-xs font-bold uppercase text-[#101426]/50 block mb-1">Plan</label>
+                              <select
+                                value={editingUser.plan}
+                                onChange={(e) => setEditingUser({ ...editingUser, plan: e.target.value })}
+                                className="border-2 border-[#101426]/15 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-[#5b35d5]"
+                              >
+                                <option value="free">Free (50 credits, 3 templates)</option>
+                                <option value="creator">Starter (1,000 credits, 15 templates)</option>
+                                <option value="agency">Scale (5,000 credits, 100 templates)</option>
+                                <option value="business">Enterprise (25,000 credits, ∞ templates)</option>
+                                <option value="unlimited">Unlimited (∞ everything)</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-xs font-bold uppercase text-[#101426]/50 block mb-1">Credits balance</label>
+                              <input
+                                type="number"
+                                value={editingUser.creditsBalance}
+                                onChange={(e) => setEditingUser({ ...editingUser, creditsBalance: Number(e.target.value) })}
+                                className="border-2 border-[#101426]/15 rounded-xl px-3 py-2 text-sm font-bold w-32 focus:ring-2 focus:ring-[#5b35d5]"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs font-bold uppercase text-[#101426]/50 block mb-1">Credits / month</label>
+                              <input
+                                type="number"
+                                value={editingUser.creditsPerMonth}
+                                onChange={(e) => setEditingUser({ ...editingUser, creditsPerMonth: Number(e.target.value) })}
+                                className="border-2 border-[#101426]/15 rounded-xl px-3 py-2 text-sm font-bold w-32 focus:ring-2 focus:ring-[#5b35d5]"
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={handleSaveUser}
+                                className="flex items-center gap-1.5 rounded-full bg-[#c9ff5a] border-2 border-[#101426] px-4 py-2 text-sm font-black hover:bg-white transition"
+                              >
+                                <Save className="size-3.5" />Save
+                              </button>
+                              <button
+                                onClick={() => setEditingUser(null)}
+                                className="flex items-center gap-1.5 rounded-full bg-white border-2 border-[#101426]/20 px-4 py-2 text-sm font-black hover:bg-[#101426]/5 transition"
+                              >
+                                <X className="size-3.5" />Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap items-center gap-4">
+                            <div className="text-sm text-[#101426]/60">
+                              <Calendar className="size-3.5 inline mr-1" />
+                              Joined {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}
+                              {user.hasApiKey && <span className="ml-3 text-green-600 font-bold">API Key active</span>}
+                            </div>
+                            <div className="flex gap-2 ml-auto">
+                              <button
+                                onClick={() => setEditingUser({ ...user })}
+                                className="flex items-center gap-1.5 rounded-full bg-[#101426] text-white px-4 py-2 text-sm font-black hover:bg-[#5b35d5] transition"
+                              >
+                                <Sparkles className="size-3.5" />Edit plan & credits
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </>
+              ))}
+            </tbody>
+          </table>
+
+          {filteredUsers.length === 0 && (
+            <div className="text-center py-12">
+              <Users className="size-10 text-[#101426]/30 mx-auto mb-3" />
+              <p className="text-sm text-[#101426]/50">No users found.</p>
             </div>
           )}
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder={t("search_users")}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <select
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="all">{t("all_roles")}</option>
-                  <option value="user">{t("user_role")}</option>
-                  <option value="admin">{t("admin_role")}</option>
-                  <option value="superadmin">{t("superadmin_role")}</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("user")}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("role")}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("templates")}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("projects")}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("api_key")}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("registration")}</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("actions")}</th>
-                  </tr>
-                </thead>
-
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredUsers.map((user) => (
-                    <>
-                      <tr
-                        key={user.id}
-                        className="hover:bg-gray-50 transition-colors cursor-pointer"
-                        onClick={() => setExpandedUser(expandedUser === user.id ? null : user.id)}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                              {user.name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">{user.name || t("no_name")}</div>
-                              <div className="text-sm text-gray-500 flex items-center gap-1">
-                                <Mail className="w-3 h-3" />
-                                {user.email}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${user.role === "superadmin" ? "bg-red-100 text-red-800" : user.role === "admin" ? "bg-yellow-100 text-yellow-800" : "bg-green-100 text-green-800"}`}>
-                            {user.role || t("user_role")}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 font-medium">{user.templatesCount}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 font-medium">{user.projectsCount}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {user.hasApiKey ? (
-                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">{t("active")}</span>
-                          ) : (
-                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">{t("no_api_key")}</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {formatDate(user.createdAt)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div className="flex items-center gap-2">
-                            {expandedUser === user.id ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                          </div>
-                        </td>
-                      </tr>
-
-                      {expandedUser === user.id && (
-                        <tr className="bg-gray-50">
-                          <td colSpan={7} className="px-6 py-4">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                                <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                                  <FileCode className="w-4 h-4" />
-                                  {t("recent_templates")}
-                                </h4>
-                                <p className="text-sm text-gray-600">{user.templatesCount} {t("templates_created")}</p>
-                                <button className="mt-2 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
-                                  <Eye className="w-3 h-3" />
-                                  {t("view_all")}
-                                </button>
-                              </div>
-
-                              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                                <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                                  <Activity className="w-4 h-4" />
-                                  {t("active_projects_label")}
-                                </h4>
-                                <p className="text-sm text-gray-600">{user.projectsCount} {t("projects_count")}</p>
-                                <button className="mt-2 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
-                                  <Eye className="w-3 h-3" />
-                                  {t("view_projects")}
-                                </button>
-                              </div>
-
-                              <div className="bg-white p-4 rounded-lg border border-gray-200">
-                                <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                                  <Key className="w-4 h-4" />
-                                  {t("api_key")}
-                                </h4>
-                                <p className="text-sm text-gray-600">
-                                  {user.hasApiKey ? t("api_key_configured") : t("no_api_key")}
-                                </p>
-                                <button className="mt-2 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
-                                  <Eye className="w-3 h-3" />
-                                  {t("manage")}
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="mt-4 flex gap-2">
-                              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center gap-2">
-                                <Mail className="w-4 h-4" />
-                                {t("contact")}
-                              </button>
-                              <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm flex items-center gap-2">
-                                <Eye className="w-4 h-4" />
-                                {t("view_full_profile")}
-                              </button>
-                              <button className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm flex items-center gap-2">
-                                <Shield className="w-4 h-4" />
-                                {t("change_role")}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </>
-                  ))}
-
-                </tbody>
-              </table>
-
-              {filteredUsers.length === 0 && (
-                <div className="text-center py-12">
-                  <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">{t("no_users_found")}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 }

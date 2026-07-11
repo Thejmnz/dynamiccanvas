@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
       creator: 15,
       agency: 100,
       business: Infinity,
+      unlimited: Infinity,
     };
     const plan = account?.plan || "free";
     const limit = PLAN_TEMPLATE_LIMITS[plan] ?? PLAN_TEMPLATE_LIMITS.free;
