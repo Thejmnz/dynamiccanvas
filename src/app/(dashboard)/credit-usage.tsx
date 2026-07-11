@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Infinity as InfinityIcon } from "lucide-react";
 
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 
 interface CreditData {
   plan: string;
   creditsBalance: number;
+  creditsPerMonth: number;
   totalCredits: number;
   usedCredits: number;
   templateCount: number;
@@ -61,10 +62,43 @@ export const CreditUsage = () => {
 
   if (!data) return null;
 
+  const isUnlimited = data.plan === "unlimited" || data.creditsPerMonth >= 999999999;
+  const isFree = data.plan === "free";
+
+  if (isUnlimited) {
+    return (
+      <div className="mx-3 mb-3 rounded-2xl border-2 border-[#c9ff5a]/40 bg-gradient-to-br from-[#5b35d5]/20 to-[#c9ff5a]/10 p-4">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-wider text-white/40">
+            {language === "es" ? "Plan" : "Plan"}
+          </span>
+          <span className="text-[10px] font-black uppercase rounded-full bg-[#c9ff5a] px-2.5 py-0.5 text-[#101426]">
+            {language === "es" ? "Ilimitado" : "Unlimited"}
+          </span>
+        </div>
+        <div className="mt-3 flex items-center gap-2">
+          <InfinityIcon className="size-7 text-[#c9ff5a]" />
+          <div>
+            <div className="text-xl font-black text-white">
+              {language === "es" ? "Créditos ilimitados" : "Unlimited credits"}
+            </div>
+            <div className="text-[11px] text-white/45">
+              {language === "es" ? "Sin límites. Crea sin restricciones." : "No limits. Create without restrictions."}
+            </div>
+          </div>
+        </div>
+        <div className="mt-3 flex items-center gap-2 text-[11px] text-white/35">
+          <span>{data.templateCount} {language === "es" ? "plantillas" : "templates"}</span>
+          <span>·</span>
+          <span>{language === "es" ? "Plantillas ilimitadas" : "Unlimited templates"}</span>
+        </div>
+      </div>
+    );
+  }
+
   const percent = data.totalCredits > 0
     ? Math.round((data.usedCredits / data.totalCredits) * 100)
     : 100;
-  const isFree = data.plan === "free";
   const barColor = percent >= 90 ? "bg-[#ff6b57]" : percent >= 70 ? "bg-[#ffd166]" : "bg-[#c9ff5a]";
 
   return (
