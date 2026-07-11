@@ -37,17 +37,18 @@ export const UserButton = () => {
   };
 
   return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger className="outline-none relative">
-        <Avatar className="size-10 hover:opacity-75 transition">
-          <AvatarImage alt={name} src={imageUrl || ""} />
-          <AvatarFallback className="flex items-center justify-center border-2 border-[#101426] bg-[#5b35d5] font-bold text-white">
-            {name.charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-      </DropdownMenuTrigger>
+    <div className="relative">
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger className="outline-none relative">
+          <Avatar className="size-10 hover:opacity-75 transition">
+            <AvatarImage alt={name} src={imageUrl || ""} />
+            <AvatarFallback className="flex items-center justify-center border-2 border-[#101426] bg-[#5b35d5] font-bold text-white">
+              {name.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" sideOffset={8} collisionPadding={20} className="w-64 p-0">
+        <DropdownMenuContent align="end" sideOffset={8} className="w-64 p-0 mr-3">
         {/* User info header */}
         <div className="px-3 py-3 border-b border-[#101426]/8">
           <div className="flex items-center gap-2.5">
@@ -127,6 +128,7 @@ export const UserButton = () => {
           </DropdownMenuItem>
         </div>
       </DropdownMenuContent>
-    </DropdownMenu>
+      </DropdownMenu>
+    </div>
   );
 };
