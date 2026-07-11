@@ -1,9 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { BadgeCheck, Loader2 } from "lucide-react";
+import { BadgeCheck, Loader2, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 
 import { useCheckout } from "@/features/subscriptions/api/use-checkout";
+
+const CREDIT_PACKS = [
+  { pack: "1000" as const, credits: "1,000", price: 9 },
+  { pack: "5000" as const, credits: "5,000", price: 35 },
+  { pack: "10000" as const, credits: "10,000", price: 59 },
+  { pack: "25000" as const, credits: "25,000", price: 119 },
+];
 
 const PLANS = [
   {
@@ -63,9 +71,27 @@ const PLANS = [
 export default function PricingPage() {
   const [yearly, setYearly] = useState(false);
   const checkout = useCheckout();
+  const [buyingPack, setBuyingPack] = useState<string | null>(null);
 
   const handleCheckout = (slug: "creator" | "agency" | "business") => {
     checkout.mutate({ plan: slug, billing: yearly ? "yearly" : "monthly" });
+  };
+
+  const handleBuyCredits = async (pack: "1000" | "5000" | "10000" | "25000") => {
+    setBuyingPack(pack);
+    try {
+      const res = await fetch("/api/subscriptions/credits-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pack }),
+      });
+      const data = await res.json();
+      if (data.data) window.location.href = data.data;
+    } catch {
+      toast.error("Failed to start checkout");
+    } finally {
+      setBuyingPack(null);
+    }
   };
 
   return (
@@ -138,6 +164,33 @@ export default function PricingPage() {
             </article>
           );
         })}
+      </div>
+
+      <div className="mx-auto mt-12 max-w-4xl">
+        <div className="text-center">
+          <div className="inline-flex items-center gap-2 rounded-full bg-[#c9ff5a] px-4 py-1.5 text-xs font-black uppercase tracking-wider text-[#101426]">
+            <Sparkles className="size-3.5" />
+            Credit Packs
+          </div>
+          <p className="mt-3 text-sm text-[#101426]/55">Need more renders? Top up your credits anytime.</p>
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {CREDIT_PACKS.map((cp) => (
+            <div key={cp.pack} className="flex flex-col rounded-[18px] border-2 border-[#101426] bg-white p-5 text-center transition hover:-translate-y-1 hover:shadow-[5px_5px_0_#101426]">
+              <div className="text-3xl font-black">{cp.credits}</div>
+              <div className="text-xs font-bold text-[#101426]/50">credits</div>
+              <div className="mt-3 text-2xl font-black text-[#5b35d5]">${cp.price}</div>
+              <button
+                onClick={() => handleBuyCredits(cp.pack)}
+                disabled={buyingPack !== null}
+                className="mt-4 flex h-10 items-center justify-center rounded-full bg-[#101426] text-xs font-black text-white transition hover:bg-[#5b35d5] disabled:opacity-50"
+              >
+                {buyingPack === cp.pack ? <Loader2 className="size-4 animate-spin" /> : "Buy now"}
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { verifyAuth } from "@hono/auth-js";
 
 import { checkIsActive } from "@/features/subscriptions/lib";
@@ -144,6 +144,54 @@ const app = new Hono()
 
     return c.json({ data: url });
   })
+  .post("/credits-checkout", verifyAuth(), async (c) => {
+    const auth = c.get("authUser");
+
+    if (!auth.token?.id) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+
+    type CreditsBody = { pack?: "1000" | "5000" | "10000" | "25000" };
+    const body = await c.req.json<CreditsBody>().catch((): CreditsBody => ({}));
+    const pack = body.pack || "1000";
+
+    const packPriceIds: Record<string, string | undefined> = {
+      "1000": process.env.STRIPE_CREDITS_1000_PRICE_ID,
+      "5000": process.env.STRIPE_CREDITS_5000_PRICE_ID,
+      "10000": process.env.STRIPE_CREDITS_10000_PRICE_ID,
+      "25000": process.env.STRIPE_CREDITS_25000_PRICE_ID,
+    };
+    const packCredits: Record<string, number> = {
+      "1000": 1000, "5000": 5000, "10000": 10000, "25000": 25000,
+    };
+
+    const priceId = packPriceIds[pack];
+    if (!priceId) {
+      return c.json({ error: "Invalid credit pack" }, 400);
+    }
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const session = await stripe.checkout.sessions.create({
+      success_url: `${appUrl}/dashboard?credits=1`,
+      cancel_url: `${appUrl}/dashboard/pricing?canceled=1`,
+      payment_method_types: ["card", "paypal"],
+      mode: "payment",
+      billing_address_collection: "auto",
+      customer_email: auth.token.email || "",
+      line_items: [{ price: priceId, quantity: 1 }],
+      metadata: {
+        userId: auth.token.id,
+        type: "credit_pack",
+        credits: String(packCredits[pack]),
+      },
+    });
+
+    if (!session.url) {
+      return c.json({ error: "Failed to create session" }, 400);
+    }
+
+    return c.json({ data: session.url });
+  })
   .post(
     "/webhook",
     async (c) => {
@@ -170,6 +218,18 @@ const app = new Hono()
             return c.json({ error: "Invalid session: missing userId metadata" }, 400);
           }
 
+          // Credit pack purchase (one-time payment)
+          if (session.metadata.type === "credit_pack") {
+            const credits = Number(session.metadata.credits || 0);
+            if (credits > 0) {
+              await db.update(users)
+                .set({ creditsBalance: sql`${users.creditsBalance} + ${credits}` })
+                .where(eq(users.id, session.metadata.userId));
+            }
+            return c.json(null, 200);
+          }
+
+          // Subscription purchase
           const subscription = await stripe.subscriptions.retrieve(
             session.subscription as string,
           );
