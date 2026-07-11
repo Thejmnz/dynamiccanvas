@@ -1,17 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+import { auth } from "@/auth";
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export async function GET(req: NextRequest) {
   try {
-    const projectRef = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] ?? "";
-    const tokenCookie =
-      req.cookies.get(`sb-${projectRef}-auth-token`)?.value ||
-      req.cookies.get(`sb-${projectRef}-auth-token.0`)?.value;
+    let userId: string | null = null;
 
-    if (!tokenCookie) {
+    // 1. Try NextAuth session
+    const session = await auth();
+    if (session?.user?.id) {
+      userId = session.user.id;
+    }
+
+    // 2. Fall back to Supabase cookie
+    if (!userId) {
+      const projectRef = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] ?? "";
+      const tokenCookie =
+        req.cookies.get(`sb-${projectRef}-auth-token`)?.value ||
+        req.cookies.get(`sb-${projectRef}-auth-token.0`)?.value;
+      if (tokenCookie) {
+        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+          auth: { persistSession: false },
+        });
+        const { data: userData } = await supabase.auth.getUser(tokenCookie);
+        userId = userData.user?.id ?? null;
+      }
+    }
+
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -19,24 +39,14 @@ export async function GET(req: NextRequest) {
       auth: { persistSession: false },
     });
 
-    const { data: userData, error: userError } = await supabase.auth.getUser(tokenCookie);
-    if (userError || !userData.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // List all files in the fonts folder
     const { data, error } = await supabase.storage
       .from("media")
-      .list("fonts", {
-        limit: 100,
-        offset: 0,
-      });
+      .list("fonts", { limit: 100, offset: 0 });
 
     if (error) {
-      return NextResponse.json([], { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } });
+      return NextResponse.json([], { headers: { "Cache-Control": "no-store" } });
     }
 
-    // Extract font information
     const fonts = (data ?? [])
       .filter((file) => file.name !== ".emptyFolderPlaceholder")
       .map((file) => ({
@@ -46,11 +56,7 @@ export async function GET(req: NextRequest) {
       }));
 
     return NextResponse.json(fonts, {
-      headers: {
-        "Cache-Control": "no-store, no-cache, must-revalidate",
-        "Pragma": "no-cache",
-        "Expires": "0",
-      },
+      headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
     });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
