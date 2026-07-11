@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { FileText, Share2, Briefcase, Printer, Grid as GridIcon, Plus, FileUp, Image, Sparkles, ExternalLink } from "lucide-react";
 
 import { useCreateProject } from "@/features/projects/api/use-create-project";
@@ -34,6 +35,27 @@ export const CreateTemplateModal = () => {
   const [customWidth, setCustomWidth] = useState("1920");
   const [customHeight, setCustomHeight] = useState("1080");
   const [isOpen, setIsOpen] = useState(false);
+  const [templateLimit, setTemplateLimit] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/user-credits")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((d) => {
+        if (d && d.templateCount >= d.templateLimit) {
+          setTemplateLimit(d.templateLimit);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleCreateClick = () => {
+    if (templateLimit !== null) {
+      toast.error(t("template_limit_free"));
+      router.push("/dashboard/pricing");
+      return;
+    }
+    setIsOpen(true);
+  };
 
   const { openFilePicker } = useFilePicker({
     accept: ".json",
@@ -171,14 +193,15 @@ export const CreateTemplateModal = () => {
       setIsOpen(open);
       if (!open) setSelectedCategory(null);
     }}>
-      <DialogTrigger asChild>
-        <button className="flex w-full items-center justify-center rounded-xl border-2 border-[#c9ff5a] bg-[#c9ff5a] px-3 py-3 text-[#101426] transition hover:-translate-y-0.5 hover:bg-white">
-          <Plus className="size-4 mr-2 stroke-2" />
-          <span className="text-sm font-medium">
-            {t("create_template")}
-          </span>
-        </button>
-      </DialogTrigger>
+      <button
+        onClick={handleCreateClick}
+        className="flex w-full items-center justify-center rounded-xl border-2 border-[#c9ff5a] bg-[#c9ff5a] px-3 py-3 text-[#101426] transition hover:-translate-y-0.5 hover:bg-white"
+      >
+        <Plus className="size-4 mr-2 stroke-2" />
+        <span className="text-sm font-medium">
+          {t("create_template")}
+        </span>
+      </button>
       <DialogContent className="max-w-3xl rounded-[24px] border-2 border-[#101426] bg-[#f6f5ef] shadow-[10px_10px_0_#101426]">
         {!selectedCategory ? (
           <>

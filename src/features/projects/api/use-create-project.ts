@@ -2,11 +2,13 @@ import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/lib/contexts/LanguageContext";
 
 export const useCreateProject = () => {
   const queryClient = useQueryClient();
   const { isAuthenticated } = useUserRole();
   const router = useRouter();
+  const { t } = useLanguage();
 
   const mutation = useMutation({
     mutationFn: async (json: any) => {
@@ -34,21 +36,23 @@ export const useCreateProject = () => {
       return data;
     },
     onSuccess: (data) => {
-      toast.success("Project created successfully");
+      toast.success(t("project_created"));
       queryClient.invalidateQueries({ queryKey: ["projects"] });
 
-      // Redirect to editor if we have an ID, otherwise go to dashboard
       if (data && data.id) {
         router.push(`/editor/${data.id}`);
       } else {
-        router.push("/"); // Go to dashboard to see the new project
+        router.push("/");
       }
     },
     onError: (error) => {
       console.error("Create project error:", error);
-      toast.error(
-        "Failed to create project: " + (error as Error).message
-      );
+      const msg = (error as Error).message;
+      if (msg.includes("3 templates") || msg.includes("template limit")) {
+        toast.error(t("template_limit_free"));
+      } else {
+        toast.error(msg);
+      }
     },
   });
 
