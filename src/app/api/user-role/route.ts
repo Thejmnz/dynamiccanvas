@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+import { auth } from "@/auth";
 import { db } from "@/db/drizzle";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -9,35 +10,41 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    let userId: string | null = null;
 
-    // Read Supabase auth token from cookies
-    const projectRef = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] ?? "";
-    const tokenCookie =
-      req.cookies.get(`sb-${projectRef}-auth-token`)?.value ||
-      req.cookies.get(`sb-${projectRef}-auth-token.0`)?.value;
+    // 1. Try NextAuth session
+    const session = await auth();
+    if (session?.user?.id) {
+      userId = session.user.id;
+    }
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: { persistSession: false },
-      global: {
-        headers: tokenCookie ? { Cookie: `sb-${projectRef}-auth-token=${tokenCookie}` } : {},
-      },
-    });
+    // 2. Fall back to Supabase cookie
+    if (!userId) {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+      const projectRef = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] ?? "";
+      const tokenCookie =
+        req.cookies.get(`sb-${projectRef}-auth-token`)?.value ||
+        req.cookies.get(`sb-${projectRef}-auth-token.0`)?.value;
 
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser(tokenCookie);
+      if (tokenCookie) {
+        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+          auth: { persistSession: false },
+          global: { headers: { Cookie: `sb-${projectRef}-auth-token=${tokenCookie}` } },
+        });
+        const { data: { user } } = await supabase.auth.getUser(tokenCookie);
+        userId = user?.id ?? null;
+      }
+    }
 
-    if (error || !user) {
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const [dbUser] = await db
       .select({ role: users.role })
       .from(users)
-      .where(eq(users.id, user.id));
+      .where(eq(users.id, userId));
 
     return NextResponse.json({ role: dbUser?.role || "user" });
   } catch {
