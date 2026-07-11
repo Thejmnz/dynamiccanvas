@@ -47,7 +47,7 @@ export const UserButton = () => {
         </Avatar>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-64 p-0">
+      <DropdownMenuContent align="end" sideOffset={8} collisionPadding={20} className="w-64 p-0">
         {/* User info header */}
         <div className="px-3 py-3 border-b border-[#101426]/8">
           <div className="flex items-center gap-2.5">
