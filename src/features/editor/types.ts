@@ -257,6 +257,7 @@ export interface Editor {
   getActiveTextAlign: () => string;
   changeTextVerticalAlign: (value: TextVerticalAlign) => void;
   getActiveTextVerticalAlign: () => TextVerticalAlign;
+  alignActiveObjectVertical: (value: TextVerticalAlign) => void;
   changeFontUnderline: (value: boolean) => void;
   getActiveFontUnderline: () => boolean;
   changeFontLinethrough: (value: boolean) => void;

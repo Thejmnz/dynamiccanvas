@@ -133,6 +133,11 @@ export const Toolbar = ({
     }));
   };
 
+  const onAlignObjectVertical = (value: "top" | "middle" | "bottom") => {
+    if (!selectedObject) return;
+    editor?.alignActiveObjectVertical(value);
+  };
+
   const toggleBold = () => {
     if (!selectedObject) {
       return;
@@ -382,48 +387,39 @@ export const Toolbar = ({
           </Hint>
         </div>
       )}
-      {isText && (
+      {selectedObject && (
         <div className="flex items-center h-full justify-center border-l pl-2">
-          <Hint label="Align top" side="bottom" sideOffset={5}>
+          <Hint label="Alinear objeto arriba" side="bottom" sideOffset={5}>
             <Button
-              onClick={() => onChangeTextVerticalAlign("top")}
+              onClick={() => onAlignObjectVertical("top")}
               size="icon"
               variant="ghost"
-              className={cn(
-                properties.textVerticalAlign === "top" && "bg-gray-100"
-              )}
             >
               <AlignVerticalJustifyStart className="size-4" />
             </Button>
           </Hint>
         </div>
       )}
-      {isText && (
+      {selectedObject && (
         <div className="flex items-center h-full justify-center">
-          <Hint label="Align middle" side="bottom" sideOffset={5}>
+          <Hint label="Centrar objeto verticalmente" side="bottom" sideOffset={5}>
             <Button
-              onClick={() => onChangeTextVerticalAlign("middle")}
+              onClick={() => onAlignObjectVertical("middle")}
               size="icon"
               variant="ghost"
-              className={cn(
-                properties.textVerticalAlign === "middle" && "bg-gray-100"
-              )}
             >
               <AlignVerticalJustifyCenter className="size-4" />
             </Button>
           </Hint>
         </div>
       )}
-      {isText && (
+      {selectedObject && (
         <div className="flex items-center h-full justify-center">
-          <Hint label="Align bottom" side="bottom" sideOffset={5}>
+          <Hint label="Alinear objeto abajo" side="bottom" sideOffset={5}>
             <Button
-              onClick={() => onChangeTextVerticalAlign("bottom")}
+              onClick={() => onAlignObjectVertical("bottom")}
               size="icon"
               variant="ghost"
-              className={cn(
-                properties.textVerticalAlign === "bottom" && "bg-gray-100"
-              )}
             >
               <AlignVerticalJustifyEnd className="size-4" />
             </Button>

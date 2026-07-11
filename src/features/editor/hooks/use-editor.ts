@@ -197,6 +197,7 @@ const buildEditor = ({
       }
 
       canvas.loadFromJSON(data, () => {
+        canvas.getObjects().forEach(configureTextboxControls);
         ensureFabricWorkspace(canvas, data);
         canvas.renderAll();
         autoZoom();
@@ -300,6 +301,34 @@ const buildEditor = ({
       const workspace = getWorkspace();
       workspace?.set({ fill: value });
       canvas.renderAll();
+      save();
+    },
+    alignActiveObjectVertical: (value) => {
+      const workspace = getWorkspace();
+      const object = canvas.getActiveObject();
+
+      if (!workspace || !object || object === workspace) return;
+
+      workspace.setCoords();
+      object.setCoords();
+
+      const workspaceBounds = workspace.getBoundingRect(true, true);
+      const objectBounds = object.getBoundingRect(true, true);
+      const workspaceTop = workspaceBounds.top;
+      const workspaceMiddle = workspaceBounds.top + workspaceBounds.height / 2;
+      const workspaceBottom = workspaceBounds.top + workspaceBounds.height;
+      const objectTop = objectBounds.top;
+      const objectMiddle = objectBounds.top + objectBounds.height / 2;
+      const objectBottom = objectBounds.top + objectBounds.height;
+      const deltaY = value === "top"
+        ? workspaceTop - objectTop
+        : value === "bottom"
+          ? workspaceBottom - objectBottom
+          : workspaceMiddle - objectMiddle;
+
+      object.set("top", (object.top || 0) + deltaY);
+      object.setCoords();
+      canvas.requestRenderAll();
       save();
     },
     enableDrawingMode: () => {

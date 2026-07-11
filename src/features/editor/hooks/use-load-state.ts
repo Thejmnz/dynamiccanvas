@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 
 import { JSON_KEYS } from "@/features/editor/types";
 import {
+  configureTextboxControls,
   DEFAULT_WORKSPACE_HEIGHT,
   DEFAULT_WORKSPACE_WIDTH,
   ensureFabricWorkspace,
@@ -75,6 +76,7 @@ export const useLoadState = ({
             canvas.loadFromJSON(data, () => {
               if (cancelled || !canvas.getContext()) return;
 
+              canvas.getObjects().forEach(configureTextboxControls);
               ensureFabricWorkspace(
                 canvas,
                 data,

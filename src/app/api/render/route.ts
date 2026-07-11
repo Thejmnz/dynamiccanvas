@@ -141,18 +141,6 @@ function convertFabricCanvasData(parsed: any, template: any): CanvasData | null 
   };
 }
 
-// Helper function to calculate text height based on content
-function calculateTextHeight(element: any): number {
-  if (element.type !== 'text') return element.height || 100;
-
-  const lines = (element.text || '').split('\n').length;
-  const fontSize = element.fontSize || 32;
-  const lineHeight = element.lineHeight || 1.2;
-  const estimatedHeight = fontSize * lineHeight * lines;
-
-  return Math.max(estimatedHeight, fontSize * lineHeight);
-}
-
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
@@ -482,28 +470,23 @@ export async function POST(req: NextRequest) {
 
           // Text updates
           if (element.type === 'text') {
-            const oldHeight = element.height || 100;
             const oldText = element.text || '';
             const newText = update.text !== undefined ? update.text : oldText;
 
             if (update.text !== undefined) newElement.text = newText;
             if (update.color !== undefined) newElement.fill = update.color;
             if (update.fontFamily !== undefined) newElement.fontFamily = update.fontFamily;
+            if (update.fontSize !== undefined) newElement.fontSize = update.fontSize;
+            if (update.lineHeight !== undefined) newElement.lineHeight = update.lineHeight;
 
-            // Recalculate height if text changed or if fontSize/lineHeight changed
+            // Konva must measure the final wrapped text with the registered
+            // font. Store the original visual center here and apply the real
+            // measured height when the node is created below.
             if (update.text !== undefined || update.fontSize !== undefined || update.lineHeight !== undefined) {
-              // The new height should include padding
-              const oldHeight = element.height || 100;
-              const newHeight = calculateTextHeight(newElement);
-
-              // Calculate the center of the original bounding box
-              const boxCenter = element.y + oldHeight / 2;
-
-              // Adjust Y to keep the BOUNDING BOX centered at the same position
-              const newY = boxCenter - newHeight / 2;
-
-              newElement.y = newY;
-              newElement.height = newHeight;
+              const originalHeight = Number(element.height || 100);
+              const scaleY = Number(element.scaleY || 1);
+              newElement._minimumTextHeight = originalHeight;
+              newElement._preserveTextCenterY = Number(element.y || 0) + (originalHeight * scaleY) / 2;
             }
           }
 
@@ -718,15 +701,29 @@ export async function POST(req: NextRequest) {
           textConfig.align = el.textAlign || 'center';
           textConfig.verticalAlign = el.textVerticalAlign || 'top';
 
-          // NO establecer height - dejar que Konva calcule automáticamente
-          // Solo usar padding para espacio extra
-          textConfig.padding = 10;
+          // Fabric textboxes do not add an implicit inner padding.
+          textConfig.padding = 0;
 
           if (el.lineHeight) textConfig.lineHeight = el.lineHeight;
           if (el.fontStyle) textConfig.fontStyle = el.fontStyle;
           if (el.textDecoration) textConfig.textDecoration = el.textDecoration;
 
           node = new Konva.default.Text(textConfig);
+
+          // Measure after width, font and line-height are applied so wrapped
+          // lines are included. A textbox keeps its saved height as a minimum;
+          // if dynamic content needs more room it expands equally upward and
+          // downward around the original visual center.
+          const measuredTextHeight = node.height();
+          const minimumTextHeight = Number(el._minimumTextHeight ?? el.height ?? 0);
+          const finalTextHeight = Math.max(minimumTextHeight, measuredTextHeight);
+          if (finalTextHeight > 0) {
+            node.height(finalTextHeight);
+          }
+          if (Number.isFinite(Number(el._preserveTextCenterY))) {
+            const scaleY = Number(el.scaleY || 1);
+            node.y(Number(el._preserveTextCenterY) - (finalTextHeight * scaleY) / 2);
+          }
           break;
 
         case 'image':

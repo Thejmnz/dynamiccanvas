@@ -253,6 +253,10 @@ export function configureTextboxControls(object: fabric.Object) {
   textbox.initDimensions = function initResizableTextboxDimensions() {
     const requestedWidth = textbox.width;
     const oldHeight = textbox.height || 0;
+    // Fabric recalculates text metrics after loading a canvas and whenever a
+    // web font becomes available. Keep the object's visual position stable
+    // while those internal dimensions change.
+    const centerBeforeReflow = textbox.getCenterPoint();
     baseInitDimensions();
     // Fabric normally widens a textbox to fit its longest word. Keep the user
     // defined boundary while still wrapping regular text at word boundaries.
@@ -260,12 +264,13 @@ export function configureTextboxControls(object: fabric.Object) {
     const contentHeight = textbox.calcTextHeight();
     textbox.height = Math.max(textbox.fixedHeight || 0, contentHeight);
 
-    // Keep vertically centered when height changes from content (line breaks),
-    // but NOT during explicit resize operations (anchor must stay fixed).
+    // Keep the exact visual center when height changes from content (line
+    // breaks or font loading), but NOT during an explicit resize operation
+    // where Fabric's fixed-anchor control owns the position.
     if (!textbox.__isResizing) {
       const heightDiff = textbox.height - oldHeight;
       if (Math.abs(heightDiff) > 0.5) {
-        textbox.top = (textbox.top || 0) - (heightDiff * (textbox.scaleY || 1)) / 2;
+        textbox.setPositionByOrigin(centerBeforeReflow, "center", "center");
       }
     }
   };
