@@ -1,13 +1,13 @@
 import Stripe from "stripe";
 import { Hono } from "hono";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { verifyAuth } from "@hono/auth-js";
 
 import { checkIsActive } from "@/features/subscriptions/lib";
 
 import { stripe } from "@/lib/stripe";
 import { db } from "@/db/drizzle";
-import { subscriptions, users } from "@/db/schema";
+import { stripeEvents, subscriptions, users } from "@/db/schema";
 
 const PLAN_CREDITS = {
   creator: 1000,
@@ -80,6 +80,16 @@ const app = new Hono()
       return c.json({ error: "Unauthorized" }, 401);
     }
 
+    const [currentSubscription] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.userId, auth.token.id));
+    if (checkIsActive(currentSubscription)) {
+      return c.json({
+        error: "An active subscription already exists. Use billing settings to change plans.",
+      }, 409);
+    }
+
     type CheckoutBody = {
       plan?: "creator" | "agency" | "business";
       billing?: "monthly" | "yearly";
@@ -144,54 +154,6 @@ const app = new Hono()
 
     return c.json({ data: url });
   })
-  .post("/credits-checkout", verifyAuth(), async (c) => {
-    const auth = c.get("authUser");
-
-    if (!auth.token?.id) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    type CreditsBody = { pack?: "1000" | "5000" | "10000" | "25000" };
-    const body = await c.req.json<CreditsBody>().catch((): CreditsBody => ({}));
-    const pack = body.pack || "1000";
-
-    const packPriceIds: Record<string, string | undefined> = {
-      "1000": process.env.STRIPE_CREDITS_1000_PRICE_ID,
-      "5000": process.env.STRIPE_CREDITS_5000_PRICE_ID,
-      "10000": process.env.STRIPE_CREDITS_10000_PRICE_ID,
-      "25000": process.env.STRIPE_CREDITS_25000_PRICE_ID,
-    };
-    const packCredits: Record<string, number> = {
-      "1000": 1000, "5000": 5000, "10000": 10000, "25000": 25000,
-    };
-
-    const priceId = packPriceIds[pack];
-    if (!priceId) {
-      return c.json({ error: "Invalid credit pack" }, 400);
-    }
-
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const session = await stripe.checkout.sessions.create({
-      success_url: `${appUrl}/dashboard?credits=1`,
-      cancel_url: `${appUrl}/dashboard/pricing?canceled=1`,
-      payment_method_types: ["card", "paypal"],
-      mode: "payment",
-      billing_address_collection: "auto",
-      customer_email: auth.token.email || "",
-      line_items: [{ price: priceId, quantity: 1 }],
-      metadata: {
-        userId: auth.token.id,
-        type: "credit_pack",
-        credits: String(packCredits[pack]),
-      },
-    });
-
-    if (!session.url) {
-      return c.json({ error: "Failed to create session" }, 400);
-    }
-
-    return c.json({ data: session.url });
-  })
   .post(
     "/webhook",
     async (c) => {
@@ -210,23 +172,24 @@ const app = new Hono()
         return c.json({ error: "Invalid signature" }, 400);
       }
 
+      const [claimedEvent] = await db.insert(stripeEvents).values({
+        id: event.id,
+        type: event.type,
+        createdAt: new Date(),
+      }).onConflictDoNothing({ target: stripeEvents.id }).returning({ id: stripeEvents.id });
+
+      // Stripe retries events. A previously claimed event must be a no-op so
+      // subscription state and monthly credits can never be applied twice.
+      if (!claimedEvent) {
+        return c.json(null, 200);
+      }
+
       try {
         if (event.type === "checkout.session.completed") {
           const session = event.data.object as Stripe.Checkout.Session;
 
           if (!session?.metadata?.userId) {
             return c.json({ error: "Invalid session: missing userId metadata" }, 400);
-          }
-
-          // Credit pack purchase (one-time payment)
-          if (session.metadata.type === "credit_pack") {
-            const credits = Number(session.metadata.credits || 0);
-            if (credits > 0) {
-              await db.update(users)
-                .set({ creditsBalance: sql`${users.creditsBalance} + ${credits}` })
-                .where(eq(users.id, session.metadata.userId));
-            }
-            return c.json(null, 200);
           }
 
           // Subscription purchase
@@ -236,9 +199,7 @@ const app = new Hono()
 
           const priceItem = subscription.items.data[0];
 
-          await db
-            .insert(subscriptions)
-            .values({
+          const subscriptionValues = {
               status: subscription.status,
               userId: session.metadata.userId,
               subscriptionId: subscription.id,
@@ -249,8 +210,24 @@ const app = new Hono()
               ),
               createdAt: new Date(),
               updatedAt: new Date(),
-            })
-            .onConflictDoNothing({ target: subscriptions.subscriptionId });
+            };
+          const [existingSubscription] = await db
+            .select({ id: subscriptions.id })
+            .from(subscriptions)
+            .where(eq(subscriptions.userId, session.metadata.userId));
+
+          if (existingSubscription) {
+            await db.update(subscriptions).set({
+              status: subscriptionValues.status,
+              subscriptionId: subscriptionValues.subscriptionId,
+              customerId: subscriptionValues.customerId,
+              priceId: subscriptionValues.priceId,
+              currentPeriodEnd: subscriptionValues.currentPeriodEnd,
+              updatedAt: new Date(),
+            }).where(eq(subscriptions.id, existingSubscription.id));
+          } else {
+            await db.insert(subscriptions).values(subscriptionValues);
+          }
 
           const plan = (session.metadata.plan || subscription.metadata.plan || "creator") as keyof typeof PLAN_CREDITS;
           const credits = PLAN_CREDITS[plan] || PLAN_CREDITS.creator;
@@ -320,6 +297,8 @@ const app = new Hono()
 
         return c.json(null, 200);
       } catch (error: any) {
+        // Allow Stripe to retry a failed event.
+        await db.delete(stripeEvents).where(eq(stripeEvents.id, event.id)).catch(() => undefined);
         console.error("[Stripe Webhook] Error processing event:", error);
         // Return 500 so Stripe retries
         return c.json({ error: "Webhook processing failed" }, 500);

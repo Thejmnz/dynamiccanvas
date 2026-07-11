@@ -12,7 +12,8 @@ const PLAN_TEMPLATE_LIMITS: Record<string, number> = {
   free: 3,
   creator: 15,
   agency: 100,
-  business: Infinity,
+  business: Number.MAX_SAFE_INTEGER,
+  unlimited: Number.MAX_SAFE_INTEGER,
 };
 
 async function getUserId(req: NextRequest): Promise<string | null> {

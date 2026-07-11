@@ -15,20 +15,20 @@ const plans = [
   { slug: "business", name: "Dynamic Canvas — Enterprise", credits: 25000, monthly: 17900, yearly: 171600 },
 ];
 
-const packs = [
-  { slug: "credits_1000", name: "Dynamic Canvas — 1,000 extra credits", credits: 1000, amount: 1500 },
-  { slug: "credits_5000", name: "Dynamic Canvas — 5,000 extra credits", credits: 5000, amount: 5900 },
-  { slug: "credits_10000", name: "Dynamic Canvas — 10,000 extra credits", credits: 10000, amount: 9900 },
-  { slug: "credits_25000", name: "Dynamic Canvas — 25,000 extra credits", credits: 25000, amount: 19900 },
-];
-
-const existingProducts = await stripe.products.list({ active: true, limit: 100 });
+const existingProducts = {
+  data: await stripe.products.list({ active: true, limit: 100 }).autoPagingToArray({ limit: 1000 }),
+};
 
 async function ensureProduct({ slug, name, description, metadata }) {
   const found = existingProducts.data.find(
     (product) => product.metadata?.catalog_version === catalogVersion && product.metadata?.catalog_slug === slug,
   );
-  if (found) return found;
+  if (found) {
+    if (found.name !== name || found.description !== description) {
+      return stripe.products.update(found.id, { name, description, metadata: { ...found.metadata, ...metadata } });
+    }
+    return found;
+  }
 
   const created = await stripe.products.create({
     name,
@@ -67,7 +67,7 @@ async function ensurePrice({ product, lookupKey, amount, nickname, recurring, me
   });
 }
 
-const result = { livemode: null, plans: {}, creditPacks: {} };
+const result = { livemode: null, plans: {} };
 
 for (const plan of plans) {
   const product = await ensureProduct({
@@ -102,28 +102,6 @@ for (const plan of plans) {
   }
   result.livemode ??= product.livemode;
   result.plans[plan.slug] = { productId: product.id, monthlyPriceId: monthly.id, yearlyPriceId: yearly.id };
-}
-
-for (const pack of packs) {
-  const product = await ensureProduct({
-    slug: pack.slug,
-    name: pack.name,
-    description: `${pack.credits.toLocaleString("en-US")} additional render credits, one-time purchase.`,
-    metadata: { kind: "credit_pack", credits: String(pack.credits) },
-  });
-  const price = await ensurePrice({
-    product,
-    lookupKey: `dc_${pack.slug}_v1`,
-    amount: pack.amount,
-    nickname: pack.name,
-    metadata: { kind: "credit_pack", credits: String(pack.credits) },
-  });
-
-  if (!product.default_price) {
-    await stripe.products.update(product.id, { default_price: price.id });
-  }
-  result.livemode ??= product.livemode;
-  result.creditPacks[pack.slug] = { productId: product.id, priceId: price.id };
 }
 
 console.log(JSON.stringify(result, null, 2));

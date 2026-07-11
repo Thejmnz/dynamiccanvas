@@ -99,6 +99,7 @@ export default function SettingsPage() {
     confirmPassword: "Confirmar contraseña", change: "Cambiar contraseña",
     credits: "Créditos y límites", creditsDesc: "Seguimiento de créditos y límites de plantillas",
     creditsUsed: "créditos usados", of: "de", templatesCreated: "plantillas creadas",
+    unlimitedTemplates: "Plantillas ilimitadas",
     upgradePrompt: "Mejora a un plan pago para obtener más créditos.",
     upgrade: "Mejorar plan", manageBilling: "Gestionar facturación", cancelPlan: "Cancelar plan",
     billing: "Historial de facturación", billingDesc: "Consulta facturas y recibos de pago",
@@ -113,6 +114,7 @@ export default function SettingsPage() {
     confirmPassword: "Confirm password", change: "Change password",
     credits: "Credits & Limits", creditsDesc: "Track your credits usage and template limits for your plan",
     creditsUsed: "credits used", of: "of", templatesCreated: "templates created",
+    unlimitedTemplates: "Unlimited templates",
     upgradePrompt: "Upgrade to a paid plan to get more credits.",
     upgrade: "Upgrade plan", manageBilling: "Manage billing", cancelPlan: "Cancel plan",
     billing: "Billing History", billingDesc: "View your past invoices and payment receipts",
@@ -128,7 +130,9 @@ export default function SettingsPage() {
   const PlanIcon = planInfo.icon;
   const isUnlimited = credits?.plan === "unlimited" || (credits?.creditsPerMonth ?? 0) >= 999999999;
   const creditsPct = credits && credits.totalCredits > 0 ? Math.round((credits.usedCredits / credits.totalCredits) * 100) : 0;
-  const templatesPct = credits && credits.templateLimit !== Infinity ? Math.round((credits.templateCount / credits.templateLimit) * 100) : 0;
+  const templatesPct = credits && !isUnlimited && credits.templateLimit > 0
+    ? Math.min(100, Math.round((credits.templateCount / credits.templateLimit) * 100))
+    : 0;
 
   return (
     <div className="mx-auto max-w-3xl pb-10 pt-6 space-y-5">
@@ -146,9 +150,11 @@ export default function SettingsPage() {
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => router.push("/dashboard/pricing")} className="flex items-center gap-1.5 rounded-full bg-[#c9ff5a] border-2 border-[#101426] px-4 py-2 text-xs font-black hover:bg-white transition">
-              <Sparkles className="size-3.5" />{c.upgrade}
-            </button>
+            {!isUnlimited && credits?.plan !== "business" && (
+              <button onClick={() => router.push("/dashboard/pricing")} className="flex items-center gap-1.5 rounded-full bg-[#c9ff5a] border-2 border-[#101426] px-4 py-2 text-xs font-black hover:bg-white transition">
+                <Sparkles className="size-3.5" />{c.upgrade}
+              </button>
+            )}
             {hasSubscription && (
               <button onClick={handleManageBilling} className="flex items-center gap-1.5 rounded-full bg-white border-2 border-[#101426]/15 px-4 py-2 text-xs font-black hover:bg-[#101426]/5 transition">
                 <FileText className="size-3.5" />{c.manageBilling}
@@ -224,10 +230,17 @@ export default function SettingsPage() {
                 <span className="text-sm font-black">{language === "es" ? "Créditos ilimitados" : "Unlimited credits"}</span>
               </div>
             )}
-            <UsageBar
-              label={`${credits.templateCount} ${c.of} ${credits.templateLimit === Infinity ? "∞" : credits.templateLimit} ${c.templatesCreated}`}
-              pct={templatesPct}
-            />
+            {isUnlimited ? (
+              <div className="flex items-center gap-2 rounded-xl bg-[#c9ff5a]/20 border-2 border-[#101426]/10 p-3">
+                <InfinityIcon className="size-5 text-[#5b35d5]" />
+                <span className="text-sm font-black">{credits.templateCount} {c.templatesCreated} · {c.unlimitedTemplates}</span>
+              </div>
+            ) : (
+              <UsageBar
+                label={`${credits.templateCount} ${c.of} ${credits.templateLimit} ${c.templatesCreated}`}
+                pct={templatesPct}
+              />
+            )}
             {credits.plan === "free" && <p className="text-xs text-[#101426]/50">{c.upgradePrompt}</p>}
           </div>
         )}

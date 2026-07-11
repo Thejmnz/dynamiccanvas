@@ -80,21 +80,19 @@ export const CreditUsage = () => {
       <div className={`mx-3 mb-3 rounded-2xl border-2 border-[#c9ff5a]/40 bg-gradient-to-br ${info.gradient} p-4`}>
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wider text-white/40">{language === "es" ? "Plan" : "Plan"}</span>
-          <span className={`text-[10px] font-black uppercase rounded-full px-2.5 py-0.5 ${info.badge}`}>{planLabel}</span>
+          <span className={`flex items-center gap-1 text-[10px] font-black uppercase rounded-full px-2.5 py-0.5 ${info.badge}`}>
+            <PlanIcon className="size-3" />
+            {planLabel}
+          </span>
         </div>
-        <div className="mt-3 flex items-center gap-2">
-          <PlanIcon className={`size-7 ${info.accent}`} />
-          <div>
-            <div className="text-xl font-black text-white">
-              {language === "es" ? "Créditos ilimitados" : "Unlimited credits"}
-            </div>
-            <div className="text-[11px] text-white/45">{c.unlimitedDesc}</div>
+        <div className="mt-3">
+          <div className="text-xl font-black text-white">
+            {language === "es" ? "Sin límites" : "No limits"}
           </div>
+          <div className="text-[11px] text-white/45 whitespace-nowrap">{c.unlimitedDesc}</div>
         </div>
-        <div className="mt-3 flex items-center gap-2 text-[11px] text-white/35">
-          <span>{data.templateCount} {c.templates}</span>
-          <span>·</span>
-          <span>{c.unlimitedTemplates}</span>
+        <div className="mt-3 text-[11px] text-white/35 whitespace-nowrap">
+          {data.templateCount} {c.templates} · {c.unlimitedTemplates}
         </div>
       </div>
     );

@@ -464,7 +464,7 @@ export async function POST(req: NextRequest) {
 
     // Reserve exactly one credit atomically, preventing simultaneous n8n
     // requests from spending the same final credit.
-    const [reservedAccount] = await db
+    const [reservedPlanCredit] = await db
       .update(users)
       .set({ creditsBalance: sql`${users.creditsBalance} - 1` })
       .where(and(
@@ -473,15 +473,18 @@ export async function POST(req: NextRequest) {
       ))
       .returning({ creditsBalance: users.creditsBalance });
 
-    if (!reservedAccount) {
+    if (reservedPlanCredit) {
+      creditReserved = true;
+      creditsRemaining = reservedPlanCredit.creditsBalance;
+    }
+
+    if (!creditReserved) {
       return NextResponse.json({
         error: "No credits remaining. A paid plan is required to continue rendering.",
         code: "CREDITS_EXHAUSTED",
         creditsRemaining: 0,
       }, { status: 402 });
     }
-    creditReserved = true;
-    creditsRemaining = reservedAccount.creditsBalance;
 
     log(`Template found: ${template.name}`);
 

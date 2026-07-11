@@ -24,6 +24,7 @@ export const users = pgTable("user", {
   renderCount: integer("render_count").default(0).notNull(),
   plan: text("plan").default("free").notNull(),
   creditsBalance: integer("credits_balance").default(50).notNull(),
+  bonusCredits: integer("bonus_credits").default(0).notNull(),
   creditsPerMonth: integer("credits_per_month").default(0).notNull(),
   creditsResetAt: timestamp("credits_reset_at", { mode: "date" }),
   autoRenew: boolean("auto_renew").default(false).notNull(),
@@ -228,6 +229,12 @@ export const rendersRelations = relations(renders, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+export const stripeEvents = pgTable("stripe_event", {
+  id: text("id").primaryKey(),
+  type: text("type").notNull(),
+  createdAt: timestamp("createdAt", { mode: "date" }).notNull().$defaultFn(() => new Date()),
+});
 
 // News / Announcements
 export const news = pgTable("news", {

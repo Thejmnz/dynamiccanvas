@@ -273,7 +273,7 @@ const highlightCurlCode = (code: string): React.ReactNode => {
             const curlMatch = remaining.match(/^\b(curl)\b/);
             const flagMatch = remaining.match(/^(-[a-zA-Z]+)/);
             const stringMatch = remaining.match(/^("[^"]*")/);
-            const methodMatch = remaining.match(/\b(POST|GET|PUT|DELETE|PATCH)\b/);
+            const methodMatch = remaining.match(/^(POST|GET|PUT|DELETE|PATCH)\b/);
 
             if (curlMatch) {
                 parts.push(<span key={keyIndex++} className="text-pink-400">{curlMatch[1]}</span>);
