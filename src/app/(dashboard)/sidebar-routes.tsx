@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Code, Shield, KeyRound, BookOpen, Images } from "lucide-react";
+import { Home, Code, Shield, KeyRound, BookOpen, Images, Settings } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
@@ -59,7 +59,13 @@ export const SidebarRoutes = () => {
         )}
       </ul>
 
-      <div className="mt-auto border-t border-white/10 pb-5 pt-4">
+      <div className="mt-auto border-t border-white/10 pb-5 pt-4 space-y-1">
+        <SidebarItem
+          href="/dashboard/settings"
+          icon={Settings}
+          label={t("settings") || "Settings"}
+          isActive={pathname === "/dashboard/settings"}
+        />
         <SidebarItem
           href="/docs"
           icon={BookOpen}

@@ -39,6 +39,7 @@ const translations = {
     features: "Features",
     pricing: "Pricing",
     documentation: "Documentation",
+    settings: "Settings",
     login: "Login",
     start_free: "Start Free",
 
@@ -874,6 +875,7 @@ const translations = {
     features: "Características",
     pricing: "Precios",
     documentation: "Documentación",
+    settings: "Ajustes",
     login: "Iniciar Sesión",
     start_free: "Empezar Gratis",
 

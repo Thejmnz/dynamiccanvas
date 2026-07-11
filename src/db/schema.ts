@@ -26,6 +26,7 @@ export const users = pgTable("user", {
   creditsBalance: integer("credits_balance").default(50).notNull(),
   creditsPerMonth: integer("credits_per_month").default(0).notNull(),
   creditsResetAt: timestamp("credits_reset_at", { mode: "date" }),
+  autoRenew: boolean("auto_renew").default(false).notNull(),
 });
 
 export const usersRelations = relations(users, ({ many }) => ({
