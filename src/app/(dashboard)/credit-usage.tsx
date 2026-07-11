@@ -15,14 +15,30 @@ interface CreditData {
 
 export const CreditUsage = () => {
   const [data, setData] = useState<CreditData | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
     fetch("/api/user-credits")
       .then((res) => (res.ok ? res.json() : null))
-      .then((d) => d && setData(d))
-      .catch(() => {});
+      .then((d) => { if (d) setData(d); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
+
+  if (loading) {
+    return (
+      <div className="mx-3 mb-3 rounded-2xl border border-white/10 bg-white/5 p-4 animate-pulse">
+        <div className="flex items-center justify-between">
+          <div className="h-3 w-20 rounded bg-white/10" />
+          <div className="h-4 w-12 rounded-full bg-white/10" />
+        </div>
+        <div className="mt-3 h-6 w-28 rounded bg-white/10" />
+        <div className="mt-2 h-2 w-full rounded-full bg-white/10" />
+        <div className="mt-2 h-3 w-full rounded bg-white/10" />
+      </div>
+    );
+  }
 
   if (!data) return null;
 
