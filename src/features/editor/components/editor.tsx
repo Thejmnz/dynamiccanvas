@@ -107,8 +107,8 @@ export const Editor = ({ initialData }: EditorProps) => {
     });
 
     const origClearContext = canvas.clearContext.bind(canvas);
-    canvas.clearContext = function (ctx: any) {
-      if (!(this as any).contextContainer) return;
+    (canvas as any).clearContext = function (ctx: any) {
+      if (!(this as any).contextContainer) return undefined;
       return origClearContext(ctx);
     };
 
