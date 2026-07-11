@@ -2,23 +2,23 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { signIn } from "next-auth/react";
 import { Loader2, TriangleAlert, Eye, EyeOff } from "lucide-react";
 
 import { useSignUp } from "@/features/auth/hooks/use-sign-up";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/contexts/AuthContext";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { BrandMark } from "@/components/brand-mark";
 
 export const SignUpCard = () => {
   const [loading, setLoading] = useState(false);
-  const [loadingGithub, setLoadingGithub] = useState(false);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const { t } = useLanguage();
+  const { signInWithGoogle } = useAuth();
 
   const mutation = useSignUp();
 
@@ -27,18 +27,9 @@ export const SignUpCard = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const onProviderSignUp = async (provider: "github" | "google") => {
-    setLoading(true);
-    setLoadingGithub(provider === "github");
-    setLoadingGoogle(provider === "google");
-
-    try {
-      await signIn(provider, { callbackUrl: "/" });
-    } catch {
-      setLoading(false);
-      setLoadingGithub(false);
-      setLoadingGoogle(false);
-    }
+  const onGoogleSignUp = () => {
+    setLoadingGoogle(true);
+    signInWithGoogle();
   };
 
   const onCredentialSignUp = (e: React.FormEvent<HTMLFormElement>) => {
@@ -115,7 +106,7 @@ export const SignUpCard = () => {
             <div className="space-y-3 mb-4">
               <button
                 type="button"
-                onClick={() => onProviderSignUp("google")}
+                onClick={onGoogleSignUp}
                 disabled={loading}
                 className="flex w-full items-center justify-center gap-2.5 rounded-xl border-2 border-[#101426]/15 bg-white px-4 py-2.5 text-sm font-bold text-[#101426] transition hover:border-[#101426]/30 hover:bg-[#f6f5ef] disabled:opacity-50"
               >
