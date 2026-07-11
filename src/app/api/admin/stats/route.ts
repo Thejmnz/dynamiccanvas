@@ -4,6 +4,8 @@ import { db } from "@/db/drizzle";
 import { users, templates, projects, userApiKeys } from "@/db/schema";
 import { count, gte, sum } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
