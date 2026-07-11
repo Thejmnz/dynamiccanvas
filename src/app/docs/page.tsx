@@ -100,14 +100,14 @@ const docsCopy = {
     integrationsTitle: "Conecta cualquier flujo HTTP",
     integrationsText: "No necesitas un SDK. Usa fetch, cURL, Python, n8n, Make, Zapier o cualquier herramienta capaz de enviar JSON.",
     limitsTitle: "Límites por plan",
-    limitsText: "Los límites publicados actualmente son los siguientes. Un exceso puede devolver HTTP 429.",
+    limitsText: "Cada render consume un crédito. Cuando el saldo llega a cero, debes esperar la renovación mensual o cambiar de plan.",
     plan: "Plan",
-    requests: "Solicitudes / minuto",
-    renders: "Renders / mes",
+    requests: "Plantillas",
+    renders: "Créditos de render",
     free: "Gratis",
-    pro: "Pro",
-    enterprise: "Enterprise",
-    unlimited: "Ilimitado",
+    pro: "Creator",
+    enterprise: "Agency",
+    unlimited: "Business",
     nextTitle: "¿Listo para probar tu plantilla?",
     nextText: "El Playground usa la misma API y te permite revisar IDs, payload y resultado antes de escribir código.",
     copied: "Copiado",
@@ -180,14 +180,14 @@ const docsCopy = {
     integrationsTitle: "Connect any HTTP workflow",
     integrationsText: "No SDK is required. Use fetch, cURL, Python, n8n, Make, Zapier or any tool capable of sending JSON.",
     limitsTitle: "Limits by plan",
-    limitsText: "The currently published limits are below. Exceeding them may return HTTP 429.",
+    limitsText: "Each render consumes one credit. When the balance reaches zero, you must wait for the monthly renewal or change plans.",
     plan: "Plan",
-    requests: "Requests / minute",
-    renders: "Renders / month",
+    requests: "Templates",
+    renders: "Render credits",
     free: "Free",
-    pro: "Pro",
-    enterprise: "Enterprise",
-    unlimited: "Unlimited",
+    pro: "Creator",
+    enterprise: "Agency",
+    unlimited: "Business",
     nextTitle: "Ready to test your template?",
     nextText: "Playground uses the same API and lets you inspect IDs, payload and output before writing code.",
     copied: "Copied",
@@ -337,11 +337,11 @@ export default function DocsPage() {
 
           <section id="output" className="scroll-mt-28"><SectionHeading number="06" title={c.outputTitle} text={c.outputText} /><div className="mt-8 grid gap-5 lg:grid-cols-[.65fr_1.35fr]"><div className="rounded-[22px] border-2 border-[#101426] bg-[#5b35d5] p-6 text-white"><Gauge className="size-9 text-[#c9ff5a]" /><div className="mt-8 text-5xl font-black">3×</div><p className="mt-2 text-sm text-white/60">Default pixel ratio</p><div className="mt-6 border-t border-white/15 pt-4 text-xs text-white/50">Safe cap · longest side ≈ 4096 px</div></div><CodeBlock code={responseCode} label={c.response} /></div></section>
 
-          <section id="errors" className="scroll-mt-28"><SectionHeading number="07" title={c.errorsTitle} text={c.errorsText} /><div className="mt-8 overflow-hidden rounded-[22px] border-2 border-[#101426] bg-white">{[["400", "Missing templateId"], ["401", "Missing/Invalid Authorization header · Invalid API key"], ["404", "Template not found"], ["429", "Rate limit exceeded"], ["500", "Internal render error"]].map(([status, message]) => <div key={status} className="flex items-center gap-4 border-b border-[#101426]/10 px-5 py-4 last:border-0"><span className={`rounded-lg px-2.5 py-1 font-mono text-xs font-black ${status === "500" ? "bg-[#ffb7aa]" : status === "401" ? "bg-[#ffd166]" : "bg-[#e9e5ff]"}`}>{status}</span><code className="text-sm text-[#101426]/65">{message}</code></div>)}</div></section>
+          <section id="errors" className="scroll-mt-28"><SectionHeading number="07" title={c.errorsTitle} text={c.errorsText} /><div className="mt-8 overflow-hidden rounded-[22px] border-2 border-[#101426] bg-white">{[["400", "Missing templateId"], ["401", "Missing/Invalid Authorization header · Invalid API key"], ["402", "Credits exhausted"], ["404", "Template not found"], ["500", "Internal render error"]].map(([status, message]) => <div key={status} className="flex items-center gap-4 border-b border-[#101426]/10 px-5 py-4 last:border-0"><span className={`rounded-lg px-2.5 py-1 font-mono text-xs font-black ${status === "500" ? "bg-[#ffb7aa]" : status === "401" || status === "402" ? "bg-[#ffd166]" : "bg-[#e9e5ff]"}`}>{status}</span><code className="text-sm text-[#101426]/65">{message}</code></div>)}</div></section>
 
           <section id="integrations" className="scroll-mt-28"><SectionHeading number="08" title={c.integrationsTitle} text={c.integrationsText} /><div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{["fetch", "cURL", "Python", "n8n", "Make", "Zapier"].map((name, index) => <div key={name} className={`flex h-24 items-center justify-center rounded-2xl border-2 border-[#101426] text-sm font-black ${index % 3 === 0 ? "bg-[#c9ff5a]" : index % 3 === 1 ? "bg-[#e9e5ff]" : "bg-white"}`}>{name}</div>)}</div></section>
 
-          <section id="limits" className="scroll-mt-28"><SectionHeading number="09" title={c.limitsTitle} text={c.limitsText} /><div className="mt-8 overflow-x-auto rounded-[22px] border-2 border-[#101426] bg-white"><table className="w-full min-w-[560px]"><thead className="bg-[#101426] text-white"><tr><th className="px-5 py-4 text-left text-xs font-black uppercase">{c.plan}</th><th className="px-5 py-4 text-left text-xs font-black uppercase">{c.requests}</th><th className="px-5 py-4 text-left text-xs font-black uppercase">{c.renders}</th></tr></thead><tbody>{[[c.free, "10", "100"], [c.pro, "60", "5,000"], [c.enterprise, "500", c.unlimited]].map((row, index) => <tr key={row[0]} className={index === 1 ? "bg-[#c9ff5a]" : "border-t border-[#101426]/10"}><td className="px-5 py-4 font-black">{row[0]}</td><td className="px-5 py-4">{row[1]}</td><td className="px-5 py-4">{row[2]}</td></tr>)}</tbody></table></div></section>
+          <section id="limits" className="scroll-mt-28"><SectionHeading number="09" title={c.limitsTitle} text={c.limitsText} /><div className="mt-8 overflow-x-auto rounded-[22px] border-2 border-[#101426] bg-white"><table className="w-full min-w-[560px]"><thead className="bg-[#101426] text-white"><tr><th className="px-5 py-4 text-left text-xs font-black uppercase">{c.plan}</th><th className="px-5 py-4 text-left text-xs font-black uppercase">{c.requests}</th><th className="px-5 py-4 text-left text-xs font-black uppercase">{c.renders}</th></tr></thead><tbody>{[[c.free, "3", language === "es" ? "50 créditos de bienvenida" : "50 welcome credits"], [c.pro, "15", language === "es" ? "1.000 créditos / mes" : "1,000 credits / month"], [c.enterprise, "100", language === "es" ? "5.000 créditos / mes" : "5,000 credits / month"], [c.unlimited, language === "es" ? "Ilimitadas" : "Unlimited", language === "es" ? "25.000 créditos / mes" : "25,000 credits / month"]].map((row, index) => <tr key={row[0]} className={index === 2 ? "bg-[#c9ff5a]" : "border-t border-[#101426]/10"}><td className="px-5 py-4 font-black">{row[0]}</td><td className="px-5 py-4">{row[1]}</td><td className="px-5 py-4">{row[2]}</td></tr>)}</tbody></table></div></section>
 
           <section className="rounded-[30px] border-2 border-[#101426] bg-[#c9ff5a] p-7 shadow-[8px_8px_0_#101426] sm:p-10"><Sparkles className="size-9 text-[#5b35d5]" /><h2 className="mt-5 text-3xl font-black tracking-tight sm:text-4xl">{c.nextTitle}</h2><p className="mt-3 max-w-2xl text-[#101426]/60">{c.nextText}</p><Link href="/playground" className="mt-7 inline-flex items-center gap-2 rounded-full bg-[#5b35d5] px-6 py-3 font-bold text-white hover:bg-[#101426]">{c.playground}<ArrowRight className="size-4" /></Link></section>
         </div>

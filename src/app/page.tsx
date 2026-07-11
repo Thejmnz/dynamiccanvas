@@ -25,6 +25,13 @@ import {
   ShieldCheck,
   Sparkles,
   Terminal,
+  Users,
+  Timer,
+  Server,
+  Lock,
+  Type,
+  Shapes,
+  Upload,
   WandSparkles,
   Zap,
 } from "lucide-react";
@@ -82,6 +89,25 @@ const copy = {
     automationText: "Úsalo con n8n, Make, Zapier o cualquier backend mediante HTTP.",
     formatsTitle: "Listo para publicar",
     formatsText: "Exporta PNG, JPG o SVG para redes, anuncios, e-commerce y documentos.",
+    scaleKicker: "Equipos y escala",
+    scaleTitle: "Listo para equipos que crecen rápido",
+    scaleText: "De startups a empresas, nuestra infraestructura está diseñada para soportar tu crecimiento con velocidad y confiabilidad.",
+    scaleTeamTitle: "Trabajo en equipo",
+    scaleTeamText: "Invita a tu equipo, comparte plantillas y colaboren en tiempo real. Gestiona permisos y mantén a todos alineados.",
+    scaleSpeedTitle: "Renders en segundos",
+    scaleSpeedText: "Renderizado ultrarrápido con infraestructura optimizada. Genera miles de imágenes sin esfuerzo.",
+    scaleInfraTitle: "Infraestructura empresarial",
+    scaleInfraText: "Servidores con auto-escalado, 99.9% de uptime y distribución global. Diseñado para millones de renders.",
+    scaleSecureTitle: "Seguro y confiable",
+    scaleSecureText: "Autenticación API segura, conexiones cifradas y infraestructura en la nube confiable. Tus assets siempre protegidos.",
+    scaleStat1: "~3s",
+    scaleStat1Label: "Tiempo promedio de render",
+    scaleStat2: "99.9%",
+    scaleStat2Label: "Uptime garantizado",
+    scaleStat3: "2M+",
+    scaleStat3Label: "Imágenes generadas",
+    scaleStat4: "24/7",
+    scaleStat4Label: "Soporte dedicado",
     galleryKicker: "Un template. Cientos de variaciones.",
     galleryTitle: "Tu marca consistente, incluso cuando todo cambia.",
     galleryText:
@@ -149,7 +175,7 @@ const copy = {
       "Funciones e integraciones personalizadas",
       "Soporte dedicado · Línea directa con el equipo",
     ],
-    planAction: "Ver precios",
+    planAction: "Empezar prueba gratis",
     contactAction: "Hablar con nosotros",
     billingMonthly: "Mensual",
     billingYearly: "Anual",
@@ -212,6 +238,25 @@ const copy = {
     automationText: "Use it with n8n, Make, Zapier or any backend over HTTP.",
     formatsTitle: "Ready to publish",
     formatsText: "Export PNG, JPG or SVG for social, ads, e-commerce and documents.",
+    scaleKicker: "Teams & Scale",
+    scaleTitle: "Built for teams that move fast",
+    scaleText: "From startups to enterprises, our infrastructure handles your growth with speed and reliability.",
+    scaleTeamTitle: "Team Collaboration",
+    scaleTeamText: "Invite team members, share templates, and collaborate in real-time. Manage permissions and keep everyone aligned.",
+    scaleSpeedTitle: "Renders in seconds",
+    scaleSpeedText: "Lightning-fast rendering powered by optimized infrastructure. Generate thousands of assets effortlessly.",
+    scaleInfraTitle: "Enterprise Infrastructure",
+    scaleInfraText: "Auto-scaling servers, 99.9% uptime SLA, and global distribution. Built to handle millions of renders.",
+    scaleSecureTitle: "Secure & Reliable",
+    scaleSecureText: "Secure API authentication, encrypted connections, and reliable cloud infrastructure. Your assets are always protected.",
+    scaleStat1: "~3s",
+    scaleStat1Label: "Average render time",
+    scaleStat2: "99.9%",
+    scaleStat2Label: "Uptime SLA",
+    scaleStat3: "2M+",
+    scaleStat3Label: "Assets generated",
+    scaleStat4: "24/7",
+    scaleStat4Label: "Dedicated support",
     galleryKicker: "One template. Hundreds of variations.",
     galleryTitle: "Your brand stays consistent, even when everything changes.",
     galleryText: "Update headlines, offers, images and colors without rebuilding the design. Every render keeps the approved composition.",
@@ -277,7 +322,7 @@ const copy = {
       "Custom Features & Integrations",
       "Dedicated Support · Direct line to our team",
     ],
-    planAction: "Choose pricing",
+    planAction: "Start free trial",
     contactAction: "Talk to us",
     billingMonthly: "Monthly",
     billingYearly: "Annual",
@@ -297,14 +342,22 @@ const copy = {
   },
 };
 
-const templates = [
-  { src: "/flash_sale.png", label: "Flash sale", color: "bg-[#ff6b57]", rotate: "-rotate-3" },
-  { src: "/travel.png", label: "Travel", color: "bg-[#c9ff5a]", rotate: "rotate-2" },
-  { src: "/car_sale.png", label: "Car sale", color: "bg-[#6c43e0]", rotate: "-rotate-1" },
-  { src: "/coming_soon.png", label: "Coming soon", color: "bg-[#ffd166]", rotate: "rotate-3" },
-];
-
 const integrationNames = ["n8n", "Make", "Zapier", "Node.js", "Python", "cURL"];
+
+const campaignVariationsByLang = {
+  es: [
+    { eyebrow: "NUEVA TEMPORADA", title: "Formas suaves. Actitud fuerte.", offer: "30% OFF", code: "SS26—01", background: "linear-gradient(145deg,#f6a98f 0%,#f5d7bc 55%,#fff3df 100%)", ink: "#20130f", accent: "#ff633f", rotate: "-rotate-2" },
+    { eyebrow: "EDICIÓN NOCTURNA", title: "Hecho para la noche.", offer: "NUEVO", code: "SS26—02", background: "linear-gradient(145deg,#17162b 0%,#44377b 58%,#a68cff 100%)", ink: "#ffffff", accent: "#c9ff5a", rotate: "rotate-1" },
+    { eyebrow: "NOTAS DE ESTUDIO", title: "Objetos con intención.", offer: "LIMITADO", code: "SS26—03", background: "linear-gradient(145deg,#d7e9df 0%,#eef4e8 54%,#fbf1d5 100%)", ink: "#17372e", accent: "#196b53", rotate: "-rotate-1" },
+    { eyebrow: "VERANO 26", title: "El color lo cambia todo.", offer: "COMPRAR", code: "SS26—04", background: "linear-gradient(145deg,#ffd94d 0%,#ff9f5a 48%,#f95b76 100%)", ink: "#2b1730", accent: "#6c43e0", rotate: "rotate-2" },
+  ],
+  en: [
+    { eyebrow: "NEW SEASON", title: "Soft forms. Bold mood.", offer: "30% OFF", code: "SS26—01", background: "linear-gradient(145deg,#f6a98f 0%,#f5d7bc 55%,#fff3df 100%)", ink: "#20130f", accent: "#ff633f", rotate: "-rotate-2" },
+    { eyebrow: "NIGHT EDIT", title: "Made for after dark.", offer: "NEW DROP", code: "SS26—02", background: "linear-gradient(145deg,#17162b 0%,#44377b 58%,#a68cff 100%)", ink: "#ffffff", accent: "#c9ff5a", rotate: "rotate-1" },
+    { eyebrow: "STUDIO NOTES", title: "Objects with intention.", offer: "LIMITED", code: "SS26—03", background: "linear-gradient(145deg,#d7e9df 0%,#eef4e8 54%,#fbf1d5 100%)", ink: "#17372e", accent: "#196b53", rotate: "-rotate-1" },
+    { eyebrow: "SUMMER 26", title: "Color changes everything.", offer: "SHOP NOW", code: "SS26—04", background: "linear-gradient(145deg,#ffd94d 0%,#ff9f5a 48%,#f95b76 100%)", ink: "#2b1730", accent: "#6c43e0", rotate: "rotate-2" },
+  ],
+} as const;
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -437,7 +490,20 @@ export default function HomePage() {
           <div className="grid auto-rows-[minmax(220px,auto)] gap-4 md:grid-cols-2 lg:grid-cols-3">
             <article className="relative overflow-hidden rounded-[28px] border-2 border-[#101426] bg-white p-7 lg:col-span-2 lg:row-span-2">
               <div className="relative z-10 max-w-md"><span className="mb-5 flex size-12 items-center justify-center rounded-xl bg-[#5b35d5] text-white"><Palette /></span><h3 className="text-3xl font-black">{c.editorTitle}</h3><p className="mt-3 leading-relaxed text-[#101426]/60">{c.editorText}</p></div>
-              <div className="mt-9 grid grid-cols-4 gap-2 rounded-2xl border-2 border-[#101426] bg-[#f4f3ee] p-3 sm:grid-cols-7">{[Layers3, MousePointer2, ImageIcon, Palette, Sparkles, WandSparkles, FileImage].map((Icon, index) => <span key={index} className={`flex aspect-square items-center justify-center rounded-xl border border-[#101426]/10 ${index === 4 ? "bg-[#c9ff5a]" : "bg-white"}`}><Icon className="size-5" /></span>)}</div>
+              <div className="relative z-10 mt-9 flex overflow-hidden rounded-2xl border-2 border-[#101426] bg-[#f1f0e9] pointer-events-none select-none" style={{ height: 280 }}>
+                <div className="flex w-[48px] shrink-0 flex-col gap-1.5 border-r-2 border-[#101426] bg-[#101426] p-1.5">
+                  {[Layers3, ImageIcon, Type, Shapes, Upload].map((Icon, i) => (
+                    <div key={i} className={`flex aspect-square items-center justify-center rounded-lg ${i === 0 ? "bg-[#c9ff5a]" : "bg-white/5"}`}>
+                      <Icon className={`size-4 ${i === 0 ? "text-[#101426]" : "text-white/40"}`} />
+                    </div>
+                  ))}
+                </div>
+                <div className="relative flex-1 items-center justify-center p-4">
+                  <div className="relative mx-auto h-full w-auto overflow-hidden rounded-lg border-2 border-[#101426] bg-white shadow-md" style={{ aspectRatio: "4/5", maxWidth: 180 }}>
+                    <Image src="/variaciones/English/1.png" alt="Canvas preview" fill className="object-cover" />
+                  </div>
+                </div>
+              </div>
               <div className="absolute -bottom-12 -right-12 size-48 rounded-full bg-[#c9ff5a] opacity-70 blur-3xl" />
             </article>
             <article className="rounded-[28px] border-2 border-[#101426] bg-[#101426] p-7 text-white"><Code2 className="size-10 text-[#c9ff5a]" /><h3 className="mt-8 text-2xl font-black">{c.apiCardTitle}</h3><p className="mt-3 text-sm leading-relaxed text-white/60">{c.apiCardText}</p><div className="mt-6 rounded-xl bg-white/5 p-3 font-mono text-[10px] text-[#ad94ff]">POST <span className="text-white">/api/render</span> <span className="text-[#c9ff5a]">→ 200</span></div></article>
@@ -448,11 +514,59 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="border-y border-[#101426]/10 bg-[#101426] py-24 text-white lg:py-32">
+        <div className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-12">
+          <div className="mb-14 max-w-3xl">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-[#c9ff5a]">{c.scaleKicker}</p>
+            <h2 className="mt-5 text-4xl font-black leading-[0.98] tracking-[-0.045em] sm:text-6xl">{c.scaleTitle}</h2>
+            <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/55">{c.scaleText}</p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[
+              [Users, c.scaleTeamTitle, c.scaleTeamText, "bg-[#5b35d5]"],
+              [Zap, c.scaleSpeedTitle, c.scaleSpeedText, "bg-[#c9ff5a] text-[#101426]"],
+              [Server, c.scaleInfraTitle, c.scaleInfraText, "bg-white text-[#101426]"],
+              [Lock, c.scaleSecureTitle, c.scaleSecureText, "bg-[#ffb7aa] text-[#101426]"],
+            ].map(([Icon, title, text, color]) => {
+              const CardIcon = Icon as typeof Users;
+              return (
+                <article key={String(title)} className={`rounded-[22px] border-2 border-[#101426] p-6 ${String(color)}`}>
+                  <CardIcon className="size-8" />
+                  <h3 className="mt-6 text-lg font-black">{String(title)}</h3>
+                  <p className="mt-2 text-sm leading-relaxed opacity-65">{String(text)}</p>
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-[22px] border-2 border-white/10 bg-white/10 lg:grid-cols-4">
+            {[
+              [c.scaleStat1, c.scaleStat1Label],
+              [c.scaleStat2, c.scaleStat2Label],
+              [c.scaleStat3, c.scaleStat3Label],
+              [c.scaleStat4, c.scaleStat4Label],
+            ].map(([value, label]) => (
+              <div key={String(label)} className="bg-[#101426] p-6 text-center">
+                <div className="text-4xl font-black text-[#c9ff5a]">{value}</div>
+                <div className="mt-2 text-xs font-bold text-white/40">{label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section id="templates" className="border-y border-[#101426]/10 bg-[#101426] py-24 text-white lg:py-32">
         <div className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-12">
           <div className="grid items-end gap-8 lg:grid-cols-2"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-[#c9ff5a]">{c.galleryKicker}</p><h2 className="mt-5 text-4xl font-black leading-none tracking-[-0.045em] sm:text-6xl">{c.galleryTitle}</h2></div><p className="max-w-xl text-lg leading-relaxed text-white/55 lg:justify-self-end">{c.galleryText}</p></div>
-          <div className="mt-16 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-            {templates.map((template, index) => <div key={template.src} className={`group relative ${template.rotate} transition duration-300 hover:z-10 hover:rotate-0 hover:-translate-y-3`}><div className={`absolute -inset-2 rounded-[24px] ${template.color}`} /><div className="relative aspect-[4/5] overflow-hidden rounded-[18px] border-2 border-white/80 bg-white shadow-2xl"><Image src={template.src} alt={template.label} fill className="object-cover transition duration-500 group-hover:scale-105" /></div><span className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-3 py-1 text-[10px] font-black text-[#101426]">{c.swapLabel} #{index + 1}</span></div>)}
+          <div className="mt-16 grid grid-cols-2 gap-6 sm:gap-8 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((num, index) => (
+              <div key={num} className={`group relative isolate ${index % 2 === 0 ? "-rotate-2" : "rotate-1"} transition duration-500 hover:z-20 hover:rotate-0`}>
+                <div className="relative aspect-[3/4] overflow-hidden rounded-[18px]">
+                  <Image src={`/variaciones/${language === "es" ? "spanish" : "English"}/${num}.png`} alt={`Variation ${num}`} fill className="object-cover transition duration-500 group-hover:scale-105" />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
