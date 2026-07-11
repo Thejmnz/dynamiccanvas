@@ -41,9 +41,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   return (
     <div className="min-h-screen bg-[#f6f5ef] text-[#101426]">
       <Sidebar />
-      <div className="lg:pl-[280px] flex flex-col min-h-screen">
+      <div className="lg:pl-[230px] flex flex-col min-h-screen">
         <Navbar />
-        <main className="brand-dots flex-1 overflow-auto p-5 sm:p-8 lg:p-10">
+        <main className="brand-dots flex-1 overflow-auto px-5 pb-5 pt-3 sm:px-8 sm:pb-8 sm:pt-4 lg:px-10 lg:pb-10 lg:pt-5">
           {children}
         </main>
       </div>

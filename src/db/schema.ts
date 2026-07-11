@@ -229,6 +229,16 @@ export const rendersRelations = relations(renders, ({ one }) => ({
   }),
 }));
 
+// News / Announcements
+export const news = pgTable("news", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  tag: text("tag").default("update").notNull(),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("createdAt", { mode: "date" }).notNull().$defaultFn(() => new Date()),
+});
+
 // Admin Designs - Pre-made designs that can be used as templates
 export const designs = pgTable("design", {
   id: text("id")

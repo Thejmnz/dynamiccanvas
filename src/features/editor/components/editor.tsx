@@ -106,6 +106,12 @@ export const Editor = ({ initialData }: EditorProps) => {
       preserveObjectStacking: true,
     });
 
+    const origClearContext = canvas.clearContext.bind(canvas);
+    canvas.clearContext = function (ctx: any) {
+      if (!(this as any).contextContainer) return;
+      return origClearContext(ctx);
+    };
+
     init({
       initialCanvas: canvas,
       initialContainer: containerRef.current!,

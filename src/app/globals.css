@@ -19,13 +19,8 @@ body {
 }
 
 html {
-  transform: scale(0.9);
-  transform-origin: top left;
-  width: 111.11vw;
-  overflow-x: hidden;
-}
-
-/* Material Symbols Outlined */
+  font-size: 14px;
+}/* Material Symbols Outlined */
 .material-symbols-outlined {
   font-family: 'Material Symbols Outlined', sans-serif;
   font-weight: normal;

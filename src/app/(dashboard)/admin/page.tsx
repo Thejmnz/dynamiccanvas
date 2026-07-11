@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Users, FileCode, Key, Search, ChevronDown, ChevronUp, Mail,
-  Calendar, Shield, Activity, Sparkles, Save, X,
+  Calendar, Shield, Activity, Sparkles, Save, X, Plus, Trash2, Newspaper,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
@@ -61,6 +61,10 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<UserStats | null>(null);
+  const [newsList, setNewsList] = useState<any[]>([]);
+  const [newsTitle, setNewsTitle] = useState("");
+  const [newsBody, setNewsBody] = useState("");
+  const [newsTag, setNewsTag] = useState("update");
 
   useEffect(() => {
     if (roleLoading) return;
@@ -72,12 +76,14 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [usersRes, statsRes] = await Promise.all([
+      const [usersRes, statsRes, newsRes] = await Promise.all([
         fetch("/api/admin/users"),
         fetch("/api/admin/stats"),
+        fetch("/api/news"),
       ]);
       if (usersRes.ok) setUsersList(await usersRes.json());
       if (statsRes.ok) setStats(await statsRes.json());
+      if (newsRes.ok) { const d = await newsRes.json(); setNewsList(d.data || []); }
     } catch { } finally { setLoading(false); }
   };
 
@@ -109,6 +115,29 @@ export default function AdminDashboard() {
     } catch {
       toast.error("Failed to update user");
     }
+  };
+
+  const handleCreateNews = async () => {
+    if (!newsTitle.trim() || !newsBody.trim()) return;
+    try {
+      const res = await fetch("/api/news", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newsTitle, body: newsBody, tag: newsTag }),
+      });
+      if (res.ok) {
+        toast.success("News created");
+        setNewsTitle(""); setNewsBody(""); setNewsTag("update");
+        fetchData();
+      }
+    } catch { toast.error("Failed"); }
+  };
+
+  const handleDeleteNews = async (id: string) => {
+    try {
+      await fetch(`/api/news?id=${id}`, { method: "DELETE" });
+      fetchData();
+    } catch { }
   };
 
   if (loading) {
@@ -306,6 +335,54 @@ export default function AdminDashboard() {
               <p className="text-sm text-[#101426]/50">No users found.</p>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* News Management */}
+      <div className="mt-6 rounded-[22px] border-2 border-[#101426] bg-white overflow-hidden">
+        <div className="p-5 border-b-2 border-[#101426]/10 flex items-center gap-2">
+          <Newspaper className="size-5 text-[#5b35d5]" />
+          <h2 className="text-base font-black">News & Updates</h2>
+        </div>
+
+        <div className="p-5">
+          <div className="flex flex-wrap items-end gap-3 mb-5">
+            <div className="flex-1 min-w-[140px]">
+              <label className="text-xs font-bold uppercase text-[#101426]/40 block mb-1">Title</label>
+              <input value={newsTitle} onChange={(e) => setNewsTitle(e.target.value)} className="w-full border-2 border-[#101426]/15 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#5b35d5]" />
+            </div>
+            <select value={newsTag} onChange={(e) => setNewsTag(e.target.value)} className="border-2 border-[#101426]/15 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-[#5b35d5]">
+              <option value="feature">Feature</option>
+              <option value="update">Update</option>
+              <option value="fix">Fix</option>
+              <option value="news">News</option>
+            </select>
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-xs font-bold uppercase text-[#101426]/40 block mb-1">Body</label>
+              <input value={newsBody} onChange={(e) => setNewsBody(e.target.value)} className="w-full border-2 border-[#101426]/15 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#5b35d5]" />
+            </div>
+            <button onClick={handleCreateNews} disabled={!newsTitle.trim() || !newsBody.trim()} className="flex items-center gap-1.5 rounded-full bg-[#c9ff5a] border-2 border-[#101426] px-4 py-2 text-xs font-black hover:bg-white transition disabled:opacity-40">
+              <Plus className="size-3.5" />Publish
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {newsList.map((item: any) => (
+              <div key={item.id} className="flex items-center justify-between rounded-xl border border-[#101426]/8 p-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-[9px] font-black uppercase rounded-full px-2 py-0.5 bg-[#e9e5ff] text-[#5b35d5]">{item.tag}</span>
+                  <div>
+                    <div className="text-sm font-bold">{item.title}</div>
+                    <div className="text-xs text-[#101426]/40">{item.body}</div>
+                  </div>
+                </div>
+                <button onClick={() => handleDeleteNews(item.id)} className="text-[#101426]/30 hover:text-[#ff6b57] transition">
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+            ))}
+            {newsList.length === 0 && <p className="text-sm text-[#101426]/30 text-center py-4">No news published.</p>}
+          </div>
         </div>
       </div>
     </div>
