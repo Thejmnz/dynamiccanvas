@@ -37,9 +37,9 @@ interface AdminStats {
 
 const PLAN_LABELS: Record<string, string> = {
   free: "Free",
-  creator: "Starter",
-  agency: "Scale",
-  business: "Enterprise",
+  creator: "Creator",
+  agency: "Agency",
+  business: "Business",
   unlimited: "Unlimited",
 };
 
@@ -265,9 +265,9 @@ export default function AdminDashboard() {
                                 className="border-2 border-[#101426]/15 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-[#5b35d5]"
                               >
                                 <option value="free">Free (50 credits, 3 templates)</option>
-                                <option value="creator">Starter (1,000 credits, 15 templates)</option>
-                                <option value="agency">Scale (5,000 credits, 100 templates)</option>
-                                <option value="business">Enterprise (25,000 credits, ∞ templates)</option>
+                                <option value="creator">Creator (1,000 credits, 15 templates)</option>
+                                <option value="agency">Agency (5,000 credits, 100 templates)</option>
+                                <option value="business">Business (25,000 credits, ∞ templates)</option>
                                 <option value="unlimited">Unlimited (∞ everything)</option>
                               </select>
                             </div>

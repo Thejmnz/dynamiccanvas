@@ -4,65 +4,75 @@ import { useState } from "react";
 import { BadgeCheck, Loader2 } from "lucide-react";
 
 import { useCheckout } from "@/features/subscriptions/api/use-checkout";
+import { useLanguage } from "@/lib/contexts/LanguageContext";
 
 const PLANS = [
   {
     slug: "creator" as const,
-    name: "Starter",
-    badge: "",
+    name: "Creator",
+    popular: false,
     monthly: 29,
     annualMonthly: 23,
     annualTotal: 276,
-    features: [
-      "1,000 renders / month",
-      "JPG, PNG or WebP",
-      "Up to 15 templates",
-      "2 team members",
-      "Folders & tags",
-      "Custom + Google fonts",
-      "API access",
-      "Email + chat support",
-    ],
+    features: {
+      en: ["1,000 renders / month", "JPG, PNG or WebP", "Up to 15 templates", "2 team members", "Folders & tags", "Custom + Google fonts", "API access", "Email + chat support"],
+      es: ["1.000 renders por mes", "JPG, PNG o WebP", "Hasta 15 plantillas", "2 miembros de equipo", "Carpetas y etiquetas", "Fuentes propias y de Google", "Acceso a la API", "Soporte por email y chat"],
+    },
   },
   {
     slug: "agency" as const,
-    name: "Scale",
-    badge: "Popular",
+    name: "Agency",
+    popular: true,
     monthly: 79,
     annualMonthly: 63,
     annualTotal: 756,
-    features: [
-      "5,000 renders / month",
-      "Everything in Starter",
-      "Up to 100 templates",
-      "5 team members",
-      "Higher API limits",
-      "Embedded editor",
-      "Priority support",
-    ],
+    features: {
+      en: ["5,000 renders / month", "Everything in Creator", "Up to 100 templates", "5 team members", "Folders to organize templates", "Higher API limits", "Embedded editor", "Priority email + chat support"],
+      es: ["5.000 renders por mes", "Todo lo incluido en Creator", "Hasta 100 plantillas", "5 miembros de equipo", "Carpetas para organizar plantillas", "Límites de API superiores", "Editor integrado", "Soporte prioritario por email y chat"],
+    },
   },
   {
     slug: "business" as const,
-    name: "Enterprise",
-    badge: "",
+    name: "Business",
+    popular: false,
     monthly: 179,
     annualMonthly: 143,
     annualTotal: 1716,
-    features: [
-      "25,000 renders / month",
-      "Everything in Scale",
-      "Unlimited templates",
-      "20 team members",
-      "Advanced API access",
-      "Custom integrations",
-      "Dedicated support",
-    ],
+    features: {
+      en: ["25,000 renders / month", "Everything in Agency", "Unlimited templates", "20 team members", "Folders to organize templates", "Advanced API access", "Custom integrations", "Dedicated email + chat support"],
+      es: ["25.000 renders por mes", "Todo lo incluido en Agency", "Plantillas ilimitadas", "20 miembros de equipo", "Carpetas para organizar plantillas", "Acceso avanzado a la API", "Integraciones personalizadas", "Soporte dedicado por email y chat"],
+    },
   },
 ];
 
 export default function PricingPage() {
   const [yearly, setYearly] = useState(false);
   const checkout = useCheckout();
+  const { language } = useLanguage();
+  const isSpanish = language === "es";
+  const copy = isSpanish
+    ? {
+        title: "Planes y precios",
+        subtitle: "Mejora tu plan para obtener más renders, plantillas y funciones.",
+        monthly: "Mensual",
+        annual: "Anual",
+        save: "Ahorra 20%",
+        popular: "Popular",
+        perMonth: "/mes",
+        billedAnnually: "facturados anualmente",
+        choose: "Elegir plan",
+      }
+    : {
+        title: "Plans & pricing",
+        subtitle: "Upgrade to unlock more renders, templates and features.",
+        monthly: "Monthly",
+        annual: "Annual",
+        save: "Save 20%",
+        popular: "Popular",
+        perMonth: "/mo",
+        billedAnnually: "billed annually",
+        choose: "Choose plan",
+      };
 
   const handleCheckout = (slug: "creator" | "agency" | "business") => {
     checkout.mutate({ plan: slug, billing: yearly ? "yearly" : "monthly" });
@@ -71,8 +81,8 @@ export default function PricingPage() {
   return (
     <div>
       <div className="text-center">
-        <h1 className="text-4xl font-black tracking-tight">Pricing</h1>
-        <p className="mt-2 text-sm text-[#101426]/55">Upgrade to unlock more renders, templates and features.</p>
+        <h1 className="text-4xl font-black tracking-tight">{copy.title}</h1>
+        <p className="mt-2 text-sm text-[#101426]/55">{copy.subtitle}</p>
       </div>
 
       <div className="mx-auto mt-6 flex w-fit items-center rounded-full border-2 border-[#101426] bg-white p-1 shadow-[4px_4px_0_#101426]">
@@ -80,15 +90,15 @@ export default function PricingPage() {
           onClick={() => setYearly(false)}
           className={`rounded-full px-5 py-2 text-sm font-black transition ${!yearly ? "bg-[#101426] text-white" : "text-[#101426]/55"}`}
         >
-          Monthly
+          {copy.monthly}
         </button>
         <button
           onClick={() => setYearly(true)}
           className={`flex items-center gap-2 rounded-full px-5 py-2 text-sm font-black transition ${yearly ? "bg-[#5b35d5] text-white" : "text-[#101426]/55"}`}
         >
-          Annual
+          {copy.annual}
           <span className={`rounded-full px-2 py-0.5 text-[9px] ${yearly ? "bg-[#c9ff5a] text-[#101426]" : "bg-[#e9e5ff] text-[#5b35d5]"}`}>
-            Save 20%
+            {copy.save}
           </span>
         </button>
       </div>
@@ -101,9 +111,9 @@ export default function PricingPage() {
               key={plan.slug}
               className={`relative flex flex-col rounded-[22px] border-2 border-[#101426] p-6 ${featured ? "bg-[#101426] text-white shadow-[7px_7px_0_#c9ff5a]" : "bg-white"}`}
             >
-              {plan.badge && (
+              {plan.popular && (
                 <span className={`w-fit rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${featured ? "bg-[#c9ff5a] text-[#101426]" : "bg-[#e9e5ff] text-[#5b35d5]"}`}>
-                  {plan.badge}
+                  {copy.popular}
                 </span>
               )}
               <h3 className="mt-4 text-2xl font-black">{plan.name}</h3>
@@ -112,16 +122,16 @@ export default function PricingPage() {
                 <strong className="text-4xl font-black tracking-tight">
                   {yearly ? plan.annualMonthly : plan.monthly}
                 </strong>
-                <span className={`pb-1 text-xs ${featured ? "text-white/45" : "text-[#101426]/45"}`}>/mo</span>
+                <span className={`pb-1 text-xs ${featured ? "text-white/45" : "text-[#101426]/45"}`}>{copy.perMonth}</span>
               </div>
               {yearly && (
                 <p className={`mt-1 text-[11px] font-semibold ${featured ? "text-white/45" : "text-[#101426]/45"}`}>
-                  USD {plan.annualTotal.toLocaleString()} billed annually
+                  USD {plan.annualTotal.toLocaleString(isSpanish ? "es-CO" : "en-US")} {copy.billedAnnually}
                 </p>
               )}
               <div className={`my-4 border-t ${featured ? "border-white/15" : "border-[#101426]/10"}`} />
               <ul className="flex-1 space-y-2.5">
-                {plan.features.map((f) => (
+                {plan.features[isSpanish ? "es" : "en"].map((f) => (
                   <li key={f} className="flex gap-2 text-[13px] font-semibold leading-snug">
                     <BadgeCheck className={`size-4 shrink-0 ${featured ? "text-[#c9ff5a]" : "text-[#5b35d5]"}`} />
                     {f}
@@ -133,7 +143,7 @@ export default function PricingPage() {
                 disabled={checkout.isPending}
                 className={`mt-5 flex h-11 items-center justify-center rounded-full font-black transition ${featured ? "bg-[#c9ff5a] text-[#101426] hover:bg-white" : "bg-[#101426] text-white hover:bg-[#5b35d5]"}`}
               >
-                {checkout.isPending ? <Loader2 className="size-4 animate-spin" /> : "Choose pricing"}
+                {checkout.isPending ? <Loader2 className="size-4 animate-spin" /> : copy.choose}
               </button>
             </article>
           );

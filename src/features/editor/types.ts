@@ -75,6 +75,16 @@ export const fonts = [
   "Roboto Slab",
   "Noto Sans",
   "Noto Serif",
+  "Inter",
+  "Poppins",
+  "Montserrat",
+  "DM Sans",
+  "Nunito",
+  "Work Sans",
+  "Bebas Neue",
+  "Libre Baskerville",
+  "Cormorant Garamond",
+  "Pacifico",
 ];
 
 export const selectionDependentTools = [
@@ -208,6 +218,8 @@ export type BuildEditorProps = {
   redo: () => void;
   save: () => void;
   persist: () => void;
+  suspendHistory: () => void;
+  resumeHistory: (recordState?: boolean) => void;
   canUndo: () => boolean;
   canRedo: () => boolean;
   autoZoom: () => void;

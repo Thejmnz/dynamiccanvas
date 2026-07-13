@@ -130,6 +130,18 @@ export const projectsRelations = relations(projects, ({ one }) => ({
 
 export const projectsInsertSchema = createInsertSchema(projects);
 
+export const templateFolders = pgTable("template_folder", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("createdAt", { mode: "date" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().$defaultFn(() => new Date()),
+});
+
 // Tabla separada para templates de Dynamic Canvas
 export const templates = pgTable("dynamic_canvas_templates", {
   id: text("id")
@@ -148,6 +160,9 @@ export const templates = pgTable("dynamic_canvas_templates", {
   isPro: boolean("isPro").notNull().default(false),
   preset: text("preset").default(""),
   category: text("category"),
+  folderId: text("folder_id").references(() => templateFolders.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("createdAt", { mode: "date" }).notNull(),
   updatedAt: timestamp("updatedAt", { mode: "date" }).notNull(),
   lastModified: timestamp("lastModified", { mode: "date" }),
@@ -158,9 +173,21 @@ export const templatesRelations = relations(templates, ({ one }) => ({
     fields: [templates.user_id],
     references: [users.id],
   }),
+  folder: one(templateFolders, {
+    fields: [templates.folderId],
+    references: [templateFolders.id],
+  }),
 }));
 
 export const templatesInsertSchema = createInsertSchema(templates);
+
+export const templateFoldersRelations = relations(templateFolders, ({ one, many }) => ({
+  user: one(users, {
+    fields: [templateFolders.userId],
+    references: [users.id],
+  }),
+  templates: many(templates),
+}));
 
 // API Keys para integraciones externas
 export const userApiKeys = pgTable("user_api_keys", {

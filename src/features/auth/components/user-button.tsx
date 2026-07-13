@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { Loader, LogOut, Settings, Users, Lightbulb, Flag, GitBranch, LifeBuoy, BookOpen, Activity } from "lucide-react";
 import { signOut as signOutNextAuth, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -22,17 +23,23 @@ export const UserButton = () => {
   const { t } = useLanguage();
   const router = useRouter();
   const loading = !user && !session?.user && (supabaseLoading || sessionStatus === "loading");
-
-  if (loading) return <Loader className="size-4 animate-spin text-muted-foreground" />;
-
   const sessionUser = user || session?.user;
-  if (!sessionUser) return null;
-
-  const name = user?.user_metadata?.full_name || session?.user?.name || sessionUser.email || "User";
+  const name = user?.user_metadata?.full_name || session?.user?.name || sessionUser?.email || "User";
   const email = user?.email || session?.user?.email || "";
   const imageUrl = user?.user_metadata?.avatar_url || session?.user?.image;
 
+  useEffect(() => {
+    if (!sessionUser || !name) return;
+    window.$crisp = window.$crisp || [];
+    window.$crisp.push(["set", "user:nickname", [name]]);
+  }, [name, sessionUser]);
+
+  if (loading) return <Loader className="size-4 animate-spin text-muted-foreground" />;
+  if (!sessionUser) return null;
+
   const handleLogout = async () => {
+    window.$crisp = window.$crisp || [];
+    window.$crisp.push(["do", "session:reset"]);
     await Promise.allSettled([logout(), signOutNextAuth({ redirect: false })]);
   };
 

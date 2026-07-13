@@ -41,25 +41,11 @@ type PixabayResponse = {
   error?: string;
 };
 
-const CATEGORIES = [
-  { id: "all", en: "Featured", es: "Destacadas", value: "" },
-  { id: "backgrounds", en: "Backgrounds", es: "Fondos", value: "backgrounds" },
-  { id: "nature", en: "Nature", es: "Naturaleza", value: "nature" },
-  { id: "people", en: "People", es: "Personas", value: "people" },
-  { id: "animals", en: "Animals", es: "Animales", value: "animals" },
-  { id: "food", en: "Food", es: "Comida", value: "food" },
-  { id: "computer", en: "Technology", es: "Tecnología", value: "computer" },
-  { id: "business", en: "Business", es: "Negocios", value: "business" },
-  { id: "buildings", en: "Architecture", es: "Arquitectura", value: "buildings" },
-  { id: "travel", en: "Travel", es: "Viajes", value: "travel" },
-];
-
 export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSidebarProps) => {
   const { t, language } = useLanguage();
   const queryClient = useQueryClient();
   const [searchInput, setSearchInput] = useState("");
   const [appliedQuery, setAppliedQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState("all");
   const [images, setImages] = useState<PixabayImage[]>([]);
   const [page, setPage] = useState(1);
   const [totalHits, setTotalHits] = useState(0);
@@ -71,28 +57,24 @@ export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSi
 
   const loadImages = useCallback(async ({
     query,
-    categoryId,
     nextPage,
     append,
   }: {
     query: string;
-    categoryId: string;
     nextPage: number;
     append: boolean;
   }) => {
     append ? setIsLoadingMore(true) : setIsLoading(true);
     setError("");
 
-    const category = CATEGORIES.find((item) => item.id === categoryId)?.value || "";
     const params = new URLSearchParams({
       page: String(nextPage),
       lang: language === "es" ? "es" : "en",
     });
     if (query) params.set("q", query);
-    if (!query && category) params.set("category", category);
 
     try {
-      const response = await fetch(`/api/pixabay?${params}`);
+      const response = await fetch(`/api/pixabay?${params}`, { cache: "no-store" });
       const data = await response.json() as PixabayResponse;
       if (!response.ok) throw new Error(data.error || "Pixabay request failed");
 
@@ -113,7 +95,7 @@ export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSi
 
   useEffect(() => {
     if (activeTool === "images" && !hasLoaded && !isLoading) {
-      void loadImages({ query: "", categoryId: "all", nextPage: 1, append: false });
+      void loadImages({ query: "", nextPage: 1, append: false });
     }
   }, [activeTool, hasLoaded, isLoading, loadImages]);
 
@@ -121,14 +103,7 @@ export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSi
     event.preventDefault();
     const query = searchInput.trim();
     setAppliedQuery(query);
-    void loadImages({ query, categoryId: activeCategory, nextPage: 1, append: false });
-  };
-
-  const handleCategoryChange = (categoryId: string) => {
-    setActiveCategory(categoryId);
-    setAppliedQuery("");
-    setSearchInput("");
-    void loadImages({ query: "", categoryId, nextPage: 1, append: false });
+    void loadImages({ query, nextPage: 1, append: false });
   };
 
   const handleImport = async (image: PixabayImage) => {
@@ -189,37 +164,18 @@ export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSi
         </div>
       </form>
 
-      <div className="px-3 py-2 border-b">
-        <div className="mb-2 flex items-center justify-between">
-          <a
-            href="https://pixabay.com/"
-            target="_blank"
-            rel="noreferrer"
-            className="text-[10px] text-muted-foreground hover:underline"
-          >
-            {t("powered_by_pixabay") || "Powered by Pixabay"}
-          </a>
-          {totalHits > 0 && (
-            <span className="text-[10px] text-muted-foreground">{totalHits}</span>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {CATEGORIES.map((category) => (
-            <button
-              key={category.id}
-              type="button"
-              onClick={() => handleCategoryChange(category.id)}
-              className={cn(
-                "rounded-full px-2.5 py-1 text-[11px] font-medium transition",
-                activeCategory === category.id && !appliedQuery
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/70",
-              )}
-            >
-              {language === "es" ? category.es : category.en}
-            </button>
-          ))}
-        </div>
+      <div className="flex items-center justify-between border-b px-3 py-2">
+        <a
+          href="https://pixabay.com/"
+          target="_blank"
+          rel="noreferrer"
+          className="text-[10px] text-muted-foreground hover:underline"
+        >
+          {t("powered_by_pixabay") || "Powered by Pixabay"}
+        </a>
+        {totalHits > 0 && (
+          <span className="text-[10px] text-muted-foreground">{totalHits}</span>
+        )}
       </div>
 
       <ScrollArea className="flex-1">
@@ -239,7 +195,6 @@ export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSi
                 variant="outline"
                 onClick={() => void loadImages({
                   query: appliedQuery,
-                  categoryId: activeCategory,
                   nextPage: 1,
                   append: false,
                 })}
@@ -267,7 +222,7 @@ export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSi
                     className="relative block h-28 w-full overflow-hidden text-left hover:opacity-90 disabled:cursor-wait"
                   >
                     <img
-                      src={image.webformatURL}
+                      src={`/api/pixabay?imageUrl=${encodeURIComponent(image.webformatURL || image.previewURL)}`}
                       alt={image.tags}
                       className="h-full w-full object-cover"
                       loading="lazy"
@@ -280,15 +235,6 @@ export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSi
                       )}
                     </span>
                   </button>
-                  <a
-                    href={image.pageURL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block truncate px-2 py-1.5 text-[10px] text-muted-foreground hover:underline"
-                    title={`${image.tags} — ${image.user}`}
-                  >
-                    {image.tags.split(",")[0]} · {image.user}
-                  </a>
                 </div>
               ))}
             </div>
@@ -301,7 +247,6 @@ export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSi
               disabled={isLoadingMore}
               onClick={() => void loadImages({
                 query: appliedQuery,
-                categoryId: activeCategory,
                 nextPage: page + 1,
                 append: true,
               })}

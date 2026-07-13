@@ -7,8 +7,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const PIXABAY_API_URL = "https://pixabay.com/api/";
-const CACHE_SECONDS = 60 * 60 * 24;
 const MAX_IMPORT_SIZE = 12 * 1024 * 1024;
+const MAX_PREVIEW_SIZE = 5 * 1024 * 1024;
+const PIXABAY_IMAGE_HEADERS = {
+  Accept: "image/avif,image/webp,image/jpeg,image/*",
+  Referer: "https://pixabay.com/",
+  "User-Agent": "DynamicCanvas/1.0 (+https://dynamiccanvas.app)",
+};
 const VALID_CATEGORIES = new Set([
   "backgrounds",
   "fashion",
@@ -68,6 +73,47 @@ const getExtension = (contentType: string) => {
 };
 
 export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const previewUrl = searchParams.get("imageUrl") || "";
+
+  if (previewUrl) {
+    if (!isPixabayImageUrl(previewUrl)) {
+      return NextResponse.json({ error: "Invalid Pixabay image" }, { status: 400 });
+    }
+
+    try {
+      const imageResponse = await fetch(previewUrl, {
+        cache: "force-cache",
+        headers: PIXABAY_IMAGE_HEADERS,
+      });
+      if (!imageResponse.ok) {
+        return NextResponse.json({ error: "Could not load image" }, { status: 502 });
+      }
+
+      const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
+      const contentLength = Number(imageResponse.headers.get("content-length")) || 0;
+      if (!contentType.startsWith("image/") || contentLength > MAX_PREVIEW_SIZE) {
+        return NextResponse.json({ error: "Unsupported image" }, { status: 400 });
+      }
+
+      const bytes = await imageResponse.arrayBuffer();
+      if (bytes.byteLength > MAX_PREVIEW_SIZE) {
+        return NextResponse.json({ error: "Image is too large" }, { status: 413 });
+      }
+
+      return new NextResponse(bytes, {
+        headers: {
+          "Content-Type": contentType,
+          "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+          "Content-Length": String(bytes.byteLength),
+        },
+      });
+    } catch (error) {
+      console.error("[Pixabay] Preview proxy failed:", error);
+      return NextResponse.json({ error: "Could not load image" }, { status: 502 });
+    }
+  }
+
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -81,7 +127,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const searchParams = request.nextUrl.searchParams;
   const query = (searchParams.get("q") || "").trim().slice(0, 100);
   const categoryValue = searchParams.get("category") || "";
   const category = VALID_CATEGORIES.has(categoryValue) ? categoryValue : "";
@@ -103,7 +148,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const response = await fetch(`${PIXABAY_API_URL}?${pixabayParams}`, {
-      next: { revalidate: CACHE_SECONDS },
+      cache: "no-store",
     });
 
     if (!response.ok) {
@@ -139,7 +184,7 @@ export async function GET(request: NextRequest) {
       },
       {
         headers: {
-          "Cache-Control": `private, max-age=${CACHE_SECONDS}`,
+          "Cache-Control": "private, no-store",
         },
       },
     );
@@ -173,7 +218,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid Pixabay image" }, { status: 400 });
     }
 
-    const imageResponse = await fetch(imageUrl, { cache: "force-cache" });
+    const imageResponse = await fetch(imageUrl, {
+      cache: "force-cache",
+      headers: PIXABAY_IMAGE_HEADERS,
+    });
     if (!imageResponse.ok) {
       return NextResponse.json({ error: "Could not download image" }, { status: 502 });
     }

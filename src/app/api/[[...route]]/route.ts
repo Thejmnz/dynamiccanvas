@@ -8,6 +8,7 @@ import images from "./images";
 import projects from "./projects";
 import templates from "./templates";
 import subscriptions from "./subscriptions";
+import folders from "./folders";
 
 import authConfig from "@/auth.config";
 
@@ -31,7 +32,8 @@ const routes = app
   .route("/images", images)
   .route("/projects", projects)
   .route("/templates", templates)
-  .route("/subscriptions", subscriptions);
+  .route("/subscriptions", subscriptions)
+  .route("/folders", folders);
 
 export const GET = handle(app);
 export const POST = handle(app);

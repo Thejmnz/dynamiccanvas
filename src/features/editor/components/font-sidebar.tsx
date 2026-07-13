@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Upload } from "lucide-react";
+import { Crown, Loader2, Upload } from "lucide-react";
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -10,7 +10,6 @@ import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-clos
 import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-header";
 import { ActiveTool, Editor, fonts } from "@/features/editor/types";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/lib/supabaseClient";
 
 interface FontSidebarProps {
   editor: Editor | undefined;
@@ -42,6 +41,8 @@ export const FontSidebar = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const [customFonts, setCustomFonts] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [canUploadFonts, setCanUploadFonts] = useState(false);
+  const [isCheckingPlan, setIsCheckingPlan] = useState(true);
   const selectedFont = editor?.getActiveFontFamily();
 
   useEffect(() => {
@@ -90,6 +91,19 @@ export const FontSidebar = ({
     return () => { mounted = false; };
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+    fetch("/api/user-credits")
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => {
+        if (mounted) setCanUploadFonts(["creator", "agency", "business", "unlimited"].includes(data?.plan));
+      })
+      .finally(() => {
+        if (mounted) setIsCheckingPlan(false);
+      });
+    return () => { mounted = false; };
+  }, []);
+
   const allFonts = useMemo(
     () => Array.from(new Set([...fonts, ...customFonts])),
     [customFonts],
@@ -98,6 +112,12 @@ export const FontSidebar = ({
   const uploadFont = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    if (!canUploadFonts) {
+      toast.info("Subir fuentes personalizadas está disponible en Creator, Agency y Business");
+      event.target.value = "";
+      return;
+    }
 
     const extension = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
     if (!FONT_EXTENSIONS.includes(extension)) {
@@ -109,17 +129,14 @@ export const FontSidebar = ({
     setIsUploading(true);
 
     try {
-      const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
-      const storagePath = `fonts/${Date.now()}-${safeFileName}`;
-      const { error } = await supabase.storage.from("media").upload(storagePath, file, {
-        cacheControl: "31536000",
-        upsert: false,
-      });
-      if (error) throw error;
+      const formData = new FormData();
+      formData.append("font", file);
+      const response = await fetch("/api/uploaded-fonts", { method: "POST", body: formData });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Font upload failed");
 
-      const { data } = supabase.storage.from("media").getPublicUrl(storagePath);
-      const fontName = file.name.replace(/\.[^/.]+$/, "");
-      await loadFontFace(fontName, data.publicUrl);
+      const fontName = data.displayName as string;
+      await loadFontFace(fontName, data.publicUrl as string);
 
       setCustomFonts((current) => Array.from(new Set([...current, fontName])));
       editor?.changeFontFamily(fontName);
@@ -157,11 +174,18 @@ export const FontSidebar = ({
             variant="outline"
             size="lg"
             className="h-16 w-full gap-2 border-dashed"
-            disabled={isUploading}
-            onClick={() => inputRef.current?.click()}
+            disabled={isUploading || isCheckingPlan}
+            title={canUploadFonts ? "Subir fuente personalizada" : "Disponible en planes pagos"}
+            onClick={() => {
+              if (!canUploadFonts) {
+                toast.info("Disponible en Creator, Agency y Business");
+                return;
+              }
+              inputRef.current?.click();
+            }}
           >
-            {isUploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-            {isUploading ? "Subiendo fuente..." : "Subir fuente personalizada"}
+            {isUploading || isCheckingPlan ? <Loader2 className="size-4 animate-spin" /> : canUploadFonts ? <Upload className="size-4" /> : <Crown className="size-4 text-amber-500" />}
+            {isUploading ? "Subiendo fuente..." : isCheckingPlan ? "Comprobando plan..." : "Subir fuente personalizada"}
           </Button>
 
           <div className="space-y-1 border-t pt-3">

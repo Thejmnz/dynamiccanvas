@@ -13,9 +13,9 @@ import { useLanguage } from "@/lib/contexts/LanguageContext";
 
 const PLAN_INFO: Record<string, { label: string; icon: any; color: string }> = {
   free: { label: "Free", icon: Zap, color: "text-white/60" },
-  creator: { label: "Starter", icon: Star, color: "text-blue-400" },
-  agency: { label: "Scale", icon: Rocket, color: "text-purple-400" },
-  business: { label: "Enterprise", icon: Crown, color: "text-amber-400" },
+  creator: { label: "Creator", icon: Star, color: "text-blue-400" },
+  agency: { label: "Agency", icon: Rocket, color: "text-purple-400" },
+  business: { label: "Business", icon: Crown, color: "text-amber-400" },
   unlimited: { label: "Unlimited", icon: InfinityIcon, color: "text-[#c9ff5a]" },
 };
 

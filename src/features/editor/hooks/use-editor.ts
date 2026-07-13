@@ -50,6 +50,8 @@ import {
 const buildEditor = ({
   save,
   persist,
+  suspendHistory,
+  resumeHistory,
   undo,
   redo,
   canRedo,
@@ -174,6 +176,8 @@ const buildEditor = ({
   const loadJson = (json: string) => {
     try {
       const data = sanitizeFabricCanvasData(JSON.parse(json));
+      suspendHistory();
+      canvas.discardActiveObject();
 
       if (isKonvaCanvasData(data)) {
         void convertKonvaCanvas(data)
@@ -183,6 +187,7 @@ const buildEditor = ({
             ensureFabricWorkspace(canvas, data);
             canvas.renderAll();
             autoZoom();
+            resumeHistory();
 
             if (skippedTypes.length > 0) {
               console.warn(
@@ -191,6 +196,7 @@ const buildEditor = ({
             }
           })
           .catch((error) => {
+            resumeHistory(false);
             console.error("[Editor] Failed to convert Konva JSON:", error);
           });
         return;
@@ -201,8 +207,10 @@ const buildEditor = ({
         ensureFabricWorkspace(canvas, data);
         canvas.renderAll();
         autoZoom();
+        resumeHistory();
       });
     } catch (error) {
+      resumeHistory(false);
       console.error("[Editor] Failed to load JSON:", error);
     }
   };
@@ -813,6 +821,8 @@ export const useEditor = ({
     canUndo,
     undo,
     redo,
+    suspendHistory,
+    resumeHistory,
     canvasHistory,
     setHistoryIndex,
   } = useHistory({
@@ -856,6 +866,8 @@ export const useEditor = ({
       return buildEditor({
         save,
         persist,
+        suspendHistory,
+        resumeHistory,
         undo,
         redo,
         canUndo,
@@ -883,6 +895,8 @@ export const useEditor = ({
   [
     canRedo,
     canUndo,
+    suspendHistory,
+    resumeHistory,
     undo,
     redo,
     save,

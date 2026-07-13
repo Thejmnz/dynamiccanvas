@@ -101,6 +101,15 @@ export const useHistory = ({ canvas, saveCallback }: UseHistoryProps) => {
     setHistoryIndex(canvasHistory.current.length - 1);
   }, [canvas]);
 
+  const suspendHistory = useCallback(() => {
+    skipSave.current = true;
+  }, []);
+
+  const resumeHistory = useCallback((recordState = true) => {
+    skipSave.current = false;
+    if (recordState) save();
+  }, [save]);
+
   const persist = useCallback(async () => {
     if (!canvas) return;
 
@@ -163,6 +172,8 @@ export const useHistory = ({ canvas, saveCallback }: UseHistoryProps) => {
     canRedo,
     undo,
     redo,
+    suspendHistory,
+    resumeHistory,
     setHistoryIndex,
     canvasHistory,
   };

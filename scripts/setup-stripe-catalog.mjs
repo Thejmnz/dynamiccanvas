@@ -10,9 +10,9 @@ const stripe = new Stripe(key, { apiVersion: "2024-06-20" });
 const catalogVersion = "dynamic_canvas_v1";
 
 const plans = [
-  { slug: "creator", name: "Dynamic Canvas — Starter", credits: 1000, monthly: 2900, yearly: 27600 },
-  { slug: "agency", name: "Dynamic Canvas — Scale", credits: 5000, monthly: 7900, yearly: 75600 },
-  { slug: "business", name: "Dynamic Canvas — Enterprise", credits: 25000, monthly: 17900, yearly: 171600 },
+  { slug: "creator", name: "Dynamic Canvas — Creator", credits: 1000, monthly: 2900, yearly: 27600 },
+  { slug: "agency", name: "Dynamic Canvas — Agency", credits: 5000, monthly: 7900, yearly: 75600 },
+  { slug: "business", name: "Dynamic Canvas — Business", credits: 25000, monthly: 17900, yearly: 171600 },
 ];
 
 const existingProducts = {

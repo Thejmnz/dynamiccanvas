@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Copy, ExternalLink, KeyRound, BookOpen, Lightbulb, Code, Braces, FileJson, Puzzle, RefreshCw, Play, Loader2, Check, X, AlertCircle, ChevronRight, Zap } from "lucide-react";
+import { Copy, ExternalLink, KeyRound, BookOpen, Lightbulb, Code, Braces, FileJson, Puzzle, RefreshCw, Play, Loader2, Check, X, AlertCircle, ChevronRight, Zap, ImageIcon, Type, ArrowRight } from "lucide-react";
 import React, { useState, useEffect, useMemo, Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -46,6 +46,7 @@ interface Template {
     backgroundColor: string;
     elements: TemplateElement[];
     lastModified?: string;
+    thumbnailUrl?: string | null;
 }
 
 interface TemplateElement {
@@ -873,6 +874,7 @@ const getFullJavaSnippet = (absoluteApiEndpoint: string, apiKey: string, templat
 
 function ApiIntegrationContent() {
     const { t, language } = useLanguage();
+    const router = useRouter();
     const searchParams = useSearchParams();
     const templateIdParam = searchParams.get('templateIdForApi');
     const [exampleApiKey, setExampleApiKey] = useState<string>("");
@@ -1036,7 +1038,8 @@ function ApiIntegrationContent() {
                             height: t.height || 600,
                             backgroundColor: t.background_color || '#fff',
                             elements: elements,
-                            lastModified: t.lastModified
+                            lastModified: t.lastModified,
+                            thumbnailUrl: t.thumbnailUrl || t.thumbnail_url || null,
                         } as Template;
                     });
 
@@ -1237,8 +1240,137 @@ function ApiIntegrationContent() {
                 </div>
             )}
 
-            {/* Modal with all options */}
-            <Dialog modal={false} open={isModalOpen} onOpenChange={handleModalOpenChange}>
+            {/* Focused playground workspace */}
+            <Dialog open={isModalOpen} onOpenChange={handleModalOpenChange}>
+                <DialogContent className="flex h-[96vh] max-h-[96vh] w-[98vw] max-w-[98vw] flex-col gap-0 overflow-hidden rounded-2xl border border-[#101426]/15 bg-white p-0 shadow-2xl">
+                    <DialogHeader className="shrink-0 border-b border-[#101426]/10 px-6 py-4 pr-16">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm font-semibold text-[#101426]/40">Playground</span>
+                                    <ChevronRight className="size-4 text-[#101426]/25" />
+                                    <DialogTitle className="truncate text-2xl font-black tracking-[-0.03em] text-[#101426]">
+                                        {selectedTemplate?.name || t("template")}
+                                    </DialogTitle>
+                                </div>
+                                <DialogDescription className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#101426]/50">
+                                    <span>{selectedTemplate?.width} × {selectedTemplate?.height} px</span><span>•</span>
+                                    <span>{selectedTemplate?.elements?.length || 0} {language === "es" ? "capas" : "layers"}</span><span>•</span>
+                                    <span>{language === "es" ? "Editado" : "Edited"} {getRelativeTime(selectedTemplate?.lastModified, language).toLowerCase()}</span><span>•</span>
+                                    <span className="max-w-[280px] truncate font-mono">{selectedTemplate?.id}</span>
+                                </DialogDescription>
+                            </div>
+                            <Button
+                                variant="outline"
+                                className="mr-2 h-11 shrink-0 rounded-xl border-[#101426]/15 bg-white px-5 font-bold"
+                                onClick={() => selectedTemplate && router.push("/editor/" + selectedTemplate.id)}
+                            >
+                                {language === "es" ? "Abrir en el editor" : "Open in Editor"}
+                                <ArrowRight className="ml-2 size-4" />
+                            </Button>
+                        </div>
+                    </DialogHeader>
+
+                    <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[34%_66%]">
+                        <aside className="flex min-h-0 flex-col border-r border-[#101426]/10 bg-white">
+                            <div className="flex-1 space-y-4 overflow-y-auto p-5">
+                                <div className="flex items-center rounded-2xl bg-[#f6f7f9] p-4">
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-sm font-black text-[#101426]/70">{language === "es" ? "Formato:" : "Format:"}</span>
+                                        <span className="flex h-10 items-center gap-2 rounded-xl border border-[#101426]/15 bg-white px-4 text-sm font-bold">
+                                            <ImageIcon className="size-4 text-[#5b35d5]" /> JPG
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {selectedTemplate && Array.isArray(selectedTemplate.elements) && selectedTemplate.elements.filter(el => el.type === "text" || el.type === "image").length > 0 ? (
+                                    selectedTemplate.elements
+                                        .filter(el => el.type === "text" || el.type === "image")
+                                        .map((element) => (
+                                            <div key={element.id} className="rounded-2xl bg-[#f6f7f9] p-4">
+                                                <div className="mb-4 flex items-start gap-3">
+                                                    <div className="flex min-w-0 items-center gap-2">
+                                                        {element.type === "text" ? <Type className="size-4 shrink-0 text-[#101426]/55" /> : <ImageIcon className="size-4 shrink-0 text-[#101426]/55" />}
+                                                        <span className="truncate font-mono text-sm font-black">{element.name || element.id}</span>
+                                                    </div>
+                                                </div>
+                                                <label className="mb-2 block text-xs font-semibold text-[#101426]/55">
+                                                    {element.type === "text" ? (language === "es" ? "Texto" : "Text") : (language === "es" ? "URL de imagen" : "Image URL")}
+                                                </label>
+                                                <Input
+                                                    value={element.type === "text" ? (layersDataForSnippets[element.id]?.text || "") : (layersDataForSnippets[element.id]?.src || layersDataForSnippets[element.id]?.image_url || "")}
+                                                    onChange={(event) => setLayersDataForSnippets(prev => ({
+                                                        ...prev,
+                                                        [element.id]: element.type === "text"
+                                                            ? { ...prev[element.id], type: "text", text: event.target.value }
+                                                            : { ...prev[element.id], type: "image", src: event.target.value, image_url: event.target.value }
+                                                    }))}
+                                                    placeholder={element.type === "text" ? (language === "es" ? "Escribe el texto" : "Enter text") : "https://example.com/image.jpg"}
+                                                    className="h-12 border-[#101426]/15 bg-white"
+                                                />
+                                            </div>
+                                        ))
+                                ) : (
+                                    <div className="rounded-2xl border border-dashed border-[#101426]/15 p-8 text-center text-sm text-[#101426]/45">
+                                        {language === "es" ? "Esta plantilla no tiene capas editables." : "This template has no editable layers."}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="shrink-0 border-t border-[#101426]/10 bg-white p-5">
+                                <Button className="h-12 w-full rounded-xl bg-[#2161ed] text-base font-bold hover:bg-[#174bc2]" onClick={handleTestApi} disabled={isTestingApi || !selectedTemplate}>
+                                    {isTestingApi ? <><Loader2 className="mr-2 size-4 animate-spin" />{language === "es" ? "Generando..." : "Generating..."}</> : (language === "es" ? "Generar render" : "Generate Render")}
+                                </Button>
+                            </div>
+                        </aside>
+
+                        <section className="grid min-h-0 grid-rows-[minmax(330px,56%)_minmax(240px,44%)] bg-[#fafbfc]">
+                            <Tabs defaultValue="preview" className="flex min-h-0 flex-col">
+                                <div className="flex justify-center p-4 pb-2">
+                                    <TabsList className="h-11 rounded-xl border border-[#101426]/10 bg-[#f1f2f5] p-1">
+                                        <TabsTrigger value="preview" className="gap-2 rounded-lg px-5 data-[state=active]:bg-white"><ImageIcon className="size-4" />{language === "es" ? "Vista previa" : "Preview"}</TabsTrigger>
+                                        <TabsTrigger value="response" className="gap-2 rounded-lg px-5"><Braces className="size-4" />{language === "es" ? "Respuesta" : "Response"}</TabsTrigger>
+                                    </TabsList>
+                                </div>
+                                <TabsContent value="preview" className="mt-0 min-h-0 flex-1 px-5 pb-5">
+                                    <div className="flex h-full items-center justify-center overflow-hidden rounded-xl bg-[radial-gradient(#d8dcf2_1.5px,transparent_1.5px)] [background-size:24px_24px]">
+                                        {(apiResponse?.data?.imageUrl || selectedTemplate?.thumbnailUrl) ? (
+                                            <img src={apiResponse?.data?.imageUrl || selectedTemplate?.thumbnailUrl || ""} alt={selectedTemplate?.name || "Preview"} className="max-h-[95%] max-w-[92%] rounded-md object-contain shadow-xl" />
+                                        ) : (
+                                            <div className="max-w-sm text-center text-sm leading-relaxed text-[#101426]/45">
+                                                <ImageIcon className="mx-auto mb-3 size-8 opacity-40" />
+                                                {language === "es" ? "Completa los valores de las capas y pulsa “Generar render” para ver el resultado." : "Fill in the layer values and click “Generate Render” to see the result."}
+                                            </div>
+                                        )}
+                                    </div>
+                                </TabsContent>
+                                <TabsContent value="response" className="mt-0 min-h-0 flex-1 px-5 pb-5">
+                                    <pre className="h-full overflow-auto rounded-xl bg-[#171925] p-5 text-xs leading-6 text-slate-300">{JSON.stringify(apiResponse?.data || (apiResponse ? { status: apiResponse.status, error: apiResponse.error } : { message: language === "es" ? "Genera un render para ver la respuesta." : "Generate a render to see the response." }), null, 2)}</pre>
+                                </TabsContent>
+                            </Tabs>
+
+                            <div className="min-h-0 border-t border-[#101426]/10 bg-white">
+                                <Tabs defaultValue="javascript" className="flex h-full min-h-0 flex-col">
+                                    <TabsList className="h-14 w-full shrink-0 justify-start gap-1 overflow-x-auto rounded-none border-b border-[#101426]/10 bg-white px-3">
+                                        <TabsTrigger value="javascript" className="h-full rounded-none border-b-2 border-transparent px-4 data-[state=active]:border-[#2161ed] data-[state=active]:shadow-none">JavaScript</TabsTrigger>
+                                        <TabsTrigger value="python" className="h-full rounded-none border-b-2 border-transparent px-4 data-[state=active]:border-[#2161ed] data-[state=active]:shadow-none">Python</TabsTrigger>
+                                        <TabsTrigger value="java" className="h-full rounded-none border-b-2 border-transparent px-4 data-[state=active]:border-[#2161ed] data-[state=active]:shadow-none">Java</TabsTrigger>
+                                        <TabsTrigger value="php" className="h-full rounded-none border-b-2 border-transparent px-4 data-[state=active]:border-[#2161ed] data-[state=active]:shadow-none">PHP</TabsTrigger>
+                                        <TabsTrigger value="curl" className="h-full rounded-none border-b-2 border-transparent px-4 data-[state=active]:border-[#2161ed] data-[state=active]:shadow-none">cURL</TabsTrigger>
+                                    </TabsList>
+                                    <TabsContent value="javascript" className="mt-0 min-h-0 flex-1"><CodeSnippet language="JavaScript" code={fullJsCode} /></TabsContent>
+                                    <TabsContent value="python" className="mt-0 min-h-0 flex-1"><CodeSnippet language="Python" code={pythonCode} /></TabsContent>
+                                    <TabsContent value="java" className="mt-0 min-h-0 flex-1"><CodeSnippet language="Java" code={javaCode} /></TabsContent>
+                                    <TabsContent value="php" className="mt-0 min-h-0 flex-1"><CodeSnippet language="PHP" code={phpCode} /></TabsContent>
+                                    <TabsContent value="curl" className="mt-0 min-h-0 flex-1"><CodeSnippet language="cURL" code={curlCode} /></TabsContent>
+                                </Tabs>
+                            </div>
+                        </section>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Legacy workspace kept closed while the new layout is active. */}
+            <Dialog modal={false} open={false} onOpenChange={() => undefined}>
                 <DialogContent className="flex h-[95vh] max-h-[95vh] w-[95vw] max-w-[95vw] flex-col overflow-hidden rounded-[24px] border-2 border-[#101426] bg-[#f6f5ef] shadow-[10px_10px_0_#101426]">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">

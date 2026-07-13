@@ -13,11 +13,7 @@ export const Navbar = () => {
   const router = useRouter();
 
   return (
-    <nav className="sticky top-0 z-30 flex h-[60px] w-full items-center justify-between border-b border-[#101426]/10 bg-[#f6f5ef]/90 px-5 backdrop-blur-xl sm:px-8 lg:px-10">
-      <div>
-        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#5b35d5]">Dynamic Canvas</p>
-        <p className="text-sm font-black text-[#101426]">Creative workspace</p>
-      </div>
+    <nav className="sticky top-0 z-30 flex h-[60px] w-full items-center justify-end border-b border-[#101426]/10 bg-[#f6f5ef]/90 px-5 backdrop-blur-xl sm:px-8 lg:px-10">
       <div className="flex items-center gap-x-3">
         <LanguageSwitcher />
         <UserButton />

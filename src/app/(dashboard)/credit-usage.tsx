@@ -18,9 +18,9 @@ interface CreditData {
 
 const PLAN_INFO: Record<string, { label: string; labelEs: string; icon: any; gradient: string; badge: string; accent: string }> = {
   free: { label: "Free", labelEs: "Free", icon: Zap, gradient: "from-white/5 to-white/5", badge: "bg-white/10 text-white/60", accent: "text-white/40" },
-  creator: { label: "Starter", labelEs: "Starter", icon: Star, gradient: "from-blue-500/15 to-blue-500/5", badge: "bg-blue-500/20 text-blue-300", accent: "text-blue-400" },
-  agency: { label: "Scale", labelEs: "Scale", icon: Rocket, gradient: "from-purple-500/15 to-purple-500/5", badge: "bg-purple-500/20 text-purple-300", accent: "text-purple-400" },
-  business: { label: "Enterprise", labelEs: "Enterprise", icon: Crown, gradient: "from-amber-500/15 to-amber-500/5", badge: "bg-amber-500/20 text-amber-300", accent: "text-amber-400" },
+  creator: { label: "Creator", labelEs: "Creator", icon: Star, gradient: "from-blue-500/15 to-blue-500/5", badge: "bg-blue-500/20 text-blue-300", accent: "text-blue-400" },
+  agency: { label: "Agency", labelEs: "Agency", icon: Rocket, gradient: "from-purple-500/15 to-purple-500/5", badge: "bg-purple-500/20 text-purple-300", accent: "text-purple-400" },
+  business: { label: "Business", labelEs: "Business", icon: Crown, gradient: "from-amber-500/15 to-amber-500/5", badge: "bg-amber-500/20 text-amber-300", accent: "text-amber-400" },
   unlimited: { label: "Unlimited", labelEs: "Ilimitado", icon: InfinityIcon, gradient: "from-[#5b35d5]/25 to-[#c9ff5a]/10", badge: "bg-[#c9ff5a] text-[#101426]", accent: "text-[#c9ff5a]" },
 };
 
