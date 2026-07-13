@@ -2,6 +2,11 @@
 const nextConfig = {
   output: "standalone",
   reactStrictMode: true,
+  // Never publish readable client source maps or advertise the framework in
+  // production responses. Browser JavaScript remains inspectable by nature,
+  // but only as its compiled and minified bundle.
+  productionBrowserSourceMaps: false,
+  poweredByHeader: false,
   // Keep development assets separate from production builds. Running
   // `next build` while the local editor is open must not invalidate its CSS.
   distDir: process.env.NODE_ENV === "development" ? ".next-dev" : ".next",

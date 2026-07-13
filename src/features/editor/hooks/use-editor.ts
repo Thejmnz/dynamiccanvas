@@ -1072,7 +1072,7 @@ export const useEditor = ({
     saveCallback
   });
 
-  const { copy, paste } = useClipboard({ canvas });
+  const { copy, cut, duplicate, paste } = useClipboard({ canvas });
 
   const { autoZoom } = useAutoResize({
     canvas,
@@ -1090,6 +1090,8 @@ export const useEditor = ({
     undo,
     redo,
     copy,
+    cut,
+    duplicate,
     paste,
     save: persist,
     canvas,

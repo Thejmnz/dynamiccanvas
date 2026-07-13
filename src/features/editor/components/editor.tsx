@@ -37,6 +37,9 @@ import { SelectionActions } from "@/features/editor/components/selection-actions
 import { ZoomControl } from "@/features/editor/components/zoom-control";
 import { useFontLoader } from "@/features/editor/hooks/use-font-loader";
 import { ImageCropOverlay } from "@/features/editor/components/image-crop-overlay";
+import { applyFabricRuntimeFixes } from "@/features/editor/fabric-runtime-fixes";
+
+applyFabricRuntimeFixes();
 
 interface EditorProps {
   initialData: ResponseType["data"];

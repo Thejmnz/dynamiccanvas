@@ -1,6 +1,12 @@
 import { uuid } from "uuidv4";
 import { fabric } from "fabric";
-import type { RGBColor } from "react-color";
+
+type RGBColor = {
+  r: number;
+  g: number;
+  b: number;
+  a?: number;
+};
 
 export const DEFAULT_WORKSPACE_WIDTH = 900;
 export const DEFAULT_WORKSPACE_HEIGHT = 1200;

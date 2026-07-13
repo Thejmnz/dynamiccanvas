@@ -1,3 +1,5 @@
+import "server-only";
+
 import { createApi } from "unsplash-js";
 
 export const unsplash = createApi({

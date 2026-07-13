@@ -11,6 +11,18 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const PAID_PLANS = new Set(["creator", "agency", "business", "unlimited"]);
 const FONT_EXTENSIONS = new Set(["ttf", "otf", "woff", "woff2"]);
 
+function hasValidFontSignature(bytes: Uint8Array) {
+  if (bytes.length < 4) return false;
+  const signature = String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3]);
+  return (
+    (bytes[0] === 0x00 && bytes[1] === 0x01 && bytes[2] === 0x00 && bytes[3] === 0x00) ||
+    signature === "OTTO" ||
+    signature === "wOFF" ||
+    signature === "wOF2" ||
+    signature === "ttcf"
+  );
+}
+
 async function getUserId(req: NextRequest) {
   const session = await auth();
   if (session?.user?.id) return session.user.id;
@@ -98,6 +110,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unsupported font format" }, { status: 400 });
     }
 
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (!hasValidFontSignature(bytes)) {
+      return NextResponse.json(
+        { error: "The selected file is not a valid font" },
+        { status: 400 },
+      );
+    }
+
     const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
     const storagePath = `fonts/${userId}-${Date.now()}-${safeFileName}`;
     const storage = createClient(
@@ -105,7 +125,6 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey,
       { auth: { persistSession: false } },
     );
-    const bytes = new Uint8Array(await file.arrayBuffer());
     const { error } = await storage.storage.from("media").upload(storagePath, bytes, {
       contentType: file.type || "application/octet-stream",
       cacheControl: "31536000",

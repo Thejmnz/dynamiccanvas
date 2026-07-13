@@ -114,6 +114,7 @@ export const Navbar = ({
   const [descriptionOpen, setDescriptionOpen] = useState(false);
   const [description, setDescription] = useState("");
   const [tagsOpen, setTagsOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
 
@@ -290,7 +291,7 @@ export const Navbar = ({
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="h-10 gap-3"
-              onClick={() => toast.info(t("menu_shortcuts_info"))}
+              onClick={() => setShortcutsOpen(true)}
             >
               <Keyboard className="size-5" />
               {t("menu_shortcuts")}
@@ -477,6 +478,44 @@ export const Navbar = ({
               {t("menu_save")}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={shortcutsOpen} onOpenChange={setShortcutsOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{language === "es" ? "Atajos del editor" : "Editor shortcuts"}</DialogTitle>
+            <DialogDescription>
+              {language === "es"
+                ? "Usa Ctrl en Windows o Linux y ⌘ en macOS."
+                : "Use Ctrl on Windows or Linux and ⌘ on macOS."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-x-5 gap-y-2 text-sm">
+            {[
+              [language === "es" ? "Deshacer" : "Undo", "Ctrl / ⌘ + Z"],
+              [language === "es" ? "Rehacer" : "Redo", "Ctrl / ⌘ + Shift + Z"],
+              [language === "es" ? "Copiar" : "Copy", "Ctrl / ⌘ + C"],
+              [language === "es" ? "Cortar" : "Cut", "Ctrl / ⌘ + X"],
+              [language === "es" ? "Pegar" : "Paste", "Ctrl / ⌘ + V"],
+              [language === "es" ? "Duplicar" : "Duplicate", "Ctrl / ⌘ + D"],
+              [language === "es" ? "Seleccionar todo" : "Select all", "Ctrl / ⌘ + A"],
+              [language === "es" ? "Guardar" : "Save", "Ctrl / ⌘ + S"],
+              [language === "es" ? "Eliminar" : "Delete", "Delete / Backspace"],
+              [language === "es" ? "Deseleccionar" : "Deselect", "Esc"],
+              [language === "es" ? "Mover 1 px" : "Move 1 px", "← ↑ ↓ →"],
+              [language === "es" ? "Mover 10 px" : "Move 10 px", "Shift + ← ↑ ↓ →"],
+              [language === "es" ? "Enviar atrás" : "Send backward", "Ctrl / ⌘ + ["],
+              [language === "es" ? "Traer adelante" : "Bring forward", "Ctrl / ⌘ + ]"],
+            ].map(([label, shortcut]) => (
+              <div key={label} className="contents">
+                <span className="py-2 text-slate-600">{label}</span>
+                <kbd className="justify-self-end rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 font-mono text-[11px] font-semibold text-slate-700 shadow-sm">
+                  {shortcut}
+                </kbd>
+              </div>
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
 
