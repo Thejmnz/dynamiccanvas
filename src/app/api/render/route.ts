@@ -28,6 +28,65 @@ interface CanvasElement {
   [key: string]: any;
 }
 
+function traceImageMaskPath(
+  ctx: any,
+  width: number,
+  height: number,
+  shape: string,
+  radius: number,
+) {
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const polygon = (sides: number, innerRatio?: number) => {
+    const count = innerRatio ? sides * 2 : sides;
+    for (let index = 0; index < count; index += 1) {
+      const outer = !innerRatio || index % 2 === 0;
+      const angle = -Math.PI / 2 + (index * Math.PI * 2) / count;
+      const ratio = outer ? 1 : innerRatio!;
+      const x = centerX + Math.cos(angle) * centerX * ratio;
+      const y = centerY + Math.sin(angle) * centerY * ratio;
+      index === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+  };
+
+  ctx.beginPath();
+  if (shape === "circle") {
+    ctx.ellipse(centerX, centerY, centerX, centerY, 0, 0, Math.PI * 2);
+  } else if (shape === "star") {
+    polygon(5, 0.45);
+  } else if (shape === "triangle") {
+    polygon(3);
+  } else if (shape === "diamond") {
+    polygon(4);
+  } else if (shape === "pentagon") {
+    polygon(5);
+  } else if (shape === "hexagon") {
+    polygon(6);
+  } else if (shape === "octagon") {
+    polygon(8);
+  } else if (shape === "quarter-circle") {
+    ctx.moveTo(0, 0);
+    ctx.lineTo(width, 0);
+    ctx.ellipse(0, 0, width, height, 0, 0, Math.PI / 2);
+    ctx.closePath();
+  } else if (radius > 0 || shape === "rounded-rectangle") {
+    const r = Math.min(width / 2, height / 2, Math.max(radius, shape === "rounded-rectangle" ? Math.min(width, height) * 0.12 : 0));
+    ctx.moveTo(r, 0);
+    ctx.lineTo(width - r, 0);
+    ctx.quadraticCurveTo(width, 0, width, r);
+    ctx.lineTo(width, height - r);
+    ctx.quadraticCurveTo(width, height, width - r, height);
+    ctx.lineTo(r, height);
+    ctx.quadraticCurveTo(0, height, 0, height - r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.closePath();
+  } else {
+    ctx.rect(0, 0, width, height);
+  }
+}
+
 // All fonts are loaded from public/fonts folder or Supabase storage
 // Font names match the filenames in public/fonts (without extension)
 const DEFAULT_FONTS = [
@@ -761,6 +820,11 @@ export async function POST(req: NextRequest) {
           textConfig.padding = 0;
 
           if (el.lineHeight) textConfig.lineHeight = el.lineHeight;
+          if (Number.isFinite(Number(el.charSpacing))) {
+            textConfig.letterSpacing = (Number(el.charSpacing) / 1000) * textConfig.fontSize;
+          } else if (Number.isFinite(Number(el.letterSpacing))) {
+            textConfig.letterSpacing = Number(el.letterSpacing);
+          }
           if (el.fontStyle) textConfig.fontStyle = el.fontStyle;
           if (el.textDecoration) textConfig.textDecoration = el.textDecoration;
 
@@ -808,7 +872,10 @@ export async function POST(req: NextRequest) {
               log(`  - Scale: ${scaleX}x${scaleY}`);
               log(`  - Final render: ${finalWidth}x${finalHeight}`);
 
-              let imageWidth, imageHeight, posX, posY, cropX, cropY, cropWidth, cropHeight;
+              let imageWidth: number;
+              let imageHeight: number;
+              let innerX = 0;
+              let innerY = 0;
 
               if (el._isDynamicImage === true) {
                 // For dynamically updated images, use object-fit: cover
@@ -826,57 +893,115 @@ export async function POST(req: NextRequest) {
                 imageHeight = imageObj.height * coverScale;
 
                 // Position to center the image (will be cropped by Konva)
-                posX = (imageWidth - containerWidth) / 2;
-                posY = (imageHeight - containerHeight) / 2;
+                innerX = -(imageWidth - containerWidth) / 2;
+                innerY = -(imageHeight - containerHeight) / 2;
 
                 log(`  - Dynamic image mode: cover ${containerWidth}x${containerHeight}, scaled to ${imageWidth}x${imageHeight}`);
               } else {
                 // For template images, use the exact dimensions from the editor
                 imageWidth = finalWidth;
                 imageHeight = finalHeight;
-                posX = el.x || 0;
-                posY = el.y || 0;
               }
 
-              if (el._isDynamicImage === true) {
-                // Create a group with clip for cover effect
-                const group = new Konva.default.Group({
-                  x: el.x || 0,
-                  y: el.y || 0,
+              const maskShape = String(el.imageMaskShape || "none");
+              const cornerValue = Math.max(0, Number(el.imageCornerRadius || 0));
+              const cornerRadius = el.imageCornerMode === "%"
+                ? Math.min(finalWidth, finalHeight) * Math.min(50, cornerValue) / 100
+                : cornerValue;
+              const borderWidth = Math.max(0, Number(el.imageBorderWidth ?? el.strokeWidth ?? 0));
+              const borderColor = el.imageBorderColor || el.stroke || "#000000";
+              const shadowBlur = Math.max(0, Number(el.imageShadowBlur || 0));
+              const shadowOpacity = Math.max(0, Math.min(1, Number(el.imageShadowOpacity ?? 0.35)));
+
+              const group = new Konva.default.Group({
+                x: el.x || 0,
+                y: el.y || 0,
+                width: finalWidth,
+                height: finalHeight,
+                clipFunc: (ctx: any) => traceImageMaskPath(ctx, finalWidth, finalHeight, maskShape, cornerRadius),
+                opacity: el.opacity !== undefined ? el.opacity : 1,
+                rotation: el.rotation || 0,
+                scaleX: 1,
+                scaleY: 1,
+                globalCompositeOperation: el.imageBlendMode || el.globalCompositeOperation || "source-over",
+                shadowColor: el.imageShadowColor || "#000000",
+                shadowBlur,
+                shadowOpacity: shadowBlur > 0 ? shadowOpacity : 0,
+                shadowOffsetX: Number(el.imageShadowOffsetX || 0),
+                shadowOffsetY: Number(el.imageShadowOffsetY || 0),
+              });
+
+              const imageNode = new Konva.default.Image({
+                x: el.flipX ? innerX + imageWidth : innerX,
+                y: el.flipY ? innerY + imageHeight : innerY,
+                image: imageObj,
+                width: imageWidth,
+                height: imageHeight,
+                scaleX: el.flipX ? -1 : 1,
+                scaleY: el.flipY ? -1 : 1,
+                crop: el._isDynamicImage === true ? undefined : {
+                  x: Math.max(0, Number(el.cropX || 0)),
+                  y: Math.max(0, Number(el.cropY || 0)),
+                  width: Math.max(1, Number(el.width || imageObj.width)),
+                  height: Math.max(1, Number(el.height || imageObj.height)),
+                },
+              });
+
+              const imageFilters: any[] = [];
+              const preset = String(el.imagePreset || "none");
+              if (preset === "grayscale") imageFilters.push(Konva.default.Filters.Grayscale);
+              if (preset === "sepia") imageFilters.push(Konva.default.Filters.Sepia);
+              if (preset === "natural") {
+                imageFilters.push(Konva.default.Filters.Contrast);
+                imageNode.contrast(5);
+              }
+              if (preset === "cold" || preset === "warm") {
+                imageFilters.push(Konva.default.Filters.RGB);
+                imageNode.red(preset === "warm" ? 255 : 225);
+                imageNode.green(preset === "warm" ? 238 : 240);
+                imageNode.blue(preset === "warm" ? 220 : 255);
+              }
+              if (Number(el.imageBlur || 0) !== 0) {
+                imageFilters.push(Konva.default.Filters.Blur);
+                imageNode.blurRadius(Math.abs(Number(el.imageBlur || 0)) / 4);
+              }
+              const brightness = Number(el.imageBrightness || 0) + Number(el.imageWhites || 0) * 0.4;
+              if (brightness !== 0) {
+                imageFilters.push(Konva.default.Filters.Brighten);
+                imageNode.brightness(brightness / 100);
+              }
+              const contrast = Number(el.imageContrast || 0) + Number(el.imageBlacks || 0) * 0.4;
+              if (contrast !== 0) {
+                imageFilters.push(Konva.default.Filters.Contrast);
+                imageNode.contrast(contrast);
+              }
+              const saturation = Number(el.imageSaturation || 0) + Number(el.imageVibrance || 0) * 0.5;
+              const temperature = Number(el.imageTemperature || 0);
+              if (saturation !== 0 || temperature !== 0) {
+                imageFilters.push(Konva.default.Filters.HSL);
+                imageNode.saturation(saturation / 100);
+                imageNode.hue(temperature * 0.25);
+              }
+              if (imageFilters.length > 0) {
+                imageNode.cache();
+                imageNode.filters(Array.from(new Set(imageFilters)));
+              }
+
+              group.add(imageNode);
+              if (borderWidth > 0) {
+                group.add(new Konva.default.Shape({
                   width: finalWidth,
                   height: finalHeight,
-                  clipFunc: (ctx: any) => {
-                    ctx.rect(0, 0, finalWidth, finalHeight);
+                  stroke: borderColor,
+                  strokeWidth: borderWidth,
+                  listening: false,
+                  sceneFunc: (ctx: any, shape: any) => {
+                    traceImageMaskPath(ctx, finalWidth, finalHeight, maskShape, cornerRadius);
+                    ctx.fillStrokeShape(shape);
                   },
-                  opacity: el.opacity !== undefined ? el.opacity : 1,
-                  rotation: el.rotation || 0,
-                  scaleX: 1,
-                  scaleY: 1,
-                });
-
-                const imageNode = new Konva.default.Image({
-                  x: posX,
-                  y: posY,
-                  image: imageObj,
-                  width: imageWidth,
-                  height: imageHeight,
-                });
-
-                group.add(imageNode);
-                node = group;
-              } else {
-                node = new Konva.default.Image({
-                  x: posX,
-                  y: posY,
-                  image: imageObj,
-                  width: imageWidth,
-                  height: imageHeight,
-                  opacity: el.opacity !== undefined ? el.opacity : 1,
-                  rotation: el.rotation || 0,
-                  scaleX: 1,
-                  scaleY: 1,
-                });
+                }));
               }
+              node = group;
             } catch (imgError) {
               log(`Failed to load image: ${el.src} - ${imgError}`);
             }

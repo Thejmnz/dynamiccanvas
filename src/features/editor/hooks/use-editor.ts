@@ -15,6 +15,7 @@ import {
   STROKE_DASH_ARRAY,
   TEXT_OPTIONS,
   FONT_FAMILY,
+  FONT_LINE_HEIGHT,
   FONT_WEIGHT,
   FONT_SIZE,
   JSON_KEYS,
@@ -46,6 +47,15 @@ import {
   getShapeDefinition,
   ShapeKind,
 } from "@/features/editor/shape-library";
+import {
+  applyImageEffects,
+  EditableFabricImage,
+  getImageEffectSettings,
+  ImageCropState,
+  ImageEffectSettings,
+  ImageMaskShape,
+  resetImageEffects,
+} from "@/features/editor/image-effects";
 
 const buildEditor = ({
   save,
@@ -369,14 +379,194 @@ const buildEditor = ({
         }
       });
     },
+    getActiveImageEffects: () => {
+      const object = canvas.getActiveObject();
+      return getImageEffectSettings(object?.type === "image" ? object as fabric.Image : undefined);
+    },
+    updateActiveImageEffects: (values: Partial<ImageEffectSettings>) => {
+      const propertyMap: Record<keyof ImageEffectSettings, keyof EditableFabricImage> = {
+        preset: "imagePreset",
+        blur: "imageBlur",
+        brightness: "imageBrightness",
+        temperature: "imageTemperature",
+        contrast: "imageContrast",
+        saturation: "imageSaturation",
+        vibrance: "imageVibrance",
+        whites: "imageWhites",
+        blacks: "imageBlacks",
+        borderColor: "imageBorderColor",
+        borderWidth: "imageBorderWidth",
+        cornerRadius: "imageCornerRadius",
+        cornerMode: "imageCornerMode",
+        softEdges: "imageSoftEdges",
+        shadowColor: "imageShadowColor",
+        shadowBlur: "imageShadowBlur",
+        shadowOpacity: "imageShadowOpacity",
+        shadowOffsetX: "imageShadowOffsetX",
+        shadowOffsetY: "imageShadowOffsetY",
+        blendMode: "imageBlendMode",
+        maskShape: "imageMaskShape",
+      };
+
+      canvas.getActiveObjects().forEach((object) => {
+        if (object.type !== "image") return;
+        const image = object as EditableFabricImage;
+        Object.entries(values).forEach(([key, value]) => {
+          (image as any)[propertyMap[key as keyof ImageEffectSettings]] = value;
+        });
+        applyImageEffects(image);
+        image.setCoords();
+      });
+      canvas.requestRenderAll();
+      save();
+    },
+    resetActiveImageEffects: () => {
+      canvas.getActiveObjects().forEach((object) => {
+        if (object.type === "image") resetImageEffects(object as EditableFabricImage);
+      });
+      canvas.requestRenderAll();
+      save();
+    },
+    flipActiveImage: (axis: "horizontal" | "vertical") => {
+      canvas.getActiveObjects().forEach((object) => {
+        if (object.type !== "image") return;
+        if (axis === "horizontal") object.toggle("flipX");
+        if (axis === "vertical") object.toggle("flipY");
+        object.setCoords();
+      });
+      canvas.requestRenderAll();
+      save();
+    },
+    replaceActiveImage: (url: string) => {
+      const object = canvas.getActiveObject();
+      if (!object || object.type !== "image") return;
+      const image = object as EditableFabricImage;
+      const center = image.getCenterPoint();
+      const displayWidth = image.getScaledWidth();
+      const displayHeight = image.getScaledHeight();
+
+      fabric.Image.fromURL(url, (replacement) => {
+        image.setElement(replacement.getElement());
+        image.set({
+          cropX: 0,
+          cropY: 0,
+          width: replacement.width,
+          height: replacement.height,
+          scaleX: displayWidth / Math.max(1, replacement.width || 1),
+          scaleY: displayHeight / Math.max(1, replacement.height || 1),
+          dirty: true,
+        } as any);
+        image.setPositionByOrigin(center, "center", "center");
+        applyImageEffects(image);
+        image.setCoords();
+        canvas.requestRenderAll();
+        save();
+      }, { crossOrigin: "anonymous" });
+    },
+    applyActiveImageMask: (shape: ImageMaskShape) => {
+      canvas.getActiveObjects().forEach((object) => {
+        if (object.type !== "image") return;
+        const image = object as EditableFabricImage;
+        image.imageMaskShape = shape;
+        (image as any).imageMaskSvg = undefined;
+        applyImageEffects(image);
+        image.setCoords();
+      });
+      canvas.requestRenderAll();
+      save();
+    },
+    applyActiveImageSvgMask: (svg: string) => {
+      const object = canvas.getActiveObject();
+      if (!object || object.type !== "image") return;
+      const image = object as EditableFabricImage;
+
+      fabric.loadSVGFromString(svg, (objects, options) => {
+        const mask = fabric.util.groupSVGElements(objects, options);
+        mask.set({ originX: "center", originY: "center", left: 0, top: 0 });
+        mask.scaleToWidth(Math.max(1, image.width || 1));
+        mask.scaleToHeight(Math.max(1, image.height || 1));
+        image.clipPath = mask;
+        image.imageMaskShape = "none";
+        (image as any).imageMaskSvg = svg;
+        image.set({ dirty: true } as any);
+        image.setCoords();
+        canvas.requestRenderAll();
+        save();
+      });
+    },
+    getActiveImageCropState: () => {
+      const object = canvas.getActiveObject();
+      if (!object || object.type !== "image") return undefined;
+      const image = object as fabric.Image;
+      return {
+        cropX: Number(image.cropX || 0),
+        cropY: Number(image.cropY || 0),
+        width: Number(image.width || 1),
+        height: Number(image.height || 1),
+        scaleX: Number(image.scaleX || 1),
+        scaleY: Number(image.scaleY || 1),
+        left: Number(image.left || 0),
+        top: Number(image.top || 0),
+      };
+    },
+    setActiveImageCropState: (state: ImageCropState) => {
+      const object = canvas.getActiveObject();
+      if (!object || object.type !== "image") return;
+      object.set({ ...state, dirty: true } as any);
+      object.setCoords();
+      canvas.requestRenderAll();
+    },
+    adjustActiveImageCropZoom: (direction: "in" | "out") => {
+      const object = canvas.getActiveObject();
+      if (!object || object.type !== "image") return;
+      const image = object as fabric.Image;
+      const element = image.getElement() as HTMLImageElement;
+      const sourceWidth = Number(element.naturalWidth || element.width || image.width || 1);
+      const sourceHeight = Number(element.naturalHeight || element.height || image.height || 1);
+      const currentWidth = Number(image.width || sourceWidth);
+      const currentHeight = Number(image.height || sourceHeight);
+      const displayWidth = currentWidth * Number(image.scaleX || 1);
+      const displayHeight = currentHeight * Number(image.scaleY || 1);
+      const factor = direction === "in" ? 0.9 : 1.1;
+      const nextWidth = Math.max(sourceWidth * 0.1, Math.min(sourceWidth, currentWidth * factor));
+      const nextHeight = Math.max(sourceHeight * 0.1, Math.min(sourceHeight, currentHeight * factor));
+      const centerCropX = Number(image.cropX || 0) + currentWidth / 2;
+      const centerCropY = Number(image.cropY || 0) + currentHeight / 2;
+      const nextCropX = Math.max(0, Math.min(sourceWidth - nextWidth, centerCropX - nextWidth / 2));
+      const nextCropY = Math.max(0, Math.min(sourceHeight - nextHeight, centerCropY - nextHeight / 2));
+      const center = image.getCenterPoint();
+
+      image.set({
+        cropX: nextCropX,
+        cropY: nextCropY,
+        width: nextWidth,
+        height: nextHeight,
+        scaleX: displayWidth / nextWidth,
+        scaleY: displayHeight / nextHeight,
+        dirty: true,
+      } as any);
+      image.setPositionByOrigin(center, "center", "center");
+      applyImageEffects(image as EditableFabricImage);
+      image.setCoords();
+      canvas.requestRenderAll();
+    },
+    commitActiveImageCrop: () => save(),
     addImage: (value: string) => {
       fabric.Image.fromURL(
         value,
         (image) => {
           const workspace = getWorkspace();
+          const workspaceWidth = Number(workspace?.width || DEFAULT_WORKSPACE_WIDTH);
+          const workspaceHeight = Number(workspace?.height || DEFAULT_WORKSPACE_HEIGHT);
+          const imageWidth = Math.max(1, Number(image.width || 1));
+          const imageHeight = Math.max(1, Number(image.height || 1));
+          const fitScale = Math.min(
+            (workspaceWidth * 0.8) / imageWidth,
+            (workspaceHeight * 0.8) / imageHeight,
+            1,
+          );
 
-          image.scaleToWidth(workspace?.width || 0);
-          image.scaleToHeight(workspace?.height || 0);
+          image.scale(fitScale);
 
           addToCanvas(image);
         },
@@ -434,6 +624,56 @@ const buildEditor = ({
       const value = selectedObject.get("fontSize") || FONT_SIZE;
 
       return value;
+    },
+    changeLineHeight: (value: number) => {
+      const nextValue = Math.min(3, Math.max(0.5, value));
+
+      canvas.getActiveObjects().forEach((object) => {
+        if (!isTextType(object.type)) return;
+
+        object.set({ lineHeight: nextValue, dirty: true } as any);
+        if (object.type === "textbox") {
+          configureTextboxControls(object);
+        }
+        (object as fabric.Text).initDimensions();
+        object.setCoords();
+      });
+      canvas.requestRenderAll();
+      save();
+    },
+    getActiveLineHeight: () => {
+      const selectedObject = selectedObjects[0];
+
+      if (!selectedObject || !isTextType(selectedObject.type)) {
+        return FONT_LINE_HEIGHT;
+      }
+
+      return Number((selectedObject as fabric.Text).lineHeight) || FONT_LINE_HEIGHT;
+    },
+    changeCharSpacing: (value: number) => {
+      const nextValue = Math.min(800, Math.max(-200, value));
+
+      canvas.getActiveObjects().forEach((object) => {
+        if (!isTextType(object.type)) return;
+
+        object.set({ charSpacing: nextValue, dirty: true } as any);
+        if (object.type === "textbox") {
+          configureTextboxControls(object);
+        }
+        (object as fabric.Text).initDimensions();
+        object.setCoords();
+      });
+      canvas.requestRenderAll();
+      save();
+    },
+    getActiveCharSpacing: () => {
+      const selectedObject = selectedObjects[0];
+
+      if (!selectedObject || !isTextType(selectedObject.type)) {
+        return 0;
+      }
+
+      return Number((selectedObject as fabric.Text).charSpacing) || 0;
     },
     changeTextAlign: (value: string) => {
       canvas.getActiveObjects().forEach((object) => {

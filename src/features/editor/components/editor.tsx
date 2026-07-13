@@ -36,6 +36,7 @@ import { LayersPanel } from "@/features/editor/components/layers-panel";
 import { SelectionActions } from "@/features/editor/components/selection-actions";
 import { ZoomControl } from "@/features/editor/components/zoom-control";
 import { useFontLoader } from "@/features/editor/hooks/use-font-loader";
+import { ImageCropOverlay } from "@/features/editor/components/image-crop-overlay";
 
 interface EditorProps {
   initialData: ResponseType["data"];
@@ -106,9 +107,28 @@ export const Editor = ({ initialData }: EditorProps) => {
       preserveObjectStacking: true,
     });
 
+    // Fabric 5's `loadFromJSON` cannot be cancelled. In development React
+    // Strict Mode can dispose this first canvas while images/filters/clipPaths
+    // are still being enlivened. Fabric then finishes the async load and calls
+    // `renderAll()` with a null context, which crashes in setImageSmoothing.
+    // Keep stale async callbacks harmless after the canvas has been disposed.
+    let isDisposed = false;
+    const originalRenderAll = canvas.renderAll.bind(canvas);
+    const originalRequestRenderAll = canvas.requestRenderAll.bind(canvas);
+
+    canvas.renderAll = function () {
+      if (isDisposed || !(this as any).contextContainer) return this;
+      return originalRenderAll();
+    };
+
+    canvas.requestRenderAll = function () {
+      if (isDisposed || !(this as any).contextContainer) return this;
+      return originalRequestRenderAll();
+    };
+
     const origClearContext = canvas.clearContext.bind(canvas);
     (canvas as any).clearContext = function (ctx: any) {
-      if (!(this as any).contextContainer) return undefined;
+      if (isDisposed || !ctx || !(this as any).contextContainer) return undefined;
       return origClearContext(ctx);
     };
 
@@ -118,6 +138,8 @@ export const Editor = ({ initialData }: EditorProps) => {
     });
 
     return () => {
+      isDisposed = true;
+      (canvas as any).cancelRequestedRender?.();
       canvas.dispose();
     };
   }, [init]);
@@ -223,7 +245,6 @@ export const Editor = ({ initialData }: EditorProps) => {
             editor={editor}
             activeTool={activeTool}
             onChangeActiveTool={onChangeActiveTool}
-            key={JSON.stringify(editor?.canvas?.getActiveObject?.() ?? null)}
           />
           <div
             className="editor-canvas-background flex-1 w-full relative"
@@ -238,6 +259,11 @@ export const Editor = ({ initialData }: EditorProps) => {
             <FabricSnapGuides editor={editor} />
             <SelectionActions editor={editor} />
             <ZoomControl editor={editor} />
+            <ImageCropOverlay
+              editor={editor}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
           </div>
         </main>
         <LayersPanel editor={editor} />

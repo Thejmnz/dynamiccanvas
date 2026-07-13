@@ -2,12 +2,39 @@ import { fabric } from "fabric";
 import { ITextboxOptions } from "fabric/fabric-impl";
 import * as material from "material-colors";
 import type { ShapeKind } from "@/features/editor/shape-library";
+import type {
+  ImageCropState,
+  ImageEffectSettings,
+  ImageMaskShape,
+} from "@/features/editor/image-effects";
 
 export const JSON_KEYS = [
   "name",
   "konvaId",
   "fixedHeight",
   "textVerticalAlign",
+  "imagePreset",
+  "imageBlur",
+  "imageBrightness",
+  "imageTemperature",
+  "imageContrast",
+  "imageSaturation",
+  "imageVibrance",
+  "imageWhites",
+  "imageBlacks",
+  "imageBorderColor",
+  "imageBorderWidth",
+  "imageCornerRadius",
+  "imageCornerMode",
+  "imageSoftEdges",
+  "imageShadowColor",
+  "imageShadowBlur",
+  "imageShadowOpacity",
+  "imageShadowOffsetX",
+  "imageShadowOffsetY",
+  "imageBlendMode",
+  "imageMaskShape",
+  "imageMaskSvg",
   "gradientAngle",
   "selectable",
   "hasControls",
@@ -91,6 +118,7 @@ export const selectionDependentTools = [
   "fill",
   "font",
   "filter",
+  "crop",
   "opacity",
   "remove-bg",
   "stroke-color",
@@ -134,6 +162,7 @@ export type ActiveTool =
   | "settings"
   | "ai"
   | "remove-bg"
+  | "crop"
   | "templates"
   | "qrcode"
   | "barcode"
@@ -147,6 +176,7 @@ export const STROKE_DASH_ARRAY = [];
 export const FONT_FAMILY = "Arial";
 export const FONT_SIZE = 32;
 export const FONT_WEIGHT = 400;
+export const FONT_LINE_HEIGHT = 1.16;
 
 export const CIRCLE_OPTIONS = {
   radius: 225,
@@ -197,6 +227,7 @@ export const TEXT_OPTIONS = {
   fill: FILL_COLOR,
   fontSize: FONT_SIZE,
   fontFamily: FONT_FAMILY,
+  lineHeight: FONT_LINE_HEIGHT,
   splitByGrapheme: false,
 };
 
@@ -261,10 +292,25 @@ export interface Editor {
   onCopy: () => void;
   onPaste: () => void;
   changeImageFilter: (value: string) => void;
+  getActiveImageEffects: () => ImageEffectSettings;
+  updateActiveImageEffects: (values: Partial<ImageEffectSettings>) => void;
+  resetActiveImageEffects: () => void;
+  flipActiveImage: (axis: "horizontal" | "vertical") => void;
+  replaceActiveImage: (url: string) => void;
+  applyActiveImageMask: (shape: ImageMaskShape) => void;
+  applyActiveImageSvgMask: (svg: string) => void;
+  getActiveImageCropState: () => ImageCropState | undefined;
+  setActiveImageCropState: (state: ImageCropState) => void;
+  adjustActiveImageCropZoom: (direction: "in" | "out") => void;
+  commitActiveImageCrop: () => void;
   addImage: (value: string) => void;
   delete: () => void;
   changeFontSize: (value: number) => void;
   getActiveFontSize: () => number;
+  changeLineHeight: (value: number) => void;
+  getActiveLineHeight: () => number;
+  changeCharSpacing: (value: number) => void;
+  getActiveCharSpacing: () => number;
   changeTextAlign: (value: string) => void;
   getActiveTextAlign: () => string;
   changeTextVerticalAlign: (value: TextVerticalAlign) => void;
