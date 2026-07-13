@@ -5,6 +5,7 @@ import { Upload, FileJson, Trash2, Eye, Download, Plus } from "lucide-react";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { BrandLoading } from "@/components/brand-loading";
 
 interface Design {
   id: string;
@@ -150,11 +151,7 @@ export const DesignsSection = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <BrandLoading label="" className="min-h-64 border-0 bg-transparent" />;
   }
 
   return (

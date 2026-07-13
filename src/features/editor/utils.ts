@@ -148,6 +148,7 @@ type ResizableTextbox = fabric.Textbox & {
   fixedHeight?: number;
   textVerticalAlign?: "top" | "middle" | "bottom";
   __textboxConfigured?: boolean;
+  __isConfiguring?: boolean;
   __isResizing?: boolean;
 };
 
@@ -267,7 +268,7 @@ export function configureTextboxControls(object: fabric.Object) {
     // Keep the exact visual center when height changes from content (line
     // breaks or font loading), but NOT during an explicit resize operation
     // where Fabric's fixed-anchor control owns the position.
-    if (!textbox.__isResizing) {
+    if (!textbox.__isResizing && !textbox.__isConfiguring) {
       const heightDiff = textbox.height - oldHeight;
       if (Math.abs(heightDiff) > 0.5) {
         textbox.setPositionByOrigin(centerBeforeReflow, "center", "center");
@@ -359,7 +360,16 @@ export function configureTextboxControls(object: fabric.Object) {
     }),
   };
 
-  textbox.initDimensions();
+  // Fabric rebuilds a serialized Textbox using its content height before our
+  // custom fixedHeight is restored. During this first pass, `top`/`left` are
+  // already the exact saved coordinates, so recentering around that temporary
+  // one-line height would move the whole box upward after every reload.
+  textbox.__isConfiguring = true;
+  try {
+    textbox.initDimensions();
+  } finally {
+    textbox.__isConfiguring = false;
+  }
   textbox.setCoords();
 }
 

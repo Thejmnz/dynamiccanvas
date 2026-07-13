@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Users, Crown, Sparkles, Loader2, UserPlus, Mail } from "lucide-react";
+import { Users, Crown, Sparkles, UserPlus, Mail, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabaseClient";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
+import { BrandLoading } from "@/components/brand-loading";
+import { Input } from "@/components/ui/input";
 
 const PLAN_MEMBER_LIMITS: Record<string, number> = {
   free: 1,
@@ -21,6 +23,9 @@ export default function TeamPage() {
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [teamName, setTeamName] = useState("");
+  const [savedTeamName, setSavedTeamName] = useState("");
+  const [savingTeamName, setSavingTeamName] = useState(false);
   const [plan, setPlan] = useState("free");
   const [joinedDate, setJoinedDate] = useState("");
 
@@ -35,8 +40,13 @@ export default function TeamPage() {
         fetch("/api/user-credits").then((r) => r.ok ? r.json() : null),
       ]);
       if (user) {
-        setName(user.user_metadata?.name || user.email?.split("@")[0] || "User");
+        const displayName = user.user_metadata?.name || user.email?.split("@")[0] || "User";
+        const initialTeamName = user.user_metadata?.team_name
+          || (language === "es" ? `Equipo de ${displayName}` : `${displayName}'s Team`);
+        setName(displayName);
         setEmail(user.email || "");
+        setTeamName(initialTeamName);
+        setSavedTeamName(initialTeamName);
         const created = user.created_at || user.user_metadata?.created_at;
         if (created) {
           setJoinedDate(new Date(created).toLocaleDateString(language === "es" ? "es-CO" : "en-US", { year: "numeric", month: "short", day: "numeric" }));
@@ -44,6 +54,26 @@ export default function TeamPage() {
       }
       if (creditsRes) setPlan(creditsRes.plan || "free");
     } catch { } finally { setLoading(false); }
+  };
+
+  const saveTeamName = async () => {
+    const nextTeamName = teamName.trim();
+    if (!nextTeamName || nextTeamName === savedTeamName) return;
+
+    setSavingTeamName(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: { team_name: nextTeamName },
+      });
+      if (error) throw error;
+      setTeamName(nextTeamName);
+      setSavedTeamName(nextTeamName);
+      toast.success(language === "es" ? "Nombre del equipo actualizado" : "Team name updated");
+    } catch (saveError: any) {
+      toast.error(saveError.message || (language === "es" ? "No se pudo actualizar el equipo" : "Could not update the team"));
+    } finally {
+      setSavingTeamName(false);
+    }
   };
 
   const c = language === "es" ? {
@@ -73,12 +103,11 @@ export default function TeamPage() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="size-7 animate-spin text-[#5b35d5]" /></div>;
+    return <BrandLoading label="" className="min-h-[70vh] border-0 bg-transparent" />;
   }
 
   const memberLimit = PLAN_MEMBER_LIMITS[plan] ?? 1;
   const isFree = plan === "free";
-  const teamName = `${name}'s Team`;
 
   return (
     <div className="mx-auto max-w-3xl pb-10 pt-6 space-y-5">
@@ -105,8 +134,24 @@ export default function TeamPage() {
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-bold uppercase text-[#101426]/40 block mb-1">{c.teamName}</label>
-            <div className="border-2 border-[#101426]/10 rounded-xl px-3 py-2.5 text-sm font-bold bg-[#101426]/3">
-              {teamName}
+            <div className="flex items-center gap-2">
+              <Input
+                value={teamName}
+                onChange={(event) => setTeamName(event.target.value)}
+                onKeyDown={(event) => { if (event.key === "Enter") void saveTeamName(); }}
+                maxLength={60}
+                aria-label={c.teamName}
+                className="h-11 border-2 border-[#101426]/10 bg-[#101426]/3 text-sm font-bold focus-visible:border-[#5b35d5] focus-visible:ring-0"
+              />
+              <button
+                type="button"
+                onClick={() => void saveTeamName()}
+                disabled={savingTeamName || !teamName.trim() || teamName.trim() === savedTeamName}
+                className="flex size-11 shrink-0 items-center justify-center rounded-xl border-2 border-[#101426] bg-[#c9ff5a] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-35"
+                aria-label={language === "es" ? "Guardar nombre del equipo" : "Save team name"}
+              >
+                {savingTeamName ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+              </button>
             </div>
           </div>
           <div>

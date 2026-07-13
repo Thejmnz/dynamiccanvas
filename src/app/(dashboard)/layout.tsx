@@ -1,9 +1,12 @@
 "use client";
 
-import { useUserRole } from "@/hooks/use-user-role";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Loader } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { BrandLoading } from "@/components/brand-loading";
+import { useAuth } from "@/lib/contexts/AuthContext";
+import { useGetProjects } from "@/features/projects/api/use-get-projects";
+import { useUserCredits } from "@/hooks/use-user-credits";
 
 import { Navbar } from "./navbar";
 import { Sidebar } from "./sidebar";
@@ -13,8 +16,18 @@ interface DashboardLayoutProps {
 };
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const { isAuthenticated, loading } = useUserRole();
+  const { user, loading: supabaseLoading } = useAuth();
+  const { data: session, status: sessionStatus } = useSession();
+  const loading = supabaseLoading || sessionStatus === "loading";
+  const isAuthenticated = Boolean(user || session?.user);
   const router = useRouter();
+  const pathname = usePathname();
+  const isDashboardHome = pathname === "/dashboard";
+  const projectsQuery = useGetProjects(isDashboardHome && isAuthenticated);
+  const creditsQuery = useUserCredits(isAuthenticated);
+  const dashboardDataLoading = isAuthenticated && (
+    creditsQuery.isPending || (isDashboardHome && projectsQuery.isPending)
+  );
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -22,19 +35,15 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     }
   }, [isAuthenticated, loading, router]);
 
-  if (loading) {
+  if (loading || dashboardDataLoading) {
     return (
-      <div className="brand-dots min-h-screen flex items-center justify-center">
-        <Loader className="animate-spin size-7 text-[#5b35d5]" />
-      </div>
+      <BrandLoading fullScreen label="" />
     )
   }
 
   if (!isAuthenticated) {
     return (
-      <div className="brand-dots min-h-screen flex items-center justify-center">
-        <Loader className="animate-spin size-7 text-[#5b35d5]" />
-      </div>
+      <BrandLoading fullScreen label="" />
     );
   }
 

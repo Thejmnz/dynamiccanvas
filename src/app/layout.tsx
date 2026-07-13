@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import Script from "next/script";
 
 import { AuthProvider } from "@/lib/contexts/AuthContext";
 import { LanguageProvider } from "@/lib/contexts/LanguageContext";
@@ -10,6 +9,8 @@ import { Modals } from "@/components/modals";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/components/providers";
 import { CookieConsent } from "@/components/cookie-consent";
+import { SupportChat } from "@/components/support-chat";
+import { PageTransitionLoader } from "@/components/page-transition-loader";
 
 import "./globals.css";
 
@@ -56,12 +57,11 @@ export default function RootLayout({
               {/* <SubscriptionAlert /> */}
               {children}
               <CookieConsent />
+              <SupportChat />
+              <PageTransitionLoader />
             </Providers>
           </LanguageProvider>
         </AuthProvider>
-        <Script id="crisp-chat" strategy="afterInteractive">
-          {`window.$crisp=window.$crisp||[];window.CRISP_WEBSITE_ID="${process.env.NEXT_PUBLIC_CRISP_WEBSITE_ID || "12862c83-106c-4ab0-bb6a-304caecb459d"}";(function(){var d=document;var s=d.createElement("script");s.src="https://client.crisp.chat/l.js";s.async=true;d.head.appendChild(s);})();`}
-        </Script>
       </body>
     </html>
   );

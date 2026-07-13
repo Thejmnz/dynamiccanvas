@@ -10,6 +10,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabaseClient";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
+import { BrandLoading } from "@/components/brand-loading";
 
 const PLAN_INFO: Record<string, { label: string; icon: any; color: string }> = {
   free: { label: "Free", icon: Zap, color: "text-white/60" },
@@ -123,7 +124,7 @@ export default function SettingsPage() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="size-7 animate-spin text-[#5b35d5]" /></div>;
+    return <BrandLoading label="" className="min-h-[70vh] border-0 bg-transparent" />;
   }
 
   const planInfo = credits ? PLAN_INFO[credits.plan] || PLAN_INFO.free : PLAN_INFO.free;

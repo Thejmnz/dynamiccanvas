@@ -93,6 +93,8 @@ const buildEditor = ({
 
     exportCanvas.loadFromJSON(serialized, () => {
       try {
+        exportCanvas.getObjects().forEach(configureTextboxControls);
+
         const exportWorkspace = exportCanvas
           .getObjects()
           .find((object) => object.name === "clip");

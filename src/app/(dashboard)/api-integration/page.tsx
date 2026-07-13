@@ -13,6 +13,7 @@ import React, { useState, useEffect, useMemo, Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
+import { BrandLoading } from "@/components/brand-loading";
 
 // --- Types Definition ---
 export interface AnyCanvasElement {
@@ -1138,6 +1139,15 @@ function ApiIntegrationContent() {
     const fullPhpCode = useMemo(() => getFullPhpSnippet(ABSOLUTE_API_ENDPOINT, exampleApiKey, selectedTemplate?.id, layersDataForSnippets), [exampleApiKey, selectedTemplate, layersDataForSnippets]);
     const fullJavaCode = useMemo(() => getFullJavaSnippet(ABSOLUTE_API_ENDPOINT, exampleApiKey, selectedTemplate?.id, layersDataForSnippets), [exampleApiKey, selectedTemplate, layersDataForSnippets]);
 
+    const isPlaygroundLoading = isLoadingApiKey
+        || isLoadingTemplateData
+        || isLoadingTemplates
+        || !selectedTemplate;
+
+    if (isPlaygroundLoading) {
+        return <BrandLoading label="" className="min-h-[70vh] border-0 bg-transparent" />;
+    }
+
     const handleTestApi = async () => {
         if (!selectedTemplate?.id) {
             toast.error("Please select a template first");
@@ -1233,12 +1243,6 @@ function ApiIntegrationContent() {
                     </Button>
                 )}
             </div>
-
-            {isLoadingTemplates && (
-                <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-            )}
 
             {/* Focused playground workspace */}
             <Dialog open={isModalOpen} onOpenChange={handleModalOpenChange}>
@@ -1642,7 +1646,7 @@ export default function ApiIntegrationPage() {
     }, [pathname, router]);
 
     return (
-        <Suspense fallback={<div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>}>
+        <Suspense fallback={<BrandLoading label="" className="min-h-[70vh] border-0 bg-transparent" />}>
             <ApiIntegrationContent />
         </Suspense>
     );

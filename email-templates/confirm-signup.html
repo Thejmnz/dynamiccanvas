@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
+    <title>Confirma tu correo — Dynamic Canvas</title>
+    <style>
+      @media only screen and (max-width: 620px) {
+        .email-shell { width: 100% !important; }
+        .email-card { padding: 30px 22px !important; }
+        .headline { font-size: 32px !important; line-height: 36px !important; }
+        .feature-cell { display: block !important; width: 100% !important; padding: 0 0 10px !important; }
+      }
+    </style>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f6f5ef;color:#101426;font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+      Confirma tu correo y activa tus 50 créditos gratuitos en Dynamic Canvas.
+    </div>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;background-color:#f6f5ef;">
+      <tr>
+        <td align="center" style="padding:34px 14px 42px;">
+          <table role="presentation" class="email-shell" width="600" cellspacing="0" cellpadding="0" border="0" style="width:600px;max-width:600px;">
+            <tr>
+              <td style="padding:0 4px 22px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                  <tr>
+                    <td width="48" height="48" align="center" valign="middle" style="width:48px;height:48px;border:2px solid #101426;border-radius:13px;background:#5b35d5;color:#ffffff;font-size:17px;font-weight:900;letter-spacing:-1px;box-shadow:4px 4px 0 #c9ff5a;">
+                      DC
+                    </td>
+                    <td style="padding-left:14px;color:#101426;font-size:19px;font-weight:900;letter-spacing:-0.4px;">
+                      Dynamic Canvas
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="email-card" style="padding:44px 42px 38px;border:2px solid #101426;border-radius:28px;background:#ffffff;box-shadow:9px 9px 0 #101426;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                  <tr>
+                    <td>
+                      <span style="display:inline-block;padding:7px 12px;border:1px solid #5b35d5;border-radius:999px;background:#f0ebff;color:#5b35d5;font-size:11px;font-weight:900;letter-spacing:1.4px;text-transform:uppercase;">
+                        Un último paso
+                      </span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="headline" style="padding-top:22px;color:#101426;font-size:42px;font-weight:900;line-height:45px;letter-spacing:-1.8px;">
+                      Confirma tu correo.<br>
+                      <span style="color:#5b35d5;">Empieza a crear.</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding-top:20px;color:#55596a;font-size:16px;line-height:26px;">
+                      {{ if .Data.name }}Hola <strong style="color:#101426;">{{ .Data.name }}</strong>,{{ else }}¡Hola!{{ end }} Ya casi está todo listo. Confirma <strong style="color:#101426;">{{ .Email }}</strong> para activar tu cuenta de Dynamic Canvas.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding-top:28px;">
+                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                        <tr>
+                          <td class="feature-cell" width="50%" valign="top" style="width:50%;padding-right:6px;">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:2px solid #101426;border-radius:16px;background:#c9ff5a;">
+                              <tr>
+                                <td style="padding:16px 17px;">
+                                  <div style="color:#101426;font-size:22px;font-weight:900;line-height:24px;">50 créditos</div>
+                                  <div style="padding-top:5px;color:#404532;font-size:12px;line-height:17px;">Para tus primeros renders.</div>
+                                </td>
+                              </tr>
+                            </table>
+                          </td>
+                          <td class="feature-cell" width="50%" valign="top" style="width:50%;padding-left:6px;">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:2px solid #101426;border-radius:16px;background:#f0ebff;">
+                              <tr>
+                                <td style="padding:16px 17px;">
+                                  <div style="color:#101426;font-size:22px;font-weight:900;line-height:24px;">3 plantillas</div>
+                                  <div style="padding-top:5px;color:#55596a;font-size:12px;line-height:17px;">Incluidas en tu cuenta gratuita.</div>
+                                </td>
+                              </tr>
+                            </table>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td align="center" style="padding-top:30px;">
+                      <a href="{{ .ConfirmationURL }}" style="display:block;padding:17px 24px;border:2px solid #101426;border-radius:14px;background:#5b35d5;color:#ffffff;font-size:16px;font-weight:900;line-height:20px;text-align:center;text-decoration:none;box-shadow:5px 5px 0 #c9ff5a;">
+                        Confirmar mi correo &rarr;
+                      </a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding-top:26px;color:#777a87;font-size:12px;line-height:19px;">
+                      Si el botón no funciona, copia y pega este enlace en tu navegador:
+                      <div style="padding-top:7px;word-break:break-all;color:#5b35d5;">
+                        <a href="{{ .ConfirmationURL }}" style="color:#5b35d5;text-decoration:underline;">{{ .ConfirmationURL }}</a>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td align="center" style="padding:30px 18px 0;color:#777a87;font-size:11px;line-height:18px;">
+                Recibiste este correo porque se creó una cuenta con esta dirección.<br>
+                Si no fuiste tú, puedes ignorarlo de forma segura.
+                <div style="padding-top:12px;color:#101426;font-weight:800;">Dynamic Canvas &middot; Diseña una vez. Renderiza a escala.</div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

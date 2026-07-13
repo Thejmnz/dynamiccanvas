@@ -9,6 +9,7 @@ import {
 import { toast } from "sonner";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { useUserRole } from "@/hooks/use-user-role";
+import { BrandLoading } from "@/components/brand-loading";
 
 interface UserStats {
   id: string;
@@ -141,11 +142,7 @@ export default function AdminDashboard() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5b35d5]" />
-      </div>
-    );
+    return <BrandLoading label="" className="min-h-[70vh] border-0 bg-transparent" />;
   }
 
   return (

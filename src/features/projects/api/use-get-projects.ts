@@ -2,9 +2,9 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import { useUserRole } from "@/hooks/use-user-role";
 
-export const useGetProjects = () => {
+export const useGetProjects = (enabled = true) => {
   const { userId } = useUserRole();
-  const LIMIT = 5;
+  const LIMIT = 8;
 
   const query = useInfiniteQuery({
     initialPageParam: 0,
@@ -14,7 +14,8 @@ export const useGetProjects = () => {
       if (!userId) return { data: [], nextPage: null };
 
       const from = (pageParam as number) * LIMIT;
-      const to = from + LIMIT - 1;
+      // Request one extra row so we know whether another page truly exists.
+      const to = from + LIMIT;
 
       const { data, error } = await supabase
         .from('dynamic_canvas_templates')
@@ -28,7 +29,8 @@ export const useGetProjects = () => {
         throw new Error("Failed to fetch projects");
       }
 
-      const mappedData = (data || []).map((item) => ({
+      const pageData = (data || []).slice(0, LIMIT);
+      const mappedData = pageData.map((item) => ({
         ...item,
         updatedAt: item.updated_at || item.lastModified ? new Date(item.updated_at || item.lastModified) : new Date(),
         // Ensure standard fields
@@ -43,10 +45,10 @@ export const useGetProjects = () => {
 
       return {
         data: mappedData,
-        nextPage: data && data.length === LIMIT ? (pageParam as number) + 1 : null,
+        nextPage: data && data.length > LIMIT ? (pageParam as number) + 1 : null,
       };
     },
-    enabled: !!userId,
+    enabled: enabled && !!userId,
   });
 
   return query;

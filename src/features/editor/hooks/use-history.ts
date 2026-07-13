@@ -37,6 +37,8 @@ const generateCleanThumbnail = (
 
   preview.loadFromJSON(serialized, () => {
     try {
+      preview.getObjects().forEach(configureTextboxControls);
+
       const previewWorkspace = preview
         .getObjects()
         .find((object) => object.name === "clip");

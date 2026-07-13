@@ -1,32 +1,47 @@
 import { toast } from "sonner";
-import { InferRequestType, InferResponseType } from "hono";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { client } from "@/lib/hono";
-
-type ResponseType = InferResponseType<typeof client.api.projects[":id"]["duplicate"]["$post"], 200>;
-type RequestType = InferRequestType<typeof client.api.projects[":id"]["duplicate"]["$post"]>["param"];
+import { supabase } from "@/lib/supabaseClient";
 
 export const useDuplicateProject = () => {
   const queryClient = useQueryClient();
 
-  const mutation = useMutation<
-    ResponseType,
-    Error,
-    RequestType
-  >({
-    mutationFn: async (param) => {
-      const response = await client.api.projects[":id"].duplicate.$post({ 
-        param,
-      });
+  const mutation = useMutation({
+    mutationFn: async ({ id }: { id: string }) => {
+      const { data: source, error: sourceError } = await supabase
+        .from("dynamic_canvas_templates")
+        .select("*")
+        .eq("id", id)
+        .single();
 
-      if (!response.ok) {
-        throw new Error("Failed to duplicate project");
-      }
+      if (sourceError || !source) throw sourceError || new Error("Template not found");
 
-      return await response.json();
+      const now = new Date().toISOString();
+      const {
+        id: _id,
+        createdAt: _createdAt,
+        updatedAt: _updatedAt,
+        lastModified: _lastModified,
+        ...copy
+      } = source;
+
+      const { data, error } = await supabase
+        .from("dynamic_canvas_templates")
+        .insert({
+          ...copy,
+          name: `${source.name} (Copy)`,
+          createdAt: now,
+          updatedAt: now,
+          lastModified: now,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
+      toast.success("Template duplicated");
       queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
     onError: () => {

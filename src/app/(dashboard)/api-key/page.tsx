@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Copy, KeyRound, RefreshCw, Loader2, Eye, EyeOff } from "lucide-react";
+import { Copy, RefreshCw, Loader2, Eye, EyeOff } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
+import { BrandLoading } from "@/components/brand-loading";
+import { useAuth } from "@/lib/contexts/AuthContext";
 
 const generateExampleApiKey = () =>
   typeof crypto !== 'undefined' && crypto.randomUUID
@@ -15,7 +17,8 @@ const generateExampleApiKey = () =>
     : `key-${Math.random().toString(36).substring(2, 10)}`;
 
 export default function ApiKeyPage() {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
+  const { user } = useAuth();
   const [apiKey, setApiKey] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -24,44 +27,22 @@ export default function ApiKeyPage() {
   useEffect(() => {
     const loadApiKey = async () => {
       try {
-        const { data: userData } = await supabase.auth.getUser();
-        if (!userData?.user) {
+        if (!user) {
           setIsLoading(false);
           return;
         }
-        const userId = userData.user.id;
-
-        // Ensure user exists in our custom user table
-        const { data: existingUser, error: userCheckError } = await supabase
-          .from('user')
-          .select('id')
-          .eq('id', userId)
-          .single();
-
-        if (!existingUser && userCheckError?.code === 'PGRST116') {
-          const { error: createUserError } = await supabase
-            .from('user')
-            .insert({
-              id: userId,
-              email: userData.user.email || '',
-              name: userData.user.user_metadata?.name || userData.user.email?.split('@')[0] || 'User',
-              emailVerified: new Date().toISOString()
-            });
-
-          if (createUserError) {
-            console.error("Error creating user:", createUserError);
-          }
-        }
+        const userId = user.id;
 
         const { data: apiKeyData, error: apiKeyError } = await supabase
           .from('user_api_keys')
           .select('api_key')
           .eq('user_id', userId)
-          .single();
+          .maybeSingle();
 
-        if (apiKeyError && apiKeyError.code !== 'PGRST116') {
+        if (apiKeyError) {
           console.error("Error fetching API Key:", apiKeyError);
           toast.error(language === "es" ? "No se pudo cargar la API Key" : "Could not load API Key");
+          return;
         }
 
         if (apiKeyData?.api_key) {
@@ -79,15 +60,8 @@ export default function ApiKeyPage() {
             );
 
           if (insertError) {
-            const { error: updateError } = await supabase
-              .from('user_api_keys')
-              .update({ api_key: newKey, updatedAt: now })
-              .eq('user_id', userId);
-
-            if (updateError) {
-              console.error("Error updating API Key:", updateError);
-              toast.error(language === "es" ? "Error al guardar la API Key" : "Failed to save API Key");
-            }
+            console.error("Error saving API Key:", insertError);
+            toast.error(language === "es" ? "Error al guardar la API Key" : "Failed to save API Key");
           }
         }
       } catch (error) {
@@ -99,7 +73,7 @@ export default function ApiKeyPage() {
     };
 
     loadApiKey();
-  }, [language]);
+  }, [user?.id]);
 
   const copyApiKey = () => {
     if (!apiKey) return;
@@ -113,12 +87,11 @@ export default function ApiKeyPage() {
   const regenerateApiKey = async () => {
     setIsRegenerating(true);
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData?.user) {
+      if (!user) {
         toast.error(language === "es" ? "No autenticado" : "Not authenticated");
         return;
       }
-      const userId = userData.user.id;
+      const userId = user.id;
       const newKey = generateExampleApiKey();
       const now = new Date().toISOString();
 
@@ -146,21 +119,12 @@ export default function ApiKeyPage() {
     ? `${apiKey.substring(0, 8)}${'•'.repeat(24)}${apiKey.substring(apiKey.length - 4)}`
     : '';
 
+  if (isLoading) {
+    return <BrandLoading label="" className="min-h-[70vh] border-0 bg-transparent" />;
+  }
+
   return (
     <div className="container mx-auto max-w-3xl py-8">
-      <div className="mb-9 rounded-[28px] border-2 border-[#101426] bg-[#c9ff5a] p-7 shadow-[7px_7px_0_#101426]">
-        <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-[#5b35d5]">DEVELOPER ACCESS</p>
-        <h1 className="mb-2 flex items-center gap-3 text-4xl font-black tracking-[-0.04em]">
-          <KeyRound className="h-10 w-10 text-[#5b35d5]" />
-          {language === "es" ? "API Key" : "API Key"}
-        </h1>
-        <p className="text-lg text-muted-foreground">
-          {language === "es"
-            ? "Tu clave de API secreta para autenticar solicitudes."
-            : "Your secret API key for authenticating requests."}
-        </p>
-      </div>
-
       <Card className="rounded-[24px] border-2 border-[#101426] bg-white shadow-[7px_7px_0_#d9ccff]">
         <CardHeader>
           <CardTitle>{language === "es" ? "Tu API Key" : "Your API Key"}</CardTitle>
@@ -171,12 +135,7 @@ export default function ApiKeyPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <>
+          <>
               {/* API Key Display */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">
@@ -249,8 +208,7 @@ export default function ApiKeyPage() {
                   Authorization: Bearer YOUR_API_KEY
                 </code>
               </div>
-            </>
-          )}
+          </>
         </CardContent>
       </Card>
     </div>

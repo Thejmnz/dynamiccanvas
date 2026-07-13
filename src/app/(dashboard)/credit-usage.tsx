@@ -1,20 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, Infinity as InfinityIcon, Crown, Rocket, Star, Zap } from "lucide-react";
 
 import { useLanguage } from "@/lib/contexts/LanguageContext";
-
-interface CreditData {
-  plan: string;
-  creditsBalance: number;
-  creditsPerMonth: number;
-  totalCredits: number;
-  usedCredits: number;
-  templateCount: number;
-  templateLimit: number;
-}
+import { useUserCredits } from "@/hooks/use-user-credits";
 
 const PLAN_INFO: Record<string, { label: string; labelEs: string; icon: any; gradient: string; badge: string; accent: string }> = {
   free: { label: "Free", labelEs: "Free", icon: Zap, gradient: "from-white/5 to-white/5", badge: "bg-white/10 text-white/60", accent: "text-white/40" },
@@ -26,17 +16,8 @@ const PLAN_INFO: Record<string, { label: string; labelEs: string; icon: any; gra
 
 export const CreditUsage = () => {
   const { language } = useLanguage();
-  const [data, setData] = useState<CreditData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, isPending: loading } = useUserCredits();
   const router = useRouter();
-
-  useEffect(() => {
-    fetch("/api/user-credits")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((d) => { if (d) setData(d); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
 
   const c = language === "es" ? {
     title: "Uso de créditos", of: "de", used: "usado", left: "restantes",

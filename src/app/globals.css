@@ -13,6 +13,16 @@
   background-size: 26px 26px;
 }
 
+@keyframes dc-loader-bob {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-7px) rotate(2deg); }
+}
+
+@keyframes dc-loader-dot {
+  0%, 100% { transform: translateY(0); opacity: .25; }
+  50% { transform: translateY(-4px); opacity: 1; }
+}
+
 html,
 body {
   height: 100%;

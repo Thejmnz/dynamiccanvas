@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn as signInWithNextAuth } from "next-auth/react";
 import { supabase } from "@/lib/supabaseClient";
+import { BrandLoading } from "@/components/brand-loading";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -53,14 +54,11 @@ export default function AuthCallbackPage() {
   }, [router]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#f6f5ef]">
-      {status === "loading" ? (
-        <>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5b35d5]" />
-          <p className="text-sm font-bold text-[#101426]/50">Signing you in...</p>
-        </>
-      ) : (
-        <p className="text-sm font-bold text-[#101426]/50">Redirecting to sign in...</p>
+    <div className="min-h-screen bg-[#f6f5ef]">
+      {status === "loading" ? <BrandLoading fullScreen label="" /> : (
+        <div className="flex min-h-screen items-center justify-center">
+          <p className="text-sm font-bold text-[#101426]/50">Redirecting to sign in...</p>
+        </div>
       )}
     </div>
   );

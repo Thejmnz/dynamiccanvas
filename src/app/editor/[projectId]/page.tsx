@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Loader, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 
 import { useGetProject } from "@/features/projects/api/use-get-project";
 
 import { Editor } from "@/features/editor/components/editor";
+import { BrandLoading } from "@/components/brand-loading";
 import { Button } from "@/components/ui/button";
 
 interface EditorProjectIdPageProps {
@@ -24,11 +25,7 @@ const EditorProjectIdPage = ({
   } = useGetProject(params.projectId);
 
   if (isLoading || !data) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center">
-        <Loader className="size-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <BrandLoading fullScreen label="" />;
   }
 
   if (isError) {

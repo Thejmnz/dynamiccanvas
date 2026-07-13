@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, CheckCircle2, Clock3, ExternalLink, Images, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock3, ExternalLink, Images } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
+import { BrandLoading } from "@/components/brand-loading";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 
 type RenderRecord = {
@@ -21,6 +23,8 @@ type RenderRecord = {
 
 export default function RendersPage() {
   const { language } = useLanguage();
+  const searchParams = useSearchParams();
+  const templateId = searchParams.get("templateId");
   const [items, setItems] = useState<RenderRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -44,11 +48,20 @@ export default function RendersPage() {
     return () => { cancelled = true; };
   }, []);
 
+  const visibleItems = useMemo(
+    () => templateId ? items.filter((item) => item.templateId === templateId) : items,
+    [items, templateId],
+  );
+
   const stats = useMemo(() => ({
-    total: items.length,
-    successful: items.filter((item) => item.status === "success").length,
-    failed: items.filter((item) => item.status === "failed").length,
-  }), [items]);
+    total: visibleItems.length,
+    successful: visibleItems.filter((item) => item.status === "success").length,
+    failed: visibleItems.filter((item) => item.status === "failed").length,
+  }), [visibleItems]);
+
+  if (loading) {
+    return <BrandLoading label="" className="min-h-[70vh] border-0 bg-transparent" />;
+  }
 
   const locale = language === "es" ? "es-CO" : "en-US";
   const copy = language === "es"
@@ -106,17 +119,11 @@ export default function RendersPage() {
         })}
       </div>
 
-      {loading && (
-        <div className="flex min-h-64 items-center justify-center rounded-[24px] border-2 border-dashed border-[#101426]/20 bg-white/70">
-          <Loader2 className="size-7 animate-spin text-[#5b35d5]" />
-        </div>
-      )}
-
-      {!loading && error && (
+      {error && (
         <div className="rounded-[22px] border-2 border-[#101426] bg-[#ffb7aa] p-6 font-bold">{copy.error}</div>
       )}
 
-      {!loading && !error && items.length === 0 && (
+      {!error && visibleItems.length === 0 && (
         <div className="flex min-h-72 flex-col items-center justify-center rounded-[24px] border-2 border-dashed border-[#101426]/25 bg-white/70 p-8 text-center">
           <div className="flex size-14 items-center justify-center rounded-2xl bg-[#e9e5ff]"><Images className="size-6 text-[#5b35d5]" /></div>
           <h2 className="mt-5 text-xl font-black">{copy.emptyTitle}</h2>
@@ -124,9 +131,9 @@ export default function RendersPage() {
         </div>
       )}
 
-      {!loading && !error && items.length > 0 && (
+      {!error && visibleItems.length > 0 && (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {items.map((item) => (
+          {visibleItems.map((item) => (
             <article key={item.id} className="overflow-hidden rounded-[22px] border-2 border-[#101426] bg-white transition hover:-translate-y-1 hover:shadow-[6px_6px_0_#101426]">
               <div className="relative aspect-[4/3] overflow-hidden border-b-2 border-[#101426] bg-[#e9e5ff]">
                 {item.imageUrl ? (

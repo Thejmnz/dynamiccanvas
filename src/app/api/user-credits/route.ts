@@ -45,23 +45,28 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const [dbUser] = await db
-      .select({
-        plan: users.plan,
-        creditsBalance: users.creditsBalance,
-        creditsPerMonth: users.creditsPerMonth,
-      })
-      .from(users)
-      .where(eq(users.id, userId));
+    const [userRows, templateCountRows] = await Promise.all([
+      db
+        .select({
+          plan: users.plan,
+          creditsBalance: users.creditsBalance,
+          creditsPerMonth: users.creditsPerMonth,
+        })
+        .from(users)
+        .where(eq(users.id, userId)),
+      db
+        .select({ value: count() })
+        .from(templates)
+        .where(eq(templates.user_id, userId)),
+    ]);
+
+    const [dbUser] = userRows;
 
     if (!dbUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const [{ value: templateCount }] = await db
-      .select({ value: count() })
-      .from(templates)
-      .where(eq(templates.user_id, userId));
+    const templateCount = templateCountRows[0]?.value ?? 0;
 
     const plan = dbUser.plan || "free";
     const creditsPerMonth = dbUser.creditsPerMonth || 0;
@@ -70,7 +75,7 @@ export async function GET(req: NextRequest) {
     const usedCredits = Math.max(0, totalCredits - creditsBalance);
     const templateLimit = PLAN_TEMPLATE_LIMITS[plan] ?? PLAN_TEMPLATE_LIMITS.free;
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       plan,
       creditsBalance,
       creditsPerMonth,
@@ -79,6 +84,8 @@ export async function GET(req: NextRequest) {
       templateCount,
       templateLimit,
     });
+    response.headers.set("Cache-Control", "private, max-age=10, stale-while-revalidate=30");
+    return response;
   } catch {
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }

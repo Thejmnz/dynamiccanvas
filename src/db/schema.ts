@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
 import {
   boolean,
   timestamp,
@@ -160,6 +161,8 @@ export const templates = pgTable("dynamic_canvas_templates", {
   isPro: boolean("isPro").notNull().default(false),
   preset: text("preset").default(""),
   category: text("category"),
+  description: text("description").notNull().default(""),
+  tags: text("tags").array().notNull().default([]),
   folderId: text("folder_id").references(() => templateFolders.id, {
     onDelete: "set null",
   }),
@@ -179,7 +182,9 @@ export const templatesRelations = relations(templates, ({ one }) => ({
   }),
 }));
 
-export const templatesInsertSchema = createInsertSchema(templates);
+export const templatesInsertSchema = createInsertSchema(templates, {
+  tags: z.array(z.string()),
+});
 
 export const templateFoldersRelations = relations(templateFolders, ({ one, many }) => ({
   user: one(users, {
