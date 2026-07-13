@@ -38,12 +38,14 @@ export const SidebarRoutes = () => {
           icon={KeyRound}
           label={t("api_key")}
           isActive={pathname === "/api-key"}
+          onboardingId="api-key"
         />
         <SidebarItem
           href="/playground"
           icon={Code}
           label={t("api_integration")}
           isActive={pathname === "/playground"}
+          onboardingId="playground"
         />
         <SidebarItem
           href="/renders"
@@ -73,6 +75,7 @@ export const SidebarRoutes = () => {
         <button
           type="button"
           onClick={openSupportChat}
+          data-onboarding="support"
           className="flex w-full items-center rounded-xl border border-transparent px-3.5 py-3 text-left text-white/60 transition-all duration-200 hover:bg-white/10 hover:text-white"
         >
           <MessageCircle className="mr-2 size-4 stroke-2" />

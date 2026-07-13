@@ -7,11 +7,11 @@ import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { ActiveTool, Editor } from "@/features/editor/types";
 import { ToolSidebarClose } from "@/features/editor/components/tool-sidebar-close";
 import { ToolSidebarHeader } from "@/features/editor/components/tool-sidebar-header";
-import { useGetImages } from "@/features/images/api/use-get-images";
+import { USER_UPLOADS_QUERY_KEY, useGetImages } from "@/features/images/api/use-get-images";
+import { uploadUserImage } from "@/features/images/api/upload-user-image";
 import { resizeImageIfNeeded } from "@/lib/utils/resize-image";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { supabase } from "@/lib/supabaseClient";
 
 interface UploadsSidebarProps {
   editor: Editor | undefined;
@@ -38,24 +38,10 @@ export const UploadsSidebar = ({ editor, activeTool, onChangeActiveTool }: Uploa
 
     try {
       const resizedFile = await resizeImageIfNeeded(file);
-      const timestamp = Date.now();
-      const fileName = `uploads/${timestamp}-${resizedFile.name.replace(/\s+/g, '-')}`;
+      const uploadedImage = await uploadUserImage(resizedFile);
 
-      const { error } = await supabase.storage
-        .from('media')
-        .upload(fileName, resizedFile, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (error) throw error;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('media')
-        .getPublicUrl(fileName);
-
-      editor?.addImage(publicUrl);
-      queryClient.invalidateQueries({ queryKey: ["images"] });
+      editor?.addImage(uploadedImage.url);
+      queryClient.invalidateQueries({ queryKey: [USER_UPLOADS_QUERY_KEY] });
       toast.success(t("image_uploaded"));
     } catch (error) {
       console.error(error);
@@ -74,18 +60,16 @@ export const UploadsSidebar = ({ editor, activeTool, onChangeActiveTool }: Uploa
     setDeletingId(imageId);
 
     try {
-      // Delete from storage
-      const pathParts = imagePath.split('/storage/v1/object/public/media/');
-      const storagePath = pathParts[1] || imagePath;
-
-      if (storagePath) {
-        await supabase.storage
-          .from('media')
-          .remove([storagePath]);
-      }
+      const response = await fetch("/api/user-uploads", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: imagePath }),
+      });
+      const data = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(data.error || "Could not delete image");
 
       // Invalidate cache to refresh the list
-      queryClient.invalidateQueries({ queryKey: ["images"] });
+      queryClient.invalidateQueries({ queryKey: [USER_UPLOADS_QUERY_KEY] });
       toast.success(t("image_deleted") || "Imagen eliminada");
     } catch (error) {
       console.error(error);
@@ -197,7 +181,7 @@ export const UploadsSidebar = ({ editor, activeTool, onChangeActiveTool }: Uploa
                     </button>
                     {/* Delete button */}
                     <button
-                      onClick={() => handleDelete(image.id, image.urls.regular || "")}
+                      onClick={() => handleDelete(image.id, image.path)}
                       disabled={deletingId === image.id}
                       className={cn(
                         "absolute top-1 right-1 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition",

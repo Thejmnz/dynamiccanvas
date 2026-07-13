@@ -10,6 +10,7 @@ import { useUserCredits } from "@/hooks/use-user-credits";
 
 import { Navbar } from "./navbar";
 import { Sidebar } from "./sidebar";
+import { DashboardOnboarding } from "./dashboard-onboarding";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -28,6 +29,12 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const dashboardDataLoading = isAuthenticated && (
     creditsQuery.isPending || (isDashboardHome && projectsQuery.isPending)
   );
+  const onboardingUserId = user?.id || session?.user?.email || "session-user";
+  const onboardingUserName = user?.user_metadata?.full_name
+    || user?.user_metadata?.name
+    || session?.user?.name
+    || session?.user?.email?.split("@")[0]
+    || null;
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -56,6 +63,13 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           {children}
         </main>
       </div>
+      <DashboardOnboarding
+        enabled={isDashboardHome}
+        userId={onboardingUserId}
+        userName={onboardingUserName}
+        userCreatedAt={user?.created_at}
+        onboardingCompleted={user?.user_metadata?.onboarding_completed}
+      />
     </div>
   );
 };

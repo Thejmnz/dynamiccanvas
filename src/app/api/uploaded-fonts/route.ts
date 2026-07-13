@@ -41,9 +41,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Custom fonts require a paid plan" }, { status: 403 });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    const supabase = createClient(
+      supabaseUrl,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey,
+      {
       auth: { persistSession: false },
-    });
+      },
+    );
 
     const { data, error } = await supabase.storage
       .from("media")
@@ -54,7 +58,9 @@ export async function GET(req: NextRequest) {
     }
 
     const fonts = (data ?? [])
-      .filter((file) => file.name !== ".emptyFolderPlaceholder")
+      .filter((file) =>
+        file.name !== ".emptyFolderPlaceholder" && file.name.startsWith(`${userId}-`),
+      )
       .map((file) => {
         const withoutOwner = file.name.startsWith(`${userId}-`)
           ? file.name.slice(userId.length + 1)

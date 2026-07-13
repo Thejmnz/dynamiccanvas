@@ -58,7 +58,7 @@ export const CreditUsage = () => {
 
   if (isUnlimited) {
     return (
-      <div className={`mx-3 mb-3 rounded-2xl border-2 border-[#c9ff5a]/40 bg-gradient-to-br ${info.gradient} p-4`}>
+      <div data-onboarding="credits" className={`mx-3 mb-3 rounded-2xl border-2 border-[#c9ff5a]/40 bg-gradient-to-br ${info.gradient} p-4`}>
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wider text-white/40">{language === "es" ? "Plan" : "Plan"}</span>
           <span className={`flex items-center gap-1 text-[10px] font-black uppercase rounded-full px-2.5 py-0.5 ${info.badge}`}>
@@ -85,7 +85,7 @@ export const CreditUsage = () => {
   const barColor = percent >= 90 ? "bg-[#ff6b57]" : percent >= 70 ? "bg-[#ffd166]" : "bg-[#c9ff5a]";
 
   return (
-    <div className={`mx-3 mb-3 rounded-2xl border border-white/10 bg-gradient-to-br ${info.gradient} p-4`}>
+    <div data-onboarding="credits" className={`mx-3 mb-3 rounded-2xl border border-white/10 bg-gradient-to-br ${info.gradient} p-4`}>
       <div className="flex items-center justify-between">
         <span className="text-xs font-bold uppercase tracking-wider text-white/40">{c.title}</span>
         <span className={`flex items-center gap-1 text-[10px] font-black uppercase rounded-full px-2.5 py-0.5 ${info.badge}`}>

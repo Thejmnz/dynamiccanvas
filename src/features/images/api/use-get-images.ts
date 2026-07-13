@@ -1,9 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabaseClient";
+import { useSession } from "next-auth/react";
+
+export const USER_UPLOADS_QUERY_KEY = "user-uploads";
 
 export interface UserImage {
   id: string;
   name: string;
+  path: string;
   urls: {
     regular: string;
     small: string;
@@ -19,48 +22,39 @@ export interface UserImage {
 }
 
 export const useGetImages = () => {
+  const { data: session, status } = useSession();
+  const userId = session?.user?.id;
   const query = useQuery({
-    queryKey: ["images"],
+    queryKey: [USER_UPLOADS_QUERY_KEY, userId],
     queryFn: async (): Promise<UserImage[]> => {
-      const { data, error } = await supabase
-        .storage
-        .from('media')
-        .list('uploads', {
-          limit: 100,
-          offset: 0,
-          sortBy: { column: 'created_at', order: 'desc' },
-        });
+      const response = await fetch("/api/user-uploads", { cache: "no-store" });
+      const body = await response.json() as {
+        data?: Array<{ id: string; name: string; path: string; url: string }>;
+        error?: string;
+      };
+      if (!response.ok) throw new Error(body.error || "Failed to fetch images");
 
-      if (error) {
-        throw new Error("Failed to fetch images");
-      }
-
-      const images = (data ?? []).map((file): UserImage => {
-        const { data: { publicUrl } } = supabase
-          .storage
-          .from('media')
-          .getPublicUrl(`uploads/${file.name}`);
-
+      return (body.data ?? []).map((file): UserImage => {
         return {
-          id: file.id ?? file.name,
+          id: file.id,
           name: file.name,
+          path: file.path,
           urls: {
-            regular: publicUrl,
-            small: publicUrl,
-            thumb: publicUrl
+            regular: file.url,
+            small: file.url,
+            thumb: file.url,
           },
           links: {
-            html: publicUrl
+            html: file.url,
           },
           user: {
-            name: "Uploaded"
+            name: "Uploaded",
           },
-          alt_description: file.name
+          alt_description: file.name,
         };
       });
-
-      return images;
     },
+    enabled: status !== "loading" && Boolean(userId),
   });
 
   return query;

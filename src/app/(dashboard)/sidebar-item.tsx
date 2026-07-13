@@ -9,6 +9,7 @@ interface SidebarItemProps {
   href: string;
   isActive?: boolean;
   onClick?: () => void;
+  onboardingId?: string;
 };
 
 export const SidebarItem = ({
@@ -17,9 +18,10 @@ export const SidebarItem = ({
   href,
   isActive,
   onClick,
+  onboardingId,
 }: SidebarItemProps) => {
   return (
-    <Link href={href} onClick={onClick}>
+    <Link href={href} onClick={onClick} data-onboarding={onboardingId}>
       <div className={cn(
         "flex items-center px-3.5 py-3 rounded-xl border border-transparent transition-all duration-200",
         "text-white/60 hover:bg-white/10 hover:text-white",

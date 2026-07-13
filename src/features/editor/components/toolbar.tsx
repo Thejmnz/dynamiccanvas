@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { 
   FaBold, 
@@ -58,8 +59,9 @@ import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { Hint } from "@/components/hint";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabaseClient";
 import { resizeImageIfNeeded } from "@/lib/utils/resize-image";
+import { USER_UPLOADS_QUERY_KEY } from "@/features/images/api/use-get-images";
+import { uploadUserImage } from "@/features/images/api/upload-user-image";
 import {
   DEFAULT_IMAGE_EFFECTS,
   ImageEffectSettings,
@@ -119,6 +121,7 @@ export const Toolbar = ({
   activeTool,
   onChangeActiveTool,
 }: ToolbarProps) => {
+  const queryClient = useQueryClient();
   const { language } = useLanguage();
   const initialFillColor = editor?.getActiveFillColor();
   const initialStrokeColor = editor?.getActiveStrokeColor();
@@ -287,14 +290,9 @@ export const Toolbar = ({
 
     try {
       const resizedFile = await resizeImageIfNeeded(file);
-      const filename = `uploads/${Date.now()}-${resizedFile.name.replace(/\s+/g, "-")}`;
-      const { error } = await supabase.storage.from("media").upload(filename, resizedFile, {
-        cacheControl: "3600",
-        upsert: false,
-      });
-      if (error) throw error;
-      const { data } = supabase.storage.from("media").getPublicUrl(filename);
-      editor.replaceActiveImage(data.publicUrl);
+      const uploadedImage = await uploadUserImage(resizedFile);
+      editor.replaceActiveImage(uploadedImage.url);
+      queryClient.invalidateQueries({ queryKey: [USER_UPLOADS_QUERY_KEY] });
       toast.success(language === "es" ? "Imagen reemplazada" : "Image replaced");
     } catch (error) {
       console.error(error);

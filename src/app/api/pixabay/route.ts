@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
 
     const extension = getExtension(contentType);
     const safeUserId = session.user.id.replace(/[^a-zA-Z0-9_-]/g, "");
-    const storagePath = `uploads/${Date.now()}-pixabay-${safeUserId}-${imageId}.${extension}`;
+    const storagePath = `pixabay/${safeUserId}/${Date.now()}-${imageId}.${extension}`;
     const supabase = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false },
     });

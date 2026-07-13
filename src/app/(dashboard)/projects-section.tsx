@@ -551,7 +551,7 @@ export const ProjectsSection = () => {
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+      <div data-onboarding="templates" className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div>
           <h1 className="text-4xl font-black tracking-[-0.04em] text-[#101426] sm:text-5xl">{t("my_templates")}</h1>
         </div>

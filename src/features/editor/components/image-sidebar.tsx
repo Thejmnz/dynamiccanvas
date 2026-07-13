@@ -2,7 +2,6 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { AlertTriangle, Loader, Plus, RefreshCw, Search } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { useLanguage } from "@/lib/contexts/LanguageContext";
@@ -43,7 +42,6 @@ type PixabayResponse = {
 
 export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSidebarProps) => {
   const { t, language } = useLanguage();
-  const queryClient = useQueryClient();
   const [searchInput, setSearchInput] = useState("");
   const [appliedQuery, setAppliedQuery] = useState("");
   const [images, setImages] = useState<PixabayImage[]>([]);
@@ -120,7 +118,6 @@ export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSi
       if (!response.ok || !data.url) throw new Error(data.error || "Import failed");
 
       editor.addImage(data.url);
-      queryClient.invalidateQueries({ queryKey: ["images"] });
       toast.success(language === "es" ? "Imagen agregada al lienzo" : "Image added to canvas");
     } catch (importError) {
       console.error(importError);

@@ -17,34 +17,21 @@ async function generateAndUploadThumbnail(
     const blob = await response.blob();
     console.log("  - Blob size:", blob.size, "bytes");
 
-    // Nombre de archivo fijo basado en el ID del proyecto (sin timestamp)
-    // Así se reemplaza el thumbnail anterior en lugar de crear uno nuevo
-    const filename = `thumbnails/${projectId}/thumbnail.jpg`;
-
-    // Subir a Supabase Storage (bucket 'media') con upsert para reemplazar
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('media')
-      .upload(filename, blob, {
-        contentType: 'image/jpeg',
-        upsert: true,
-        cacheControl: 'no-cache', // Evitar caché para que se vea la actualización
-      });
-
-    if (uploadError) {
-      console.error("❌ Error uploading thumbnail:", uploadError);
+    const formData = new FormData();
+    formData.append("projectId", projectId);
+    formData.append("thumbnail", blob, "thumbnail.jpg");
+    const uploadResponse = await fetch("/api/template-thumbnail", {
+      method: "POST",
+      body: formData,
+    });
+    const uploadData = await uploadResponse.json() as { url?: string; error?: string };
+    if (!uploadResponse.ok || !uploadData.url) {
+      console.error("❌ Error uploading thumbnail:", uploadData.error);
       return null;
     }
 
-    console.log("✅ Thumbnail uploaded:", uploadData);
-
-    // Obtener URL pública con timestamp para evitar caché del navegador
-    const { data: urlData } = supabase.storage
-      .from('media')
-      .getPublicUrl(filename);
-
-    // Agregar timestamp a la URL para evitar caché del navegador
-    const finalUrl = `${urlData.publicUrl}?t=${Date.now()}`;
-    console.log("  - Final URL:", finalUrl);
+    const finalUrl = uploadData.url;
+    console.log("✅ Thumbnail uploaded:", finalUrl);
     return finalUrl;
   } catch (e) {
     console.error("❌ Error generating thumbnail:", e);

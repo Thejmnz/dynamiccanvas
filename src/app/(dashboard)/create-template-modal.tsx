@@ -195,6 +195,7 @@ export const CreateTemplateModal = () => {
     }}>
       <button
         onClick={handleCreateClick}
+        data-onboarding="create-template"
         className="flex w-full items-center justify-center rounded-xl border-2 border-[#c9ff5a] bg-[#c9ff5a] px-3 py-3 text-[#101426] transition hover:-translate-y-0.5 hover:bg-white"
       >
         <Plus className="size-4 mr-2 stroke-2" />

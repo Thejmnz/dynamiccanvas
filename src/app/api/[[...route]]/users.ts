@@ -41,6 +41,7 @@ const app = new Hono()
             emailRedirectTo: safeRedirect,
             data: {
               name,
+              onboarding_completed: false,
             }
           }
         });
