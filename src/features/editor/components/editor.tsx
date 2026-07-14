@@ -1,7 +1,7 @@
 "use client";
 
 import { fabric } from "fabric";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ResponseType } from "@/features/projects/api/use-get-project";
 import { useUpdateProject } from "@/features/projects/api/use-update-project";
@@ -45,6 +45,26 @@ interface EditorProps {
   initialData: ResponseType["data"];
 };
 
+const getProjectFontFamilies = (json: string) => {
+  const families = new Set<string>();
+
+  try {
+    const visit = (value: unknown) => {
+      if (!value || typeof value !== "object") return;
+
+      if ("fontFamily" in value && typeof value.fontFamily === "string") {
+        families.add(value.fontFamily);
+      }
+
+      Object.values(value).forEach(visit);
+    };
+
+    visit(JSON.parse(json));
+  } catch {}
+
+  return Array.from(families);
+};
+
 export const Editor = ({ initialData }: EditorProps) => {
   const { mutate } = useUpdateProject(initialData.id);
 
@@ -75,15 +95,24 @@ export const Editor = ({ initialData }: EditorProps) => {
     saveCallback: saveProject,
   });
 
-  useFontLoader(() => {
-    editor?.canvas.getObjects().forEach((object) => {
+  const projectFontFamilies = useMemo(
+    () => getProjectFontFamilies(initialData.json),
+    [initialData.json],
+  );
+  const fontsLoaded = useFontLoader(projectFontFamilies);
+  const editorCanvas = editor?.canvas;
+
+  useEffect(() => {
+    if (!fontsLoaded || !editorCanvas) return;
+
+    editorCanvas.getObjects().forEach((object) => {
       if (["text", "i-text", "textbox"].includes(object.type || "")) {
         (object as fabric.Textbox).initDimensions();
         object.setCoords();
       }
     });
-    editor?.canvas.requestRenderAll();
-  });
+    editorCanvas.requestRenderAll();
+  }, [editorCanvas, fontsLoaded]);
 
   const onChangeActiveTool = useCallback((tool: ActiveTool) => {
     if (tool === "draw") {
@@ -105,6 +134,8 @@ export const Editor = ({ initialData }: EditorProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!fontsLoaded) return;
+
     const canvas = new fabric.Canvas(canvasRef.current, {
       controlsAboveOverlay: true,
       preserveObjectStacking: true,
@@ -145,7 +176,7 @@ export const Editor = ({ initialData }: EditorProps) => {
       (canvas as any).cancelRequestedRender?.();
       canvas.dispose();
     };
-  }, [init]);
+  }, [fontsLoaded, init]);
 
   return (
     <div className="h-full flex flex-col">

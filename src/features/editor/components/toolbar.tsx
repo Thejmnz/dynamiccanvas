@@ -1074,8 +1074,9 @@ export const Toolbar = ({
         </div>
       )}
       <div className="flex items-center h-full justify-center">
-        <Hint label="Bring forward" side="bottom" sideOffset={5}>
+        <Hint label={language === "es" ? "Traer hacia delante" : "Bring forward"} side="bottom" sideOffset={5}>
           <Button
+            aria-label={language === "es" ? "Traer hacia delante" : "Bring forward"}
             onClick={() => editor?.bringForward()}
             size="icon"
             variant="ghost"
@@ -1085,8 +1086,9 @@ export const Toolbar = ({
         </Hint>
       </div>
       <div className="flex items-center h-full justify-center">
-        <Hint label="Send backwards" side="bottom" sideOffset={5}>
+        <Hint label={language === "es" ? "Enviar hacia atrás" : "Send backwards"} side="bottom" sideOffset={5}>
           <Button
+            aria-label={language === "es" ? "Enviar hacia atrás" : "Send backwards"}
             onClick={() => editor?.sendBackwards()}
             size="icon"
             variant="ghost"

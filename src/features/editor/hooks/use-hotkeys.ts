@@ -1,6 +1,8 @@
 import { fabric } from "fabric";
 import { useEvent } from "react-use";
 
+import { moveSelectedObjectsInStack } from "@/features/editor/utils";
+
 interface UseHotkeysProps {
   canvas: fabric.Canvas | null;
   undo: () => void;
@@ -96,15 +98,8 @@ export const useHotkeys = ({
 
     if (isCtrlKey && (key === "[" || key === "]")) {
       event.preventDefault();
-      const selectedObjects = canvas?.getActiveObjects() || [];
-      selectedObjects.forEach((object) => {
-        if ((object as any).locked) return;
-        key === "]" ? canvas?.bringForward(object) : canvas?.sendBackwards(object);
-      });
-      canvas?.getObjects().find((object) => object.name === "clip")?.sendToBack();
-      canvas?.requestRenderAll();
-      if (activeObject && selectedObjects.length > 0) {
-        canvas?.fire("object:modified", { target: activeObject });
+      if (canvas) {
+        moveSelectedObjectsInStack(canvas, key === "]" ? "forward" : "backward");
       }
       return;
     }

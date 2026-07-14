@@ -30,6 +30,7 @@ import {
   ensureFabricWorkspace,
   getValidCanvasDimension,
   isTextType,
+  moveSelectedObjectsInStack,
   sanitizeFabricCanvasData,
   transformText
 } from "@/features/editor/utils";
@@ -803,23 +804,10 @@ const buildEditor = ({
       canvas.renderAll();
     },
     bringForward: () => {
-      canvas.getActiveObjects().forEach((object) => {
-        canvas.bringForward(object);
-      });
-
-      canvas.renderAll();
-
-      const workspace = getWorkspace();
-      workspace?.sendToBack();
+      moveSelectedObjectsInStack(canvas, "forward");
     },
     sendBackwards: () => {
-      canvas.getActiveObjects().forEach((object) => {
-        canvas.sendBackwards(object);
-      });
-
-      canvas.renderAll();
-      const workspace = getWorkspace();
-      workspace?.sendToBack();
+      moveSelectedObjectsInStack(canvas, "backward");
     },
     changeFontFamily: (value: string) => {
       setFontFamily(value);

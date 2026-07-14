@@ -124,6 +124,65 @@ export function ensureFabricWorkspace(
   return workspace;
 }
 
+export type StackDirection = "forward" | "backward";
+
+/**
+ * Moves the current selection exactly one user-layer in the requested
+ * direction. The workspace is never crossed and adjacent selected objects
+ * keep their relative order.
+ */
+export function moveSelectedObjectsInStack(
+  canvas: fabric.Canvas,
+  direction: StackDirection,
+) {
+  const selected = canvas
+    .getActiveObjects()
+    .filter((object) => object.name !== "clip" && !(object as any).locked);
+
+  if (selected.length === 0) return false;
+
+  const selectedSet = new Set(selected);
+  const stack = canvas.getObjects().filter((object) => object.name !== "clip");
+  let changed = false;
+
+  if (direction === "backward") {
+    for (let index = 0; index < stack.length; index += 1) {
+      const object = stack[index];
+      if (!selectedSet.has(object) || index === 0) continue;
+      if (selectedSet.has(stack[index - 1])) continue;
+
+      [stack[index - 1], stack[index]] = [stack[index], stack[index - 1]];
+      changed = true;
+    }
+  } else {
+    for (let index = stack.length - 1; index >= 0; index -= 1) {
+      const object = stack[index];
+      if (!selectedSet.has(object) || index === stack.length - 1) continue;
+      if (selectedSet.has(stack[index + 1])) continue;
+
+      [stack[index], stack[index + 1]] = [stack[index + 1], stack[index]];
+      changed = true;
+    }
+  }
+
+  if (!changed) return false;
+
+  const workspace = canvas.getObjects().find((object) => object.name === "clip");
+  workspace?.sendToBack();
+  const firstLayerIndex = workspace ? 1 : 0;
+
+  stack.forEach((object, index) => {
+    canvas.moveTo(object, firstLayerIndex + index);
+  });
+
+  canvas.requestRenderAll();
+  canvas.fire("object:modified", {
+    target: canvas.getActiveObject() || selected[0],
+  });
+
+  return true;
+}
+
 export function transformText(objects: any) {
   if (!objects) return;
 
