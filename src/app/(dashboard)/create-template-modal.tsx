@@ -25,6 +25,82 @@ interface Template {
   height: number;
 }
 
+const PREVIEW_THEMES = [
+  { background: "linear-gradient(145deg,#5b35d5,#8c6df2)", accent: "#c9ff5a", ink: "#ffffff" },
+  { background: "linear-gradient(145deg,#ff8c66,#ffcf77)", accent: "#101426", ink: "#101426" },
+  { background: "linear-gradient(145deg,#18213b,#315b89)", accent: "#ffb7aa", ink: "#ffffff" },
+  { background: "linear-gradient(145deg,#e9e5ff,#ffffff)", accent: "#5b35d5", ink: "#101426" },
+  { background: "linear-gradient(145deg,#0f766e,#34d399)", accent: "#fef3c7", ink: "#ffffff" },
+  { background: "linear-gradient(145deg,#101426,#363c56)", accent: "#c9ff5a", ink: "#ffffff" },
+];
+
+const FormatPreview = ({
+  template,
+  index,
+  category,
+}: {
+  template: Template;
+  index: number;
+  category: Exclude<Category, "custom" | null>;
+}) => {
+  const ratio = template.width / template.height;
+  const maxWidth = 150;
+  const maxHeight = 108;
+  const previewWidth = ratio > maxWidth / maxHeight ? maxWidth : maxHeight * ratio;
+  const previewHeight = ratio > maxWidth / maxHeight ? maxWidth / ratio : maxHeight;
+  const theme = PREVIEW_THEMES[index % PREVIEW_THEMES.length];
+  const isPrint = category === "print";
+  const isWide = ratio > 1.45;
+
+  return (
+    <div className="flex h-[118px] w-full items-center justify-center overflow-hidden rounded-xl bg-[#f1f1f6] p-2" aria-hidden="true">
+      <div
+        className="relative overflow-hidden rounded-[7px] border border-[#101426]/15 shadow-[0_7px_14px_rgba(16,20,38,.18)]"
+        style={{
+          width: previewWidth,
+          height: previewHeight,
+          background: isPrint ? "#fffdfa" : theme.background,
+          color: theme.ink,
+        }}
+      >
+        {isPrint ? (
+          <div className="flex h-full flex-col p-[9%]">
+            <span className="h-[5%] w-1/3 rounded-full bg-[#5b35d5]" />
+            <span className="mt-[8%] h-[9%] w-4/5 rounded-sm bg-[#101426]" />
+            <span className="mt-[5%] h-px w-full bg-[#101426]/15" />
+            <div className="mt-[8%] space-y-[5%]">
+              <span className="block h-[3px] w-full rounded-full bg-[#101426]/20" />
+              <span className="block h-[3px] w-5/6 rounded-full bg-[#101426]/20" />
+              <span className="block h-[3px] w-11/12 rounded-full bg-[#101426]/20" />
+              <span className="block h-[3px] w-2/3 rounded-full bg-[#101426]/20" />
+            </div>
+            <div className="mt-auto grid grid-cols-2 gap-[6%]">
+              <span className="h-[10px] rounded-sm bg-[#eeeaff]" />
+              <span className="h-[10px] rounded-sm bg-[#eeeaff]" />
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="absolute left-[8%] top-[8%] flex items-center gap-[4px]">
+              <span className="size-[7px] rounded-full" style={{ background: theme.accent }} />
+              <span className="h-[3px] w-[22px] rounded-full bg-current opacity-75" />
+            </div>
+            <div className={`absolute overflow-hidden rounded-[5px] bg-white/20 ${isWide ? "bottom-[12%] right-[5%] top-[12%] w-[42%]" : "inset-x-[8%] top-[24%] h-[38%]"}`}>
+              <div className="absolute -bottom-[12%] -right-[4%] size-[72%] rounded-full bg-white/25" />
+              <div className="absolute bottom-[12%] left-[10%] size-[28%] rounded-full" style={{ background: theme.accent, opacity: .8 }} />
+            </div>
+            <div className={`${isWide ? "absolute bottom-[17%] left-[8%] w-[42%]" : "absolute inset-x-[8%] bottom-[9%]"}`}>
+              <span className="block h-[5px] w-4/5 rounded-full bg-current" />
+              <span className="mt-[4px] block h-[3px] w-3/5 rounded-full bg-current opacity-55" />
+              <span className="mt-[6px] block h-[6px] w-[38%] rounded-full" style={{ background: theme.accent }} />
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 
 export const CreateTemplateModal = () => {
@@ -196,10 +272,10 @@ export const CreateTemplateModal = () => {
       <button
         onClick={handleCreateClick}
         data-onboarding="create-template"
-        className="flex w-full items-center justify-center rounded-xl border-2 border-[#c9ff5a] bg-[#c9ff5a] px-3 py-3 text-[#101426] transition hover:-translate-y-0.5 hover:bg-white"
+        className="flex w-full items-center justify-center rounded-xl border border-[#5b35d5] bg-gradient-to-r from-[#4f32d9] to-[#6a45ef] px-3 py-3 text-white shadow-[0_12px_28px_rgba(91,53,213,.24)] transition hover:-translate-y-0.5 hover:brightness-110"
       >
         <Plus className="size-4 mr-2 stroke-2" />
-        <span className="text-sm font-medium">
+        <span className="text-sm font-bold">
           {t("create_template")}
         </span>
       </button>
@@ -221,7 +297,7 @@ export const CreateTemplateModal = () => {
                     onClick={() => setSelectedCategory(key as Category)}
                     className="group flex flex-col items-center gap-3 rounded-2xl border-2 border-[#101426]/15 bg-white p-5 transition-all hover:-translate-y-1 hover:border-[#5b35d5] hover:shadow-[5px_5px_0_#d9ccff]"
                   >
-                    <div className="rounded-xl bg-[#e9e5ff] p-3 transition-colors group-hover:bg-[#c9ff5a]">
+                    <div className="rounded-xl bg-[#e9e5ff] p-3 transition-colors group-hover:bg-[#ddd5ff]">
                       <Icon className="h-6 w-6 text-[#5b35d5]" />
                     </div>
                     <div className="text-center">
@@ -306,10 +382,10 @@ export const CreateTemplateModal = () => {
               {/* Open JSON */}
               <button
                 onClick={() => openFilePicker()}
-                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-dashed hover:border-blue-500 hover:bg-green-50 transition-all group"
+                className="flex flex-col items-center gap-3 p-5 rounded-xl border-2 border-dashed hover:border-[#5b35d5] hover:bg-[#f5f2ff] transition-all group"
               >
-                <div className="p-3 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
-                  <FileUp className="h-6 w-6 text-green-600" />
+                <div className="rounded-lg bg-[#eeeaff] p-3 transition-colors group-hover:bg-[#ddd5ff]">
+                  <FileUp className="h-6 w-6 text-[#5b35d5]" />
                 </div>
                 <div className="text-center">
                   <p className="font-semibold text-sm">{t("menu_open")}</p>
@@ -380,18 +456,22 @@ export const CreateTemplateModal = () => {
                 {t("choose_preset")}
               </p>
             </DialogHeader>
-            <div className="grid grid-cols-3 gap-4 py-4">
-              {categories[selectedCategory as keyof typeof categories].sizes.map((template) => (
+            <div className="grid grid-cols-2 gap-4 py-4 sm:grid-cols-3">
+              {categories[selectedCategory as keyof typeof categories].sizes.map((template, index) => (
                 <button
                   key={template.name}
                   onClick={() => createFromTemplate(template)}
                   disabled={mutation.isPending}
-                  className="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-dashed hover:border-blue-500 hover:bg-blue-50 transition-colors"
+                  className="group flex min-w-0 flex-col gap-3 rounded-[18px] border border-[#101426]/10 bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-[#5b35d5]/45 hover:shadow-[0_14px_28px_rgba(91,53,213,.12)] disabled:opacity-60"
                 >
-                  <div className="border-2 border-gray-300 rounded w-16 h-20" />
-                  <div className="text-center">
-                    <p className="font-medium text-sm">{template.name}</p>
-                    <p className="text-xs text-muted-foreground">
+                  <FormatPreview
+                    template={template}
+                    index={index}
+                    category={selectedCategory as Exclude<Category, "custom" | null>}
+                  />
+                  <div className="min-w-0 px-1 pb-1">
+                    <p className="truncate text-sm font-black text-[#101426]">{template.name}</p>
+                    <p className="mt-1 text-xs font-medium text-[#101426]/40">
                       {template.width} x {template.height} px
                     </p>
                   </div>

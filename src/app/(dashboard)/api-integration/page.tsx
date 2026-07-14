@@ -4,16 +4,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Copy, ExternalLink, KeyRound, BookOpen, Lightbulb, Code, Braces, FileJson, Puzzle, RefreshCw, Play, Loader2, Check, X, AlertCircle, ChevronRight, Zap, ImageIcon, Type, ArrowRight } from "lucide-react";
+import { Copy, ExternalLink, KeyRound, BookOpen, Lightbulb, Code, Braces, FileJson, Puzzle, RefreshCw, Play, Loader2, Check, X, AlertCircle, ChevronRight, Zap, ImageIcon, Type, ArrowRight, Search } from "lucide-react";
 import React, { useState, useEffect, useMemo, Suspense } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { BrandLoading } from "@/components/brand-loading";
+import { useUserRole } from "@/hooks/use-user-role";
+import {
+    apiKeyQueryKey,
+    fetchOrCreateApiKey,
+    fetchPlaygroundTemplates,
+    playgroundTemplatesQueryKey,
+} from "@/features/dashboard/api/dashboard-prefetch";
 
 // --- Types Definition ---
 export interface AnyCanvasElement {
@@ -124,8 +130,6 @@ interface ApiResponse {
 }
 
 const ABSOLUTE_API_ENDPOINT = "/api/render";
-const generateExampleApiKey = () => (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `key-${Math.random().toString(36).substring(2, 10)}`;
-
 // Helper function to format relative time
 const getRelativeTime = (dateString: string | undefined, language: string): string => {
     if (!dateString) return language === "es" ? "Fecha desconocida" : "Unknown date";
@@ -515,10 +519,23 @@ const getJsSnippet = (absoluteApiEndpoint: string, apiKey: string, templateId?: 
         simpleLayers["text-example"] = { text: "Provide text here" };
     }
 
-    return JSON.stringify({
+    const payload = JSON.stringify({
         templateId: templateId || 'YOUR_TEMPLATE_ID',
         layers: simpleLayers
     }, null, 2);
+
+    let code = `const payload = ${payload};\n\n`;
+    code += `const response = await fetch("${absoluteApiEndpoint}", {\n`;
+    code += `  method: "POST",\n`;
+    code += `  headers: {\n`;
+    code += `    "Authorization": "Bearer ${apiKey}",\n`;
+    code += `    "Content-Type": "application/json"\n`;
+    code += `  },\n`;
+    code += `  body: JSON.stringify(payload)\n`;
+    code += `});\n\n`;
+    code += `const data = await response.json();\n`;
+    code += `console.log(data);`;
+    return code;
 };
 
 const getPythonSnippet = (absoluteApiEndpoint: string, apiKey: string, templateId?: string | null, layers?: Record<string, any>) => {
@@ -877,11 +894,14 @@ function ApiIntegrationContent() {
     const { t, language } = useLanguage();
     const router = useRouter();
     const searchParams = useSearchParams();
+    const queryClient = useQueryClient();
+    const { userId } = useUserRole();
     const templateIdParam = searchParams.get('templateIdForApi');
     const [exampleApiKey, setExampleApiKey] = useState<string>("");
     const [isLoadingApiKey, setIsLoadingApiKey] = useState(true);
 
     const [templates, setTemplates] = useState<Template[]>([]);
+    const [templateSearch, setTemplateSearch] = useState("");
     const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
     const [layersDataForSnippets, setLayersDataForSnippets] = useState<Record<string, TemplateElement>>({});
     const [isTestingApi, setIsTestingApi] = useState(false);
@@ -935,85 +955,30 @@ function ApiIntegrationContent() {
 
         const initializeData = async () => {
             try {
-                const { data: userData } = await supabase.auth.getUser();
-                if (!userData?.user) {
+                if (!userId) {
                     setIsLoadingTemplateData(false);
                     setIsLoadingTemplates(false);
                     setIsLoadingApiKey(false);
                     return;
                 }
-                const userId = userData.user.id;
 
-                // Ensure user exists in our custom user table
-                const { data: existingUser, error: userCheckError } = await supabase
-                    .from('user')
-                    .select('id')
-                    .eq('id', userId)
-                    .single();
+                // These requests are shared with API Key and the dashboard
+                // menu, run in parallel, and remain warm between pages.
+                const [apiKey, templatesData] = await Promise.all([
+                    queryClient.fetchQuery({
+                        queryKey: apiKeyQueryKey(userId),
+                        queryFn: () => fetchOrCreateApiKey(userId),
+                        staleTime: 5 * 60 * 1000,
+                    }),
+                    queryClient.fetchQuery({
+                        queryKey: playgroundTemplatesQueryKey(userId),
+                        queryFn: () => fetchPlaygroundTemplates(userId),
+                        staleTime: 2 * 60 * 1000,
+                    }),
+                ]);
 
-                if (!existingUser && userCheckError?.code === 'PGRST116') {
-                    // User doesn't exist, create them
-                    const { error: createUserError } = await supabase
-                        .from('user')
-                        .insert({
-                            id: userId,
-                            email: userData.user.email || '',
-                            name: userData.user.user_metadata?.name || userData.user.email?.split('@')[0] || 'User',
-                            emailVerified: new Date().toISOString()
-                        });
-
-                    if (createUserError) {
-                        console.error("Error creating user:", createUserError);
-                    }
-                }
-
-                const { data: apiKeyData, error: apiKeyError } = await supabase
-                    .from('user_api_keys')
-                    .select('api_key')
-                    .eq('user_id', userId)
-                    .single();
-
-                if (apiKeyError && apiKeyError.code !== 'PGRST116') {
-                    console.error("Error fetching API Key:", apiKeyError);
-                    toast.error("Could not load API Key. Check database permissions.");
-                }
-
-                if (apiKeyData?.api_key) {
-                    setExampleApiKey(apiKeyData.api_key);
-                } else {
-                    const newKey = generateExampleApiKey();
-                    setExampleApiKey(newKey);
-                    const now = new Date().toISOString();
-
-                    // Try to insert, if conflict, update
-                    const { error: insertError } = await supabase
-                        .from('user_api_keys')
-                        .upsert(
-                            { user_id: userId, api_key: newKey, createdAt: now, updatedAt: now },
-                            { onConflict: 'user_id' }
-                        );
-
-                    if (insertError) {
-                        console.error("Error saving API Key:", insertError);
-                        // Try update as fallback
-                        const { error: updateError } = await supabase
-                            .from('user_api_keys')
-                            .update({ api_key: newKey, updatedAt: now })
-                            .eq('user_id', userId);
-
-                        if (updateError) {
-                            console.error("Error updating API Key:", updateError);
-                            toast.error("Failed to save API Key");
-                        }
-                    }
-                }
+                setExampleApiKey(apiKey);
                 setIsLoadingApiKey(false);
-
-                const { data: templatesData, error: templatesError } = await supabase
-                    .from('dynamic_canvas_templates')
-                    .select('*')
-                    .eq('user_id', userId)
-                    .order('lastModified', { ascending: false });
 
                 if (templatesData && templatesData.length > 0) {
                     const typedTemplates = templatesData.map(t => {
@@ -1090,7 +1055,7 @@ function ApiIntegrationContent() {
             }
         };
         initializeData();
-    }, [templateIdParam]);
+    }, [queryClient, templateIdParam, userId]);
 
     const copyExampleApiKey = () => {
         if (!exampleApiKey) return;
@@ -1121,6 +1086,15 @@ function ApiIntegrationContent() {
             }
         }
     };
+
+    const visibleTemplates = useMemo(() => {
+        const search = templateSearch.trim().toLowerCase();
+        if (!search) return templates;
+        return templates.filter((template) =>
+            template.name.toLowerCase().includes(search)
+            || template.id.toLowerCase().includes(search),
+        );
+    }, [templateSearch, templates]);
 
     // Generate snippets - Simple (basic properties only)
     const jsCode = useMemo(() => getJsSnippet(ABSOLUTE_API_ENDPOINT, exampleApiKey, selectedTemplate?.id, layersDataForSnippets), [exampleApiKey, selectedTemplate, layersDataForSnippets]);
@@ -1187,6 +1161,7 @@ function ApiIntegrationContent() {
             });
 
             if (response.ok) {
+                void queryClient.invalidateQueries({ queryKey: ["renders"] });
                 toast.success("API test successful!");
             } else {
                 toast.error("API test failed", { description: data.error || "Unknown error" });
@@ -1209,7 +1184,7 @@ function ApiIntegrationContent() {
 
     return (
         <div className="container mx-auto max-w-5xl py-8">
-            <div className="mb-9 rounded-[28px] border-2 border-[#101426] bg-[#e9e5ff] p-7 shadow-[7px_7px_0_#101426]">
+            <div className="docs-hero-background mb-9 rounded-[24px] border border-[#101426]/10 p-7 shadow-[0_14px_38px_rgba(16,20,38,.055)]">
                 <p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-[#5b35d5]">API LAB</p>
                 <h1 className="mb-2 text-4xl font-black tracking-[-0.04em] text-[#101426]">{language === "es" ? "Playground" : "Playground"}</h1>
                 <p className="text-lg text-muted-foreground">
@@ -1219,30 +1194,92 @@ function ApiIntegrationContent() {
                 </p>
             </div>
 
-            {/* Template Selection */}
-            <div className="flex gap-2 items-center">
-                <Select value={selectedTemplate?.id || ''} onValueChange={handleTemplateSelect} disabled={isLoadingTemplates}>
-                    <SelectTrigger className="h-12 text-base max-w-md">
-                        <SelectValue placeholder={t("select_a_template_placeholder")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {templates.map(t => (
-                            <SelectItem key={t.id} value={t.id} className="text-base py-2">
-                                {t.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                {selectedTemplate && (
-                    <Button
-                        className="h-12 bg-[#5b35d5] hover:bg-[#101426]"
-                        onClick={() => setIsModalOpen(true)}
-                    >
-                        <Play className="h-4 w-4 mr-2" />
-                        {language === "es" ? "Abrir" : "Open"}
-                    </Button>
+            {/* Visual template gallery */}
+            <section className="rounded-[24px] border border-[#101426]/10 bg-white p-5 shadow-[0_14px_38px_rgba(16,20,38,.05)]">
+                <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h2 className="text-xl font-black tracking-[-0.025em] text-[#101426]">
+                            {language === "es" ? "Selecciona una plantilla" : "Select a template"}
+                        </h2>
+                        <p className="mt-1 text-xs font-medium text-[#101426]/45">
+                            {visibleTemplates.length} {language === "es" ? "plantillas disponibles" : "templates available"}
+                        </p>
+                    </div>
+                    <div className="relative w-full sm:max-w-xs">
+                        <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#101426]/35" />
+                        <Input
+                            value={templateSearch}
+                            onChange={(event) => setTemplateSearch(event.target.value)}
+                            placeholder={language === "es" ? "Buscar plantillas..." : "Search templates..."}
+                            className="h-11 rounded-xl border-[#101426]/10 bg-[#f8f8fb] pl-10"
+                        />
+                    </div>
+                </div>
+
+                {visibleTemplates.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                        {visibleTemplates.map((template) => {
+                            const isSelected = selectedTemplate?.id === template.id;
+                            return (
+                                <button
+                                    key={template.id}
+                                    type="button"
+                                    onClick={() => handleTemplateSelect(template.id)}
+                                    className={`group overflow-hidden rounded-[18px] border bg-white text-left transition-all hover:-translate-y-0.5 hover:border-[#5b35d5]/45 hover:shadow-[0_14px_30px_rgba(91,53,213,.12)] ${isSelected ? "border-[#5b35d5] ring-4 ring-[#5b35d5]/10" : "border-[#101426]/10"}`}
+                                >
+                                    <div className="relative aspect-[4/3] overflow-hidden border-b border-[#101426]/8 bg-[#f2f2f6]">
+                                        {template.thumbnailUrl ? (
+                                            <img
+                                                src={template.thumbnailUrl}
+                                                alt={template.name}
+                                                loading="lazy"
+                                                className="h-full w-full object-contain p-2 drop-shadow-[0_7px_10px_rgba(16,20,38,.15)] transition duration-300 group-hover:scale-[1.025]"
+                                            />
+                                        ) : (
+                                            <div className="flex h-full flex-col items-center justify-center gap-2 text-[#101426]/30">
+                                                <ImageIcon className="size-6" />
+                                                <span className="text-[10px] font-bold">{template.width} × {template.height}</span>
+                                            </div>
+                                        )}
+                                        {isSelected && (
+                                            <span className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-[#5b35d5] text-white shadow-md">
+                                                <Check className="size-4 stroke-[3]" />
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="p-3">
+                                        <p className="truncate text-sm font-black text-[#101426]">{template.name}</p>
+                                        <p className="mt-1 text-[11px] font-medium text-[#101426]/40">{template.width} × {template.height} px · {template.elements.length} {language === "es" ? "capas" : "layers"}</p>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="flex min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-[#101426]/12 bg-[#fafafe] text-center">
+                        <Search className="size-6 text-[#5b35d5]/40" />
+                        <p className="mt-3 text-sm font-bold text-[#101426]/45">
+                            {language === "es" ? "No encontramos plantillas" : "No templates found"}
+                        </p>
+                    </div>
                 )}
-            </div>
+
+                {selectedTemplate && (
+                    <div className="mt-5 flex flex-col gap-3 border-t border-[#101426]/8 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                            <p className="truncate text-sm font-black text-[#101426]">{selectedTemplate.name}</p>
+                            <p className="mt-0.5 text-xs text-[#101426]/40">{selectedTemplate.width} × {selectedTemplate.height} px</p>
+                        </div>
+                        <Button
+                            className="h-11 shrink-0 rounded-xl bg-[#5b35d5] px-6 font-bold hover:bg-[#4f2bc5]"
+                            onClick={() => setIsModalOpen(true)}
+                        >
+                            <Play className="mr-2 size-4" />
+                            {language === "es" ? "Abrir en Playground" : "Open in Playground"}
+                        </Button>
+                    </div>
+                )}
+            </section>
 
             {/* Focused playground workspace */}
             <Dialog open={isModalOpen} onOpenChange={handleModalOpenChange}>
@@ -1361,7 +1398,7 @@ function ApiIntegrationContent() {
                                         <TabsTrigger value="php" className="h-full rounded-none border-b-2 border-transparent px-4 data-[state=active]:border-[#2161ed] data-[state=active]:shadow-none">PHP</TabsTrigger>
                                         <TabsTrigger value="curl" className="h-full rounded-none border-b-2 border-transparent px-4 data-[state=active]:border-[#2161ed] data-[state=active]:shadow-none">cURL</TabsTrigger>
                                     </TabsList>
-                                    <TabsContent value="javascript" className="mt-0 min-h-0 flex-1"><CodeSnippet language="JavaScript" code={fullJsCode} /></TabsContent>
+                                    <TabsContent value="javascript" className="mt-0 min-h-0 flex-1"><CodeSnippet language="JavaScript" code={jsCode} /></TabsContent>
                                     <TabsContent value="python" className="mt-0 min-h-0 flex-1"><CodeSnippet language="Python" code={pythonCode} /></TabsContent>
                                     <TabsContent value="java" className="mt-0 min-h-0 flex-1"><CodeSnippet language="Java" code={javaCode} /></TabsContent>
                                     <TabsContent value="php" className="mt-0 min-h-0 flex-1"><CodeSnippet language="PHP" code={phpCode} /></TabsContent>

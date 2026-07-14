@@ -134,8 +134,6 @@ export const Editor = ({ initialData }: EditorProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!fontsLoaded) return;
-
     const canvas = new fabric.Canvas(canvasRef.current, {
       controlsAboveOverlay: true,
       preserveObjectStacking: true,
@@ -176,7 +174,7 @@ export const Editor = ({ initialData }: EditorProps) => {
       (canvas as any).cancelRequestedRender?.();
       canvas.dispose();
     };
-  }, [fontsLoaded, init]);
+  }, [init]);
 
   return (
     <div className="h-full flex flex-col">
@@ -189,7 +187,7 @@ export const Editor = ({ initialData }: EditorProps) => {
         showPrintSafeZone={showPrintSafeZone}
         onShowPrintSafeZoneChange={setShowPrintSafeZone}
       />
-      <div className="absolute top-[60px] flex h-[calc(100%-60px)] w-full">
+      <div className="absolute top-[72px] flex h-[calc(100%-72px)] w-full">
         <Sidebar
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
@@ -274,7 +272,7 @@ export const Editor = ({ initialData }: EditorProps) => {
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
-        <main className="bg-muted flex-1 overflow-hidden relative flex flex-col">
+        <main className="relative flex flex-1 flex-col overflow-hidden bg-[#fafafe]">
           <Toolbar
             editor={editor}
             activeTool={activeTool}

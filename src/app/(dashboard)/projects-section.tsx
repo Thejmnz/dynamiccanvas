@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
@@ -26,6 +27,10 @@ import {
   Info,
   Check,
   GitMerge,
+  ArrowDownUp,
+  Grid2X2,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 
 import { useLanguage } from "@/lib/contexts/LanguageContext";
@@ -67,18 +72,18 @@ const ProjectThumbnail = ({ project }: { project: any }) => {
       <img
         src={project.thumbnailUrl}
         alt={project.name}
-        className="absolute inset-0 h-full w-full object-contain object-center p-3 drop-shadow-[0_8px_10px_rgba(16,20,38,0.22)]"
+        className="absolute inset-0 h-full w-full object-contain object-center p-3 drop-shadow-[0_10px_16px_rgba(16,20,38,0.20)]"
       />
     );
   }
 
   // Placeholder si no hay thumbnail
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#f1f1ee]">
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#eef0f6]">
       <div className="text-4xl">📐</div>
       <div className="text-center">
-        <p className="text-xs text-gray-600 font-medium">{project.width} × {project.height}</p>
-        <p className="text-xs text-gray-400">{t("pixels")}</p>
+        <p className="text-xs font-medium text-[#101426]/55">{project.width} × {project.height}</p>
+        <p className="text-xs text-[#101426]/30">{t("pixels")}</p>
       </div>
     </div>
   );
@@ -91,6 +96,8 @@ export const ProjectsSection = () => {
     t("delete_project_confirm"),
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"recent" | "oldest" | "name">("recent");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [folders, setFolders] = useState<TemplateFolder[]>([]);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [foldersPaid, setFoldersPaid] = useState(false);
@@ -109,6 +116,8 @@ export const ProjectsSection = () => {
   const duplicateMutation = useDuplicateProject();
   const removeMutation = useDeleteProject();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const warmedProjectIds = React.useRef(new Set<string>());
   const {
     data,
     status,
@@ -144,6 +153,48 @@ export const ProjectsSection = () => {
 
   const onDuplicate = (id: string) => {
     duplicateMutation.mutate({ id });
+  };
+
+  const warmProjectAssets = (project: any) => {
+    if (typeof window === "undefined" || !project?.json) return;
+    if (warmedProjectIds.current.has(project.id)) return;
+    warmedProjectIds.current.add(project.id);
+
+    try {
+      const urls = new Set<string>();
+      const visit = (value: unknown) => {
+        if (urls.size >= 8 || value == null) return;
+        if (typeof value === "string") {
+          if (/^(https?:\/\/|\/)/.test(value) && /\.(png|jpe?g|webp|gif|avif)(\?|$)/i.test(value)) {
+            urls.add(value);
+          }
+          return;
+        }
+        if (Array.isArray(value)) value.forEach(visit);
+        else if (typeof value === "object") Object.values(value as Record<string, unknown>).forEach(visit);
+      };
+
+      visit(JSON.parse(project.json));
+      urls.forEach((url) => {
+        const image = new window.Image();
+        image.crossOrigin = "anonymous";
+        image.src = url;
+      });
+    } catch {
+      // Invalid legacy JSON will be handled by the editor's normal loader.
+    }
+  };
+
+  const prepareEditor = (project: any) => {
+    queryClient.setQueryData(["project", { id: project.id }], project);
+    router.prefetch(`/editor/${project.id}`);
+    warmProjectAssets(project);
+  };
+
+  const openEditor = (project: any) => {
+    prepareEditor(project);
+    startPageTransition();
+    router.push(`/editor/${project.id}`);
   };
 
   const navigateTo = (href: string) => {
@@ -362,12 +413,18 @@ export const ProjectsSection = () => {
     const folderProjects = activeFolderId
       ? allProjects.filter((project) => project.folder_id === activeFolderId || project.folderId === activeFolderId)
       : allProjects;
-    if (!searchQuery.trim()) return folderProjects;
-    const query = searchQuery.toLowerCase();
-    return folderProjects.filter(project =>
-      project.name.toLowerCase().includes(query)
-    );
-  }, [allProjects, searchQuery, activeFolderId]);
+    const query = searchQuery.trim().toLowerCase();
+    const matchingProjects = query
+      ? folderProjects.filter((project) => project.name.toLowerCase().includes(query))
+      : folderProjects;
+
+    return [...matchingProjects].sort((a, b) => {
+      if (sortBy === "name") return String(a.name).localeCompare(String(b.name));
+      const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return sortBy === "oldest" ? aTime - bTime : bTime - aTime;
+    });
+  }, [allProjects, searchQuery, activeFolderId, sortBy]);
 
   const allVisibleSelected = filteredProjects.length > 0
     && filteredProjects.every((project) => selectedIds.has(project.id));
@@ -421,7 +478,7 @@ export const ProjectsSection = () => {
   }
 
   return (
-    <div className={`space-y-7 ${selectedIds.size > 0 ? "pb-28" : ""}`}>
+    <div className={`dashboard-tech-content space-y-7 ${selectedIds.size > 0 ? "pb-28" : ""}`}>
       <ConfirmDialog />
       <Dialog open={folderDialogOpen} onOpenChange={setFolderDialogOpen}>
         <DialogContent className="max-w-md rounded-[24px] border-2 border-[#101426] p-6 shadow-[7px_7px_0_#101426]">
@@ -551,36 +608,74 @@ export const ProjectsSection = () => {
         </DialogContent>
       </Dialog>
 
-      <div data-onboarding="templates" className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-        <div>
-          <h1 className="text-4xl font-black tracking-[-0.04em] text-[#101426] sm:text-5xl">{t("my_templates")}</h1>
+      <div data-onboarding="templates" className="flex flex-wrap items-center gap-3">
+        <h1 className="text-xl font-black tracking-[-0.04em] text-[#101426] sm:text-2xl">{t("my_templates")}</h1>
+        <div className="relative min-w-0 flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-[#5b35d5]" />
+          <Input
+            placeholder={t("search_placeholder")}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-10 rounded-xl border border-[#101426]/10 bg-white pl-11 text-[#101426] placeholder:text-[#101426]/35 focus-visible:border-[#5b35d5] focus-visible:ring-[#5b35d5]/10"
+          />
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Hint
-            side="bottom"
-            label={foldersPaid
-              ? (language === "es" ? "Crear una carpeta" : "Create a folder")
-              : (language === "es" ? "Disponible con Creator, Agency o Business" : "Available with Creator, Agency or Business")}
+        <div className="relative">
+          <ArrowDownUp className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-[#5b35d5]" />
+          <select
+            aria-label={language === "es" ? "Ordenar plantillas" : "Sort templates"}
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value as typeof sortBy)}
+            className="h-10 appearance-none rounded-xl border border-[#101426]/10 bg-white pl-9 pr-8 text-xs font-bold text-[#101426] outline-none focus:border-[#5b35d5]"
           >
-            <Button
-              onClick={() => {
-                if (foldersPaid) setFolderDialogOpen(true);
-                else {
-                  toast.info(language === "es" ? "Las carpetas están disponibles en Creator, Agency y Business" : "Folders are available on Creator, Agency and Business");
-                  navigateTo("/dashboard/pricing");
-                }
-              }}
-              className={`h-11 rounded-full border-2 border-[#101426] px-5 font-black shadow-[4px_4px_0_#101426] ${foldersPaid ? "bg-[#c9ff5a] text-[#101426] hover:bg-white" : "bg-white text-[#101426] hover:bg-[#e9e5ff]"}`}
-            >
-              {foldersPaid ? <FolderPlus className="mr-2 size-4" /> : <Crown className="mr-2 size-4 text-[#d59b00]" />}
-              {language === "es" ? "Nueva carpeta" : "New folder"}
-            </Button>
-          </Hint>
+            <option value="recent">{language === "es" ? "Más recientes" : "Most recent"}</option>
+            <option value="oldest">{language === "es" ? "Más antiguas" : "Oldest"}</option>
+            <option value="name">{language === "es" ? "Por nombre" : "By name"}</option>
+          </select>
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#101426]/35">⌄</span>
         </div>
+        <div className="flex h-10 items-center rounded-xl border border-[#101426]/10 bg-white p-1">
+          <button
+            type="button"
+            aria-label={language === "es" ? "Vista en cuadrícula" : "Grid view"}
+            aria-pressed={viewMode === "grid"}
+            onClick={() => setViewMode("grid")}
+            className={`flex h-7 w-8 items-center justify-center rounded-lg transition ${viewMode === "grid" ? "bg-[#f0edff] text-[#5b35d5]" : "text-[#596174] hover:bg-[#f6f7fb]"}`}
+          >
+            <LayoutGrid className="size-4" />
+          </button>
+          <button
+            type="button"
+            aria-label={language === "es" ? "Vista en lista" : "List view"}
+            aria-pressed={viewMode === "list"}
+            onClick={() => setViewMode("list")}
+            className={`flex h-7 w-8 items-center justify-center rounded-lg transition ${viewMode === "list" ? "bg-[#f0edff] text-[#5b35d5]" : "text-[#596174] hover:bg-[#f6f7fb]"}`}
+          >
+            <List className="size-4" />
+          </button>
+        </div>
+        <Hint
+          side="bottom"
+          label={foldersPaid
+            ? (language === "es" ? "Crear una carpeta" : "Create a folder")
+            : (language === "es" ? "Disponible con Creator, Agency o Business" : "Available with Creator, Agency or Business")}
+        >
+          <Button
+            onClick={() => {
+              if (foldersPaid) setFolderDialogOpen(true);
+              else {
+                toast.info(language === "es" ? "Las carpetas están disponibles en Creator, Agency y Business" : "Folders are available on Creator, Agency and Business");
+                navigateTo("/dashboard/pricing");
+              }
+            }}
+            className="h-10 rounded-xl border border-[#5b35d5] bg-gradient-to-r from-[#4f32d9] to-[#6a45ef] px-4 font-black text-white shadow-[0_8px_20px_rgba(91,53,213,.18)] hover:brightness-110"
+          >
+            {foldersPaid ? <FolderPlus className="mr-2 size-4" /> : <Crown className="mr-2 size-4 text-[#d59b00]" />}
+            {language === "es" ? "Nueva carpeta" : "New folder"}
+          </Button>
+        </Hint>
       </div>
-
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-5 left-1/2 z-[100] flex min-h-20 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center justify-center gap-3 overflow-x-auto rounded-[24px] border-2 border-[#101426] bg-white px-4 py-3 shadow-[7px_7px_0_rgba(16,20,38,.20)] sm:px-5 lg:left-[calc(50%+115px)] lg:max-w-[calc(100vw-262px)]">
+        <div className="fixed bottom-5 left-1/2 z-[100] flex min-h-20 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center justify-center gap-3 overflow-x-auto rounded-[24px] border-2 border-[#101426] bg-white/95 px-4 py-3 text-[#101426] shadow-[8px_8px_0_rgba(16,20,38,.18)] backdrop-blur-xl sm:px-5 lg:left-[calc(50%+125px)] lg:max-w-[calc(100vw-282px)]">
           <div className="flex shrink-0 items-center gap-3 pr-3 sm:border-r sm:border-[#101426]/15">
             <span className="flex size-10 items-center justify-center rounded-full bg-[#2165f5] text-lg font-black text-white">
               {selectedIds.size}
@@ -685,28 +780,15 @@ export const ProjectsSection = () => {
         </div>
       )}
 
-      {/* Search Bar - Centered */}
-      <div className="max-w-lg">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-[#5b35d5]" />
-          <Input
-            placeholder={t("search_placeholder")}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-12 border-2 border-[#101426] bg-white pl-11 placeholder:text-[#101426]/30"
-          />
-        </div>
-      </div>
-
       <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={() => setActiveFolderId(null)}
-          className={`flex h-10 items-center gap-2 rounded-xl border-2 px-4 text-sm font-black transition ${activeFolderId === null ? "border-[#101426] bg-[#101426] text-white" : "border-[#101426]/15 bg-white hover:border-[#5b35d5]"}`}
+          className={`flex h-10 items-center gap-2 rounded-xl border-2 px-4 text-sm font-black transition ${activeFolderId === null ? "border-[#101426] bg-[#c9ff5a] text-[#101426] shadow-[3px_3px_0_#101426]" : "border-[#101426]/15 bg-white/80 text-[#101426]/60 hover:border-[#5b35d5] hover:bg-[#e9e5ff] hover:text-[#101426]"}`}
         >
           <Folder className="size-4" />{language === "es" ? "Todas" : "All"}
         </button>
         {foldersPaid && folders.map((folder) => (
-          <div key={folder.id} className={`flex h-10 items-center rounded-xl border-2 transition ${activeFolderId === folder.id ? "border-[#5b35d5] bg-[#e9e5ff]" : "border-[#101426]/15 bg-white hover:border-[#5b35d5]"}`}>
+          <div key={folder.id} className={`flex h-10 items-center rounded-xl border-2 transition ${activeFolderId === folder.id ? "border-[#5b35d5] bg-[#e9e5ff] text-[#101426]" : "border-[#101426]/15 bg-white/80 text-[#101426]/60 hover:border-[#5b35d5] hover:text-[#101426]"}`}>
             <button onClick={() => setActiveFolderId(folder.id)} className="flex h-full items-center gap-2 pl-4 pr-2 text-sm font-black">
               <Folder className="size-4 text-[#5b35d5]" />{folder.name}
             </button>
@@ -720,36 +802,37 @@ export const ProjectsSection = () => {
       </div>
 
       {filteredProjects.length === 0 && searchQuery && (
-        <div className="flex flex-col gap-y-4 items-center justify-center h-32 border-2 border-dashed rounded-lg">
-          <Search className="size-6 text-muted-foreground" />
-          <p className="text-muted-foreground text-sm">
+        <div className="flex h-32 flex-col items-center justify-center gap-y-4 rounded-2xl border-2 border-dashed border-[#101426]/15 bg-white/55">
+          <Search className="size-6 text-[#5b35d5]/50" />
+          <p className="text-sm text-[#101426]/45">
             {t("no_results_found") || "No templates found"}
           </p>
         </div>
       )}
 
       {filteredProjects.length === 0 && !searchQuery && (
-        <div className="flex flex-col gap-y-4 items-center justify-center h-32 border-2 border-dashed rounded-lg">
-          <Search className="size-6 text-muted-foreground" />
-          <p className="text-muted-foreground text-sm">
+        <div className="flex h-32 flex-col items-center justify-center gap-y-4 rounded-2xl border-2 border-dashed border-[#101426]/15 bg-white/55">
+          <Search className="size-6 text-[#5b35d5]/50" />
+          <p className="text-sm text-[#101426]/45">
             {t("search_placeholder")}
           </p>
         </div>
       )}
 
       {filteredProjects.length > 0 && (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className={viewMode === "grid" ? "grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4" : "grid grid-cols-1 gap-3"}>
           {filteredProjects.map((project) => (
             <Card
               key={project.id}
-              className={`group relative overflow-hidden rounded-[22px] border-2 bg-white transition-all hover:-translate-y-1 hover:shadow-[7px_7px_0_#101426] ${selectedIds.has(project.id) ? "border-[#2165f5] ring-4 ring-[#2165f5]/15 shadow-[6px_6px_0_#2165f5]" : "border-[#101426]"}`}
+              onMouseEnter={() => prepareEditor(project)}
+              className={`group relative overflow-hidden rounded-[22px] border bg-white text-[#101426] transition-all hover:-translate-y-1 hover:border-[#5b35d5]/45 hover:shadow-[0_22px_55px_rgba(91,53,213,.12)] ${viewMode === "list" ? "sm:flex" : ""} ${selectedIds.has(project.id) ? "border-[#5b35d5] ring-4 ring-[#5b35d5]/10 shadow-[5px_5px_0_#c9ff5a]" : "border-[#101426]/10"}`}
             >
               {/* Thumbnail */}
               <div
-                className="relative aspect-square cursor-pointer overflow-hidden border-b-2 border-[#101426] bg-[#f1f1ee]"
+                className={`relative cursor-pointer overflow-hidden bg-[#f7f7f9] ${viewMode === "list" ? "aspect-[16/9] border-b border-[#101426]/10 sm:min-h-[176px] sm:w-[220px] sm:shrink-0 sm:border-b-0 sm:border-r" : "aspect-square border-b border-[#101426]/10"}`}
                 onClick={() => {
                   if (selectedIds.size > 0) toggleSelected(project.id);
-                  else navigateTo(`/editor/${project.id}`);
+                  else openEditor(project);
                 }}
               >
                 <ProjectThumbnail project={project} />
@@ -770,7 +853,7 @@ export const ProjectsSection = () => {
                 </button>
 
                 {/* Menu button */}
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute right-2 top-2 opacity-100 transition-opacity">
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -871,7 +954,7 @@ export const ProjectsSection = () => {
 
                         <DropdownMenuSeparator className="my-2 bg-[#101426]/10" />
 
-                        <DropdownMenuItem className="h-11 cursor-pointer gap-3 rounded-xl px-3 text-sm font-semibold" onClick={(event) => { event.stopPropagation(); navigateTo(`/editor/${project.id}`); }}>
+                        <DropdownMenuItem className="h-11 cursor-pointer gap-3 rounded-xl px-3 text-sm font-semibold" onClick={(event) => { event.stopPropagation(); openEditor(project); }}>
                           <Layers3 className="size-5 text-[#5b35d5]" />
                           {language === "es" ? "Capas" : "Layers"}
                         </DropdownMenuItem>
@@ -905,10 +988,10 @@ export const ProjectsSection = () => {
               </div>
 
               {/* Info */}
-              <div className="space-y-3 p-4">
+              <div className="flex flex-1 flex-col space-y-3 p-4">
                 <div>
                   <p className="truncate text-base font-black">{project.name}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-[#101426]/42">
                     {project.width} x {project.height} px
                   </p>
                 </div>
@@ -916,15 +999,15 @@ export const ProjectsSection = () => {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="w-full border-[#101426]/20 bg-[#f6f5ef] text-xs hover:bg-[#c9ff5a]"
-                  onClick={() => navigateTo(`/editor/${project.id}`)}
+                  className="w-full border-[#101426]/15 bg-[#f6f7fb] text-xs font-bold text-[#101426] hover:border-[#5b35d5]/35 hover:bg-[#eeeaff] hover:text-[#5b35d5]"
+                  onClick={() => openEditor(project)}
                 >
                   {t("open_in_editor")}
                 </Button>
 
                 {/* Updated time */}
-                <div className="pt-1 border-t">
-                  <p className="text-xs text-muted-foreground">
+                <div className={`border-t border-[#101426]/10 pt-2 ${viewMode === "list" ? "mt-auto" : ""}`}>
+                  <p className="text-xs text-[#101426]/35">
                     {formatDistanceToNow(project.updatedAt, {
                       addSuffix: true,
                       locale: language === "es" ? es : undefined,

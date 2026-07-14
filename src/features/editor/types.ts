@@ -43,7 +43,12 @@ export const JSON_KEYS = [
   "extensionType",
   "extension",
   "evented",
-  "locked"
+  "locked",
+  "lockMovementX",
+  "lockMovementY",
+  "lockScalingX",
+  "lockScalingY",
+  "lockRotation"
 ];
 
 export const filters = [
@@ -302,8 +307,10 @@ export interface Editor {
   getActiveImageCropState: () => ImageCropState | undefined;
   setActiveImageCropState: (state: ImageCropState) => void;
   adjustActiveImageCropZoom: (direction: "in" | "out") => void;
+  panActiveImageCrop: (deltaX: number, deltaY: number) => void;
   commitActiveImageCrop: () => void;
-  addImage: (value: string) => void;
+  addImage: (value: string) => Promise<fabric.Image | undefined>;
+  replaceImageObjectSource: (image: fabric.Image, url: string) => Promise<void>;
   delete: () => void;
   changeFontSize: (value: number) => void;
   getActiveFontSize: () => number;

@@ -316,7 +316,7 @@ export const DashboardOnboarding = ({
 
       {targetRect && (
         <div
-          className="pointer-events-none fixed rounded-2xl border-[3px] border-[#c9ff5a] shadow-[0_0_0_9999px_rgba(16,20,38,0.76),0_0_0_7px_rgba(201,255,90,0.18)] transition-all duration-300"
+          className="pointer-events-none fixed rounded-2xl border-[3px] border-[#8266e6] shadow-[0_0_0_9999px_rgba(16,20,38,0.72),0_0_0_7px_rgba(91,53,213,0.16)] transition-all duration-300"
           style={{
             left: targetRect.left - 8,
             top: targetRect.top - 8,
@@ -330,7 +330,7 @@ export const DashboardOnboarding = ({
         role="dialog"
         aria-modal="true"
         aria-label={language === "es" ? "Recorrido de bienvenida" : "Welcome tour"}
-        className="fixed w-[calc(100vw-32px)] max-w-[390px] overflow-hidden rounded-[28px] border-2 border-[#101426] bg-white shadow-[10px_10px_0_rgba(16,20,38,.32)] transition-all duration-300"
+        className="fixed w-[calc(100vw-32px)] max-w-[390px] overflow-hidden rounded-[24px] border border-[#101426]/10 bg-white shadow-[0_24px_70px_rgba(16,20,38,.16)] transition-all duration-300"
         style={cardPosition}
       >
         <div className="relative overflow-hidden border-b-2 border-[#101426]/10 px-6 pb-5 pt-6" style={{ backgroundColor: `${step.accent}35` }}>
@@ -346,9 +346,9 @@ export const DashboardOnboarding = ({
 
           <div className="relative flex items-center gap-4 pr-10">
             {stepIndex === 0 ? (
-              <BrandMark className="size-14 shrink-0 text-lg shadow-[4px_4px_0_#101426]" />
+              <BrandMark className="size-14 shrink-0" />
             ) : (
-              <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl border-2 border-[#101426] bg-white shadow-[4px_4px_0_#101426]">
+              <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl border border-[#101426]/10 bg-[#f6f5fb] shadow-sm">
                 <StepIcon className="size-6 text-[#5b35d5]" />
               </div>
             )}
@@ -372,7 +372,7 @@ export const DashboardOnboarding = ({
             {steps.map((_, index) => (
               <span
                 key={index}
-                className={`h-1.5 rounded-full transition-all ${index === stepIndex ? "w-8 bg-[#5b35d5]" : index < stepIndex ? "w-3 bg-[#c9ff5a]" : "w-3 bg-[#101426]/10"}`}
+                className={`h-1.5 rounded-full transition-all ${index === stepIndex ? "w-8 bg-[#5b35d5]" : index < stepIndex ? "w-3 bg-[#8266e6]" : "w-3 bg-[#101426]/10"}`}
               />
             ))}
           </div>
@@ -404,7 +404,7 @@ export const DashboardOnboarding = ({
                 if (isLastStep) finishOnboarding();
                 else setStepIndex((current) => current + 1);
               }}
-              className="flex h-11 items-center gap-2 rounded-full border-2 border-[#101426] bg-[#c9ff5a] px-5 text-sm font-black text-[#101426] shadow-[3px_3px_0_#101426] transition hover:-translate-y-0.5 hover:bg-white"
+              className="flex h-11 items-center gap-2 rounded-xl bg-[#5b35d5] px-5 text-sm font-black text-white shadow-[0_12px_28px_rgba(91,53,213,.2)] transition hover:-translate-y-0.5 hover:bg-[#4f2bc5]"
             >
               {isLastStep ? (
                 <>

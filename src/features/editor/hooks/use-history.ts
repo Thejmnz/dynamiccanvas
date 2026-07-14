@@ -2,7 +2,10 @@ import { fabric } from "fabric";
 import { useCallback, useRef, useState } from "react";
 
 import { JSON_KEYS } from "@/features/editor/types";
-import { configureTextboxControls } from "@/features/editor/utils";
+import {
+  configureTextboxControls,
+  normalizeFabricObjectLock,
+} from "@/features/editor/utils";
 
 interface UseHistoryProps {
   canvas: fabric.Canvas | null;
@@ -140,7 +143,10 @@ export const useHistory = ({ canvas, saveCallback }: UseHistoryProps) => {
       );
 
       canvas?.loadFromJSON(previousState, () => {
-        canvas.getObjects().forEach(configureTextboxControls);
+        canvas.getObjects().forEach((object) => {
+          configureTextboxControls(object);
+          normalizeFabricObjectLock(object);
+        });
         canvas.renderAll();
         setHistoryIndex(previousIndex);
         skipSave.current = false;
@@ -159,7 +165,10 @@ export const useHistory = ({ canvas, saveCallback }: UseHistoryProps) => {
       );
 
       canvas?.loadFromJSON(nextState, () => {
-        canvas.getObjects().forEach(configureTextboxControls);
+        canvas.getObjects().forEach((object) => {
+          configureTextboxControls(object);
+          normalizeFabricObjectLock(object);
+        });
         canvas.renderAll();
         setHistoryIndex(nextIndex);
         skipSave.current = false;

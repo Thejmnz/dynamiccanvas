@@ -54,7 +54,7 @@ export default function AuthCallbackPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-[#f6f5ef]">
+    <div className="auth-modern-background min-h-screen bg-[#fafafe]">
       {status === "loading" ? <BrandLoading fullScreen label="" /> : (
         <div className="flex min-h-screen items-center justify-center">
           <p className="text-sm font-bold text-[#101426]/50">Redirecting to sign in...</p>

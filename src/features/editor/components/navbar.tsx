@@ -192,7 +192,7 @@ export const Navbar = ({
   };
 
   return (
-    <nav className="flex h-[60px] w-full items-center gap-x-3 border-b-2 border-[#101426] bg-[#f6f5ef] px-3 lg:pl-5">
+    <nav className="flex h-[72px] w-full items-center gap-x-3 border-b border-[#101426]/10 bg-white/95 px-3 shadow-[0_8px_30px_rgba(16,20,38,.035)] backdrop-blur-xl lg:pl-5">
       <Logo />
       <div className="w-full min-w-0 flex items-center gap-x-1 h-full">
         <DropdownMenu modal={false}>

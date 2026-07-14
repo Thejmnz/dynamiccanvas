@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
   Users, FileCode, Key, Search, ChevronDown, ChevronUp, Mail,
@@ -10,6 +11,7 @@ import { toast } from "sonner";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { useUserRole } from "@/hooks/use-user-role";
 import { BrandLoading } from "@/components/brand-loading";
+import { adminOverviewQueryKey, fetchAdminOverview } from "@/features/dashboard/api/dashboard-prefetch";
 
 interface UserStats {
   id: string;
@@ -56,37 +58,33 @@ export default function AdminDashboard() {
   const { role, loading: roleLoading, isAuthenticated } = useUserRole();
   const router = useRouter();
   const { t } = useLanguage();
-  const [usersList, setUsersList] = useState<UserStats[]>([]);
-  const [stats, setStats] = useState<AdminStats | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [loading, setLoading] = useState(true);
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<UserStats | null>(null);
-  const [newsList, setNewsList] = useState<any[]>([]);
   const [newsTitle, setNewsTitle] = useState("");
   const [newsBody, setNewsBody] = useState("");
   const [newsTag, setNewsTag] = useState("update");
+
+  const {
+    data: overview,
+    isPending: loading,
+    refetch,
+  } = useQuery<{ users: UserStats[]; stats: AdminStats; news: any[] }>({
+    queryKey: adminOverviewQueryKey,
+    queryFn: fetchAdminOverview,
+    enabled: !roleLoading && isAuthenticated && role === "superadmin",
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+  const usersList = overview?.users ?? [];
+  const stats = overview?.stats ?? null;
+  const newsList = overview?.news ?? [];
 
   useEffect(() => {
     if (roleLoading) return;
     if (!isAuthenticated) { router.push("/sign-in"); return; }
     if (role !== "superadmin") { router.push("/dashboard"); return; }
-    fetchData();
   }, [role, roleLoading, isAuthenticated, router]);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [usersRes, statsRes, newsRes] = await Promise.all([
-        fetch("/api/admin/users"),
-        fetch("/api/admin/stats"),
-        fetch("/api/news"),
-      ]);
-      if (usersRes.ok) setUsersList(await usersRes.json());
-      if (statsRes.ok) setStats(await statsRes.json());
-      if (newsRes.ok) { const d = await newsRes.json(); setNewsList(d.data || []); }
-    } catch { } finally { setLoading(false); }
-  };
 
   const filteredUsers = usersList.filter((u) =>
     u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -109,7 +107,7 @@ export default function AdminDashboard() {
       if (res.ok) {
         toast.success("User updated");
         setEditingUser(null);
-        fetchData();
+        void refetch();
       } else {
         toast.error("Failed to update user");
       }
@@ -129,7 +127,7 @@ export default function AdminDashboard() {
       if (res.ok) {
         toast.success("News created");
         setNewsTitle(""); setNewsBody(""); setNewsTag("update");
-        fetchData();
+        void refetch();
       }
     } catch { toast.error("Failed"); }
   };
@@ -137,7 +135,7 @@ export default function AdminDashboard() {
   const handleDeleteNews = async (id: string) => {
     try {
       await fetch(`/api/news?id=${id}`, { method: "DELETE" });
-      fetchData();
+      void refetch();
     } catch { }
   };
 

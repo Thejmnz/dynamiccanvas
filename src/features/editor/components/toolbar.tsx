@@ -422,7 +422,7 @@ export const Toolbar = ({
   }
 
   return (
-    <div className="absolute left-1/2 top-2 z-[60] flex min-h-11 max-w-[calc(100%-24px)] -translate-x-1/2 items-center gap-x-1 overflow-visible rounded-lg border border-slate-200 bg-white/95 p-1.5 shadow-lg backdrop-blur">
+    <div className="editor-selection-toolbar absolute left-1/2 top-2 z-[60] flex min-h-11 max-w-[calc(100%-24px)] -translate-x-1/2 items-center gap-x-1 overflow-visible rounded-xl border border-[#101426]/10 bg-white/95 p-1.5 shadow-[0_14px_38px_rgba(16,20,38,.1)] backdrop-blur-xl">
       {!isImage && (
         <div className="flex items-center h-full justify-center">
           <Hint label="Color" side="bottom" sideOffset={5}>

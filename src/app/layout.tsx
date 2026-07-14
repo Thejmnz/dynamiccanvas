@@ -27,6 +27,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
     shortcut: "/icon.svg",
+    apple: "/dynamic-canvas-logo.png",
   },
   openGraph: {
     title: "Dynamic Canvas",
@@ -48,7 +49,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className={`${inter.className} ${inter.variable}`}>
+      <body className={`${inter.className} ${inter.variable} modern-ui`}>
         <AuthProvider>
           <LanguageProvider>
             <Providers>

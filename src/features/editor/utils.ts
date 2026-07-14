@@ -11,6 +11,56 @@ type RGBColor = {
 export const DEFAULT_WORKSPACE_WIDTH = 900;
 export const DEFAULT_WORKSPACE_HEIGHT = 1200;
 
+export type LockableFabricObject = fabric.Object & {
+  locked?: boolean;
+  editable?: boolean;
+};
+
+export function isFabricObjectLocked(object: fabric.Object) {
+  const lockable = object as LockableFabricObject;
+
+  return lockable.locked === true || (
+    object.name !== "clip" &&
+    object.selectable === false &&
+    object.evented === false
+  );
+}
+
+/**
+ * A locked layer must remain selectable so the user can reveal its actions
+ * and unlock it directly on the canvas. Only transformations and text editing
+ * are disabled.
+ */
+export function setFabricObjectLocked(object: fabric.Object, locked: boolean) {
+  if (object.name === "clip") return;
+
+  const lockable = object as LockableFabricObject;
+  lockable.locked = locked;
+  object.set({
+    selectable: true,
+    evented: true,
+    lockMovementX: locked,
+    lockMovementY: locked,
+    lockScalingX: locked,
+    lockScalingY: locked,
+    lockRotation: locked,
+    hasControls: !locked,
+    hoverCursor: locked ? "pointer" : "move",
+    moveCursor: locked ? "pointer" : "move",
+  });
+
+  if (["textbox", "text", "i-text"].includes(object.type || "")) {
+    lockable.editable = !locked;
+  }
+
+  object.setCoords();
+}
+
+export function normalizeFabricObjectLock(object: fabric.Object) {
+  if (object.name === "clip") return;
+  setFabricObjectLocked(object, isFabricObjectLocked(object));
+}
+
 export function getValidCanvasDimension(...values: unknown[]) {
   for (const value of values) {
     const dimension = Number(value);

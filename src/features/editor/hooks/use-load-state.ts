@@ -8,6 +8,7 @@ import {
   DEFAULT_WORKSPACE_WIDTH,
   ensureFabricWorkspace,
   getValidCanvasDimension,
+  normalizeFabricObjectLock,
   sanitizeFabricCanvasData,
 } from "@/features/editor/utils";
 import {
@@ -76,7 +77,10 @@ export const useLoadState = ({
             canvas.loadFromJSON(data, () => {
               if (cancelled || !canvas.getContext()) return;
 
-              canvas.getObjects().forEach(configureTextboxControls);
+              canvas.getObjects().forEach((object) => {
+                configureTextboxControls(object);
+                normalizeFabricObjectLock(object);
+              });
               ensureFabricWorkspace(
                 canvas,
                 data,

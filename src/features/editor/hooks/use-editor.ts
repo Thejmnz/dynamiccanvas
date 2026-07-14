@@ -269,6 +269,79 @@ const buildEditor = ({
     addToCanvas(object);
   };
 
+  const adjustImageCropZoom = (direction: "in" | "out") => {
+    const object = canvas.getActiveObject();
+    if (!object || object.type !== "image") return;
+    const image = object as fabric.Image;
+    const element = image.getElement() as HTMLImageElement;
+    const sourceWidth = Number(element.naturalWidth || element.width || image.width || 1);
+    const sourceHeight = Number(element.naturalHeight || element.height || image.height || 1);
+    const currentWidth = Number(image.width || sourceWidth);
+    const currentHeight = Number(image.height || sourceHeight);
+    const displayWidth = currentWidth * Number(image.scaleX || 1);
+    const displayHeight = currentHeight * Number(image.scaleY || 1);
+    const factor = direction === "in" ? 0.9 : 1.1;
+    const nextWidth = Math.max(sourceWidth * 0.1, Math.min(sourceWidth, currentWidth * factor));
+    const nextHeight = Math.max(sourceHeight * 0.1, Math.min(sourceHeight, currentHeight * factor));
+    const centerCropX = Number(image.cropX || 0) + currentWidth / 2;
+    const centerCropY = Number(image.cropY || 0) + currentHeight / 2;
+    const nextCropX = Math.max(0, Math.min(sourceWidth - nextWidth, centerCropX - nextWidth / 2));
+    const nextCropY = Math.max(0, Math.min(sourceHeight - nextHeight, centerCropY - nextHeight / 2));
+    const centerPoint = image.getCenterPoint();
+
+    image.set({
+      cropX: nextCropX,
+      cropY: nextCropY,
+      width: nextWidth,
+      height: nextHeight,
+      scaleX: displayWidth / nextWidth,
+      scaleY: displayHeight / nextHeight,
+      dirty: true,
+    } as any);
+    image.setPositionByOrigin(centerPoint, "center", "center");
+    applyImageEffects(image as EditableFabricImage);
+    image.setCoords();
+    canvas.requestRenderAll();
+  };
+
+  const panImageCrop = (deltaX: number, deltaY: number) => {
+    const object = canvas.getActiveObject();
+    if (!object || object.type !== "image") return;
+    const image = object as fabric.Image;
+    const element = image.getElement() as HTMLImageElement;
+    const sourceWidth = Number(element.naturalWidth || element.width || image.width || 1);
+    const sourceHeight = Number(element.naturalHeight || element.height || image.height || 1);
+
+    // A full-source image has nowhere to pan. The first drag creates a small
+    // crop area automatically so the gesture always produces visible motion.
+    if (
+      Number(image.width || sourceWidth) >= sourceWidth - 0.5
+      && Number(image.height || sourceHeight) >= sourceHeight - 0.5
+    ) {
+      adjustImageCropZoom("in");
+    }
+
+    const zoom = Math.max(0.01, canvas.getZoom());
+    const angle = (Number(image.angle || 0) * Math.PI) / 180;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const sceneDeltaX = deltaX / zoom;
+    const sceneDeltaY = deltaY / zoom;
+    const localDeltaX = (sceneDeltaX * cos + sceneDeltaY * sin) / Math.max(0.0001, Math.abs(Number(image.scaleX || 1)));
+    const localDeltaY = (-sceneDeltaX * sin + sceneDeltaY * cos) / Math.max(0.0001, Math.abs(Number(image.scaleY || 1)));
+    const width = Number(image.width || sourceWidth);
+    const height = Number(image.height || sourceHeight);
+
+    image.set({
+      cropX: Math.max(0, Math.min(sourceWidth - width, Number(image.cropX || 0) - localDeltaX)),
+      cropY: Math.max(0, Math.min(sourceHeight - height, Number(image.cropY || 0) - localDeltaY)),
+      dirty: true,
+    } as any);
+    applyImageEffects(image as EditableFabricImage);
+    image.setCoords();
+    canvas.requestRenderAll();
+  };
+
   return {
     save: persist,
     savePng,
@@ -517,65 +590,91 @@ const buildEditor = ({
       object.setCoords();
       canvas.requestRenderAll();
     },
-    adjustActiveImageCropZoom: (direction: "in" | "out") => {
-      const object = canvas.getActiveObject();
-      if (!object || object.type !== "image") return;
-      const image = object as fabric.Image;
-      const element = image.getElement() as HTMLImageElement;
-      const sourceWidth = Number(element.naturalWidth || element.width || image.width || 1);
-      const sourceHeight = Number(element.naturalHeight || element.height || image.height || 1);
-      const currentWidth = Number(image.width || sourceWidth);
-      const currentHeight = Number(image.height || sourceHeight);
-      const displayWidth = currentWidth * Number(image.scaleX || 1);
-      const displayHeight = currentHeight * Number(image.scaleY || 1);
-      const factor = direction === "in" ? 0.9 : 1.1;
-      const nextWidth = Math.max(sourceWidth * 0.1, Math.min(sourceWidth, currentWidth * factor));
-      const nextHeight = Math.max(sourceHeight * 0.1, Math.min(sourceHeight, currentHeight * factor));
-      const centerCropX = Number(image.cropX || 0) + currentWidth / 2;
-      const centerCropY = Number(image.cropY || 0) + currentHeight / 2;
-      const nextCropX = Math.max(0, Math.min(sourceWidth - nextWidth, centerCropX - nextWidth / 2));
-      const nextCropY = Math.max(0, Math.min(sourceHeight - nextHeight, centerCropY - nextHeight / 2));
-      const center = image.getCenterPoint();
-
-      image.set({
-        cropX: nextCropX,
-        cropY: nextCropY,
-        width: nextWidth,
-        height: nextHeight,
-        scaleX: displayWidth / nextWidth,
-        scaleY: displayHeight / nextHeight,
-        dirty: true,
-      } as any);
-      image.setPositionByOrigin(center, "center", "center");
-      applyImageEffects(image as EditableFabricImage);
-      image.setCoords();
-      canvas.requestRenderAll();
-    },
+    adjustActiveImageCropZoom: adjustImageCropZoom,
+    panActiveImageCrop: panImageCrop,
     commitActiveImageCrop: () => save(),
-    addImage: (value: string) => {
+    addImage: (value: string) => new Promise((resolve) => {
       fabric.Image.fromURL(
         value,
         (image) => {
+          const element = image?.getElement() as HTMLImageElement | undefined;
+          const sourceWidth = Number(
+            element?.naturalWidth || element?.width || image?.width || 0,
+          );
+          const sourceHeight = Number(
+            element?.naturalHeight || element?.height || image?.height || 0,
+          );
+
+          if (!image || !element || sourceWidth <= 0 || sourceHeight <= 0) {
+            resolve(undefined);
+            return;
+          }
           const workspace = getWorkspace();
           const workspaceWidth = Number(workspace?.width || DEFAULT_WORKSPACE_WIDTH);
           const workspaceHeight = Number(workspace?.height || DEFAULT_WORKSPACE_HEIGHT);
-          const imageWidth = Math.max(1, Number(image.width || 1));
-          const imageHeight = Math.max(1, Number(image.height || 1));
+          const imageWidth = Math.max(1, sourceWidth);
+          const imageHeight = Math.max(1, sourceHeight);
           const fitScale = Math.min(
-            (workspaceWidth * 0.8) / imageWidth,
-            (workspaceHeight * 0.8) / imageHeight,
-            1,
+            (workspaceWidth * 0.65) / imageWidth,
+            (workspaceHeight * 0.65) / imageHeight,
           );
 
+          // Fabric can create an Image object before its internal width and
+          // height reflect the decoded HTML image. Set those dimensions
+          // explicitly so its controls never collapse to a one-pixel line.
+          image.set({ width: imageWidth, height: imageHeight } as any);
           image.scale(fitScale);
 
           addToCanvas(image);
+          canvas.requestRenderAll();
+          resolve(image);
         },
         {
           crossOrigin: "anonymous",
         },
       );
-    },
+    }),
+    replaceImageObjectSource: (image: fabric.Image, url: string) => new Promise((resolve, reject) => {
+      if (!canvas.contains(image)) {
+        resolve();
+        return;
+      }
+
+      const centerPoint = image.getCenterPoint();
+      const displayWidth = image.getScaledWidth();
+      const displayHeight = image.getScaledHeight();
+
+      fabric.Image.fromURL(url, (replacement) => {
+        if (!replacement || !replacement.getElement()) {
+          reject(new Error("Could not decode HD image"));
+          return;
+        }
+
+        const replacementElement = replacement.getElement() as HTMLImageElement;
+        const width = Math.max(1, Number(
+          replacementElement.naturalWidth || replacementElement.width || replacement.width || 1,
+        ));
+        const height = Math.max(1, Number(
+          replacementElement.naturalHeight || replacementElement.height || replacement.height || 1,
+        ));
+        image.setElement(replacementElement);
+        image.set({
+          cropX: 0,
+          cropY: 0,
+          width,
+          height,
+          scaleX: displayWidth / width,
+          scaleY: displayHeight / height,
+          dirty: true,
+        } as any);
+        image.setPositionByOrigin(centerPoint, "center", "center");
+        applyImageEffects(image as EditableFabricImage);
+        image.setCoords();
+        canvas.requestRenderAll();
+        save();
+        resolve();
+      }, { crossOrigin: "anonymous" });
+    }),
     delete: () => {
       canvas.getActiveObjects().forEach((object) => canvas.remove(object));
       canvas.discardActiveObject();

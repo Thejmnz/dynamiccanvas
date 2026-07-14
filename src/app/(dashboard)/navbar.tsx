@@ -13,7 +13,7 @@ export const Navbar = () => {
   const router = useRouter();
 
   return (
-    <nav className="sticky top-0 z-30 flex h-[60px] w-full items-center justify-end border-b border-[#101426]/10 bg-[#f6f5ef]/90 px-5 backdrop-blur-xl sm:px-8 lg:px-10">
+    <nav className="sticky top-0 z-30 flex h-[72px] w-full items-center justify-end border-b border-[#101426]/10 bg-white/90 px-5 shadow-[0_8px_30px_rgba(16,20,38,.035)] backdrop-blur-xl sm:px-8 lg:px-10">
       <div className="flex items-center gap-x-3">
         <LanguageSwitcher />
         <UserButton />

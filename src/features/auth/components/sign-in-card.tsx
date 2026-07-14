@@ -12,7 +12,7 @@ import { useAuth } from "@/lib/contexts/AuthContext";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { toast } from "sonner";
-import { BrandMark } from "@/components/brand-mark";
+import { BrandLogo } from "@/components/brand-mark";
 
 export const SignInCard = () => {
   const { signIn, signInWithGoogle } = useAuth();
@@ -75,11 +75,11 @@ export const SignInCard = () => {
     <div className="w-full">
       {/* Logo */}
       <Link href="/" aria-label="Dynamic Canvas" className="mx-auto mb-7 flex w-fit">
-        <BrandMark className="size-14 text-lg shadow-[5px_5px_0_#c9ff5a]" />
+        <BrandLogo className="h-16" />
       </Link>
 
       {/* Card */}
-      <div className="rounded-[28px] border-2 border-[#101426] bg-white p-7 shadow-[9px_9px_0_#101426] sm:p-8">
+      <div className="rounded-[28px] border border-[#101426]/10 bg-white/95 p-7 shadow-[0_24px_70px_rgba(16,20,38,.11)] backdrop-blur-xl sm:p-8">
         {/* Header with Language Switcher */}
         <div className="flex items-start justify-between mb-6">
           <div>
@@ -103,7 +103,7 @@ export const SignInCard = () => {
             type="button"
             onClick={onGoogleSignIn}
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2.5 rounded-xl border-2 border-[#101426]/15 bg-white px-4 py-2.5 text-sm font-bold text-[#101426] transition hover:border-[#101426]/30 hover:bg-[#f6f5ef] disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-[#101426]/12 bg-white px-4 py-2.5 text-sm font-bold text-[#101426] transition hover:border-[#5b35d5]/30 hover:bg-[#f7f5ff] disabled:opacity-50"
           >
             {loadingGoogle ? <Loader2 className="size-4 animate-spin" /> : (
               <svg className="size-4" viewBox="0 0 24 24">
@@ -133,7 +133,7 @@ export const SignInCard = () => {
               type="email"
               disabled={loading || loadingLogin}
               required
-              className="border-[#101426]/20 bg-[#f6f5ef] text-[#101426]"
+              className="border-[#101426]/12 bg-[#f8f8fb] text-[#101426] focus-visible:ring-[#5b35d5]/25"
             />
           </div>
           <div className="relative">
@@ -144,7 +144,7 @@ export const SignInCard = () => {
               type={showPassword ? "text" : "password"}
               disabled={loading || loadingLogin}
               required
-              className="border-[#101426]/20 bg-[#f6f5ef] text-[#101426] pr-10"
+              className="border-[#101426]/12 bg-[#f8f8fb] text-[#101426] pr-10 focus-visible:ring-[#5b35d5]/25"
             />
             <button
               type="button"
@@ -158,7 +158,7 @@ export const SignInCard = () => {
             type="submit"
             size="lg"
             disabled={loading}
-            className="w-full bg-[#5b35d5] font-bold text-white hover:bg-[#101426]"
+            className="w-full bg-gradient-to-r from-[#5b35d5] to-[#6f4bea] font-bold text-white shadow-[0_12px_28px_rgba(91,53,213,.22)] hover:brightness-105"
           >
             {loadingLogin ? (
               <Loader2 className="mr-2 size-5 animate-spin" />

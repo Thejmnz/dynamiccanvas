@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 import {
   LayoutTemplate,
   ImageIcon,
@@ -14,6 +16,8 @@ import {
 
 import { ActiveTool } from "@/features/editor/types";
 import { SidebarItem } from "@/features/editor/components/sidebar-item";
+import { useLanguage } from "@/lib/contexts/LanguageContext";
+import { prefetchPixabayGallery } from "@/features/editor/pixabay-cache";
 
 interface SidebarProps {
   activeTool: ActiveTool;
@@ -24,8 +28,19 @@ export const Sidebar = ({
   activeTool,
   onChangeActiveTool,
 }: SidebarProps) => {
+  const { language } = useLanguage();
+
+  useEffect(() => {
+    // Warm Pixabay shortly after the editor becomes interactive, without
+    // competing with the initial Fabric canvas load.
+    const timer = window.setTimeout(() => {
+      prefetchPixabayGallery(language === "es" ? "es" : "en");
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [language]);
+
   return (
-    <aside className="flex h-full w-[64px] shrink-0 flex-col overflow-hidden border-r-2 border-[#101426] bg-[#101426] text-white">
+    <aside className="flex h-full w-[64px] shrink-0 flex-col overflow-hidden border-r border-[#101426]/10 bg-white text-[#101426] shadow-[8px_0_30px_rgba(16,20,38,.035)]">
       <ul className="flex h-full min-h-0 flex-col py-2">
         <SidebarItem
           icon={LayoutTemplate}
@@ -38,6 +53,7 @@ export const Sidebar = ({
           label="Image"
           isActive={activeTool === "images"}
           onClick={() => onChangeActiveTool("images")}
+          onMouseEnter={() => prefetchPixabayGallery(language === "es" ? "es" : "en")}
         />
         <SidebarItem
           icon={Upload}

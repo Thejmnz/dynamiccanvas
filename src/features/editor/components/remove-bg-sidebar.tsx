@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { AlertTriangle } from "lucide-react";
 
 import { usePaywall } from "@/features/subscriptions/hooks/use-paywall";
@@ -77,11 +76,13 @@ export const RemoveBgSidebar = ({
               "relative aspect-square rounded-md overflow-hidden transition bg-muted",
               mutation.isPending && "opacity-50",
             )}>
-              <Image
+              {/* This source can be a same-origin proxy URL, a blob, or a
+                  Supabase URL. A native image supports all three without
+                  Next.js remote-host configuration. */}
+              <img
                 src={imageSrc}
-                fill
                 alt="Image"
-                className="object-cover"
+                className="size-full object-cover"
               />
             </div>
             <Button

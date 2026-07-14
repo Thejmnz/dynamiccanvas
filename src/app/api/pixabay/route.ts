@@ -72,6 +72,26 @@ const getExtension = (contentType: string) => {
   return "jpg";
 };
 
+async function getFreshPixabayImageUrl(imageId: number) {
+  const apiKey = getPixabayKey();
+  if (!apiKey) return null;
+
+  const params = new URLSearchParams({
+    key: apiKey,
+    id: String(imageId),
+    image_type: "photo",
+    safesearch: "true",
+  });
+  const response = await fetch(`${PIXABAY_API_URL}?${params}`, {
+    cache: "no-store",
+  });
+  if (!response.ok) return null;
+
+  const data = await response.json() as { hits?: PixabayHit[] };
+  const hit = data.hits?.[0];
+  return hit?.largeImageURL || hit?.webformatURL || null;
+}
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const previewUrl = searchParams.get("imageUrl") || "";
@@ -212,10 +232,17 @@ export async function POST(request: NextRequest) {
       imageUrl?: string;
     };
     const imageId = Number(body.id);
-    const imageUrl = body.imageUrl || "";
+    const suppliedImageUrl = body.imageUrl || "";
 
-    if (!Number.isInteger(imageId) || !isPixabayImageUrl(imageUrl)) {
+    if (!Number.isInteger(imageId) || (suppliedImageUrl && !isPixabayImageUrl(suppliedImageUrl))) {
       return NextResponse.json({ error: "Invalid Pixabay image" }, { status: 400 });
+    }
+
+    // Signed Pixabay download URLs expire. Always refresh the URL by image ID
+    // at import time instead of trusting the value cached by the browser.
+    const imageUrl = await getFreshPixabayImageUrl(imageId);
+    if (!imageUrl || !isPixabayImageUrl(imageUrl)) {
+      return NextResponse.json({ error: "Could not refresh Pixabay image" }, { status: 502 });
     }
 
     const imageResponse = await fetch(imageUrl, {

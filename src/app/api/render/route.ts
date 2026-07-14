@@ -28,6 +28,58 @@ interface CanvasElement {
   [key: string]: any;
 }
 
+const setFiniteNumber = (
+  target: Record<string, any>,
+  source: Record<string, any>,
+  key: string,
+  min = Number.NEGATIVE_INFINITY,
+  max = Number.POSITIVE_INFINITY,
+) => {
+  if (source[key] === undefined) return;
+  const value = Number(source[key]);
+  if (Number.isFinite(value)) target[key] = Math.min(max, Math.max(min, value));
+};
+
+const setString = (target: Record<string, any>, source: Record<string, any>, key: string) => {
+  if (typeof source[key] === "string") target[key] = source[key];
+};
+
+const setBoolean = (target: Record<string, any>, source: Record<string, any>, key: string) => {
+  if (typeof source[key] === "boolean") target[key] = source[key];
+};
+
+function applyCommonLayerOverrides(element: Record<string, any>, update: Record<string, any>) {
+  const next = { ...element };
+
+  setFiniteNumber(next, update, "x");
+  setFiniteNumber(next, update, "y");
+  setFiniteNumber(next, update, "width", 1);
+  setFiniteNumber(next, update, "height", 1);
+  setFiniteNumber(next, update, "rotation", -3600, 3600);
+  setFiniteNumber(next, update, "scaleX", -100, 100);
+  setFiniteNumber(next, update, "scaleY", -100, 100);
+  setFiniteNumber(next, update, "opacity", 0, 1);
+  setFiniteNumber(next, update, "zIndex", -100000, 100000);
+  setFiniteNumber(next, update, "strokeWidth", 0);
+  setFiniteNumber(next, update, "shadowBlur", 0);
+  setFiniteNumber(next, update, "shadowOpacity", 0, 1);
+  setFiniteNumber(next, update, "shadowOffsetX");
+  setFiniteNumber(next, update, "shadowOffsetY");
+
+  setString(next, update, "fill");
+  setString(next, update, "stroke");
+  setString(next, update, "shadowColor");
+  setBoolean(next, update, "visible");
+
+  if (typeof update.color === "string") next.fill = update.color;
+  if (update.angle !== undefined && update.rotation === undefined) {
+    const angle = Number(update.angle);
+    if (Number.isFinite(angle)) next.rotation = angle;
+  }
+
+  return next;
+}
+
 function traceImageMaskPath(
   ctx: any,
   width: number,
@@ -454,13 +506,21 @@ export async function POST(req: NextRequest) {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse body first so we have templateId
-    const body = await req.json();
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Request body must be valid JSON" }, { status: 400 });
+    }
     templateId = body.templateId;
     const layers = body.layers;
+    if (layers !== undefined && (!layers || typeof layers !== "object" || Array.isArray(layers))) {
+      return NextResponse.json({ error: "layers must be an object keyed by layer ID" }, { status: 400 });
+    }
     const requestedScale = Number(body.scale ?? body.pixelRatio ?? 2);
-    const outputFormat = ["png", "webp"].includes(String(body.format ?? "jpeg").toLowerCase())
-      ? String(body.format).toLowerCase()
-      : "jpeg";
+    const requestedFormat = String(body.format ?? "jpeg").toLowerCase();
+    const outputFormat = requestedFormat === "jpg" ? "jpeg" : requestedFormat;
+    if (!["jpeg", "png", "webp"].includes(outputFormat)) {
+      return NextResponse.json({ error: "format must be jpeg, jpg, png, or webp" }, { status: 400 });
+    }
 
     log(`Received request for Template: ${templateId}`);
 
@@ -489,7 +549,9 @@ export async function POST(req: NextRequest) {
     const template = templateResult.data;
     const templateError = templateResult.error;
 
-    if (templateError || !template) return NextResponse.json({ error: "Template not found" }, { status: 404 });
+    if (templateError || !template || template.user_id !== apiKeyData.user_id) {
+      return NextResponse.json({ error: "Template not found" }, { status: 404 });
+    }
 
     // Paid allowances renew monthly, including annual subscriptions. Free
     // credits never renew: once their initial 50 are used an upgrade is
@@ -577,40 +639,79 @@ export async function POST(req: NextRequest) {
         const layerId = element.id;
         const update = layers[layerId];
 
-        if (update) {
-          const newElement = { ...element };
+        if (update && typeof update === "object") {
+          const newElement = applyCommonLayerOverrides(element, update);
 
           // Text updates
           if (element.type === 'text') {
             const oldText = element.text || '';
             const newText = update.text !== undefined ? update.text : oldText;
 
-            if (update.text !== undefined) newElement.text = newText;
-            if (update.color !== undefined) newElement.fill = update.color;
-            if (update.fontFamily !== undefined) newElement.fontFamily = update.fontFamily;
-            if (update.fontSize !== undefined) newElement.fontSize = update.fontSize;
-            if (update.lineHeight !== undefined) newElement.lineHeight = update.lineHeight;
+            if (update.text !== undefined) newElement.text = String(newText);
+            setString(newElement, update, "fontFamily");
+            if (typeof update.fontWeight === "string" || typeof update.fontWeight === "number") {
+              newElement.fontWeight = update.fontWeight;
+            }
+            setString(newElement, update, "fontStyle");
+            setString(newElement, update, "textAlign");
+            setString(newElement, update, "textDecoration");
+            setString(newElement, update, "wrap");
+            setFiniteNumber(newElement, update, "fontSize", 1, 10000);
+            setFiniteNumber(newElement, update, "lineHeight", 0.1, 20);
+            setFiniteNumber(newElement, update, "letterSpacing", -10000, 10000);
+            setFiniteNumber(newElement, update, "charSpacing", -10000, 10000);
+            setBoolean(newElement, update, "ellipsis");
+
+            const verticalAlign = update.textVerticalAlign ?? update.verticalAlign;
+            if (["top", "middle", "bottom"].includes(verticalAlign)) {
+              newElement.textVerticalAlign = verticalAlign;
+            }
 
             // Konva must measure the final wrapped text with the registered
             // font. Store the original visual center here and apply the real
             // measured height when the node is created below.
-            if (update.text !== undefined || update.fontSize !== undefined || update.lineHeight !== undefined) {
-              const originalHeight = Number(element.height || 100);
-              const scaleY = Number(element.scaleY || 1);
+            if (
+              update.y === undefined &&
+              (update.text !== undefined || update.fontSize !== undefined || update.lineHeight !== undefined || update.width !== undefined)
+            ) {
+              const originalHeight = Number(update.height ?? element.height ?? 100);
+              const scaleY = Number(newElement.scaleY || 1);
               newElement._minimumTextHeight = originalHeight;
-              newElement._preserveTextCenterY = Number(element.y || 0) + (originalHeight * scaleY) / 2;
+              newElement._preserveTextCenterY = Number(element.y || 0) + (Number(element.height || originalHeight) * Number(element.scaleY || 1)) / 2;
             }
           }
 
           // Image updates
           const targetImageUrl = update.image_url || update.src || update.url || update.image;
-          if (element.type === 'image' && targetImageUrl) {
-            if (!isSafeImageUrl(targetImageUrl)) {
-              log(`Blocked unsafe image URL in layer update (SSRF): ${targetImageUrl}`);
-            } else {
-              newElement.src = targetImageUrl;
-              // Mark that this image was dynamically updated so we use original dimensions
-              newElement._isDynamicImage = true;
+          if (element.type === 'image') {
+            if (targetImageUrl) {
+              if (!isSafeImageUrl(targetImageUrl)) {
+                log(`Blocked unsafe image URL in layer update (SSRF): ${targetImageUrl}`);
+              } else {
+                newElement.src = targetImageUrl;
+                newElement._isDynamicImage = true;
+              }
+            }
+
+            [
+              "imageMaskShape", "imageCornerMode", "imageBorderColor",
+              "imageShadowColor", "imageBlendMode", "imagePreset", "imageFit",
+            ].forEach((key) => setString(newElement, update, key));
+            [
+              "imageCornerRadius", "imageBorderWidth", "imageShadowBlur",
+              "imageShadowOpacity", "imageShadowOffsetX", "imageShadowOffsetY",
+              "imageBlur", "imageBrightness", "imageTemperature", "imageContrast",
+              "imageSaturation", "imageVibrance", "imageWhites", "imageBlacks",
+            ].forEach((key) => setFiniteNumber(newElement, update, key));
+            setBoolean(newElement, update, "flipX");
+            setBoolean(newElement, update, "flipY");
+          }
+
+          if (["rect", "circle", "triangle", "diamond"].includes(element.type)) {
+            setFiniteNumber(newElement, update, "rx", 0);
+            if (update.cornerRadius !== undefined) {
+              const cornerRadius = Number(update.cornerRadius);
+              if (Number.isFinite(cornerRadius)) newElement.rx = Math.max(0, cornerRadius);
             }
           }
 
@@ -618,6 +719,16 @@ export async function POST(req: NextRequest) {
         }
         return element;
       });
+
+      if (canvasData.elements.some((element: any) => Number.isFinite(Number(element.zIndex)))) {
+        canvasData.elements = canvasData.elements
+          .map((element: any, index: number) => ({ ...element, _originalOrder: index }))
+          .sort((a: any, b: any) => {
+            const aIndex = Number.isFinite(Number(a.zIndex)) ? Number(a.zIndex) : a._originalOrder;
+            const bIndex = Number.isFinite(Number(b.zIndex)) ? Number(b.zIndex) : b._originalOrder;
+            return aIndex - bIndex || a._originalOrder - b._originalOrder;
+          });
+      }
     }
 
     // 6. Register all fonts needed before rendering
@@ -677,7 +788,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Pre-load all images in parallel before rendering
-    const imageElements = canvasData.elements.filter((el: any) => el.type === 'image' && el.src);
+    const imageElements = canvasData.elements.filter((el: any) => el.type === 'image' && el.src && el.visible !== false);
     const imageCache = new Map<string, any>();
     if (imageElements.length > 0) {
       log(`Pre-loading ${imageElements.length} image(s) in parallel...`);
@@ -696,6 +807,7 @@ export async function POST(req: NextRequest) {
 
     // Render elements
     for (const el of canvasData.elements) {
+      if (el.visible === false) continue;
       let node;
 
       switch (el.type) {
@@ -713,6 +825,11 @@ export async function POST(req: NextRequest) {
             scaleX: el.scaleX || 1,
             scaleY: el.scaleY || 1,
             cornerRadius: el.rx || 0,
+            shadowColor: el.shadowColor || undefined,
+            shadowBlur: Math.max(0, Number(el.shadowBlur || 0)),
+            shadowOpacity: Math.max(0, Math.min(1, Number(el.shadowOpacity ?? 1))),
+            shadowOffsetX: Number(el.shadowOffsetX || 0),
+            shadowOffsetY: Number(el.shadowOffsetY || 0),
           });
           break;
 
@@ -728,6 +845,11 @@ export async function POST(req: NextRequest) {
             rotation: el.rotation || 0,
             scaleX: el.scaleX || 1,
             scaleY: el.scaleY || 1,
+            shadowColor: el.shadowColor || undefined,
+            shadowBlur: Math.max(0, Number(el.shadowBlur || 0)),
+            shadowOpacity: Math.max(0, Math.min(1, Number(el.shadowOpacity ?? 1))),
+            shadowOffsetX: Number(el.shadowOffsetX || 0),
+            shadowOffsetY: Number(el.shadowOffsetY || 0),
           });
           break;
 
@@ -748,6 +870,11 @@ export async function POST(req: NextRequest) {
             scaleX: el.scaleX || 1,
             scaleY: el.scaleY || 1,
             closed: true,
+            shadowColor: el.shadowColor || undefined,
+            shadowBlur: Math.max(0, Number(el.shadowBlur || 0)),
+            shadowOpacity: Math.max(0, Math.min(1, Number(el.shadowOpacity ?? 1))),
+            shadowOffsetX: Number(el.shadowOffsetX || 0),
+            shadowOffsetY: Number(el.shadowOffsetY || 0),
           });
           break;
 
@@ -769,6 +896,11 @@ export async function POST(req: NextRequest) {
             scaleX: el.scaleX || 1,
             scaleY: el.scaleY || 1,
             closed: true,
+            shadowColor: el.shadowColor || undefined,
+            shadowBlur: Math.max(0, Number(el.shadowBlur || 0)),
+            shadowOpacity: Math.max(0, Math.min(1, Number(el.shadowOpacity ?? 1))),
+            shadowOffsetX: Number(el.shadowOffsetX || 0),
+            shadowOffsetY: Number(el.shadowOffsetY || 0),
           });
           break;
 
@@ -803,6 +935,13 @@ export async function POST(req: NextRequest) {
             rotation: el.rotation || 0,
             scaleX: el.scaleX || 1,
             scaleY: el.scaleY || 1,
+            stroke: el.stroke || undefined,
+            strokeWidth: Math.max(0, Number(el.strokeWidth || 0)),
+            shadowColor: el.shadowColor || undefined,
+            shadowBlur: Math.max(0, Number(el.shadowBlur || 0)),
+            shadowOpacity: Math.max(0, Math.min(1, Number(el.shadowOpacity ?? 1))),
+            shadowOffsetX: Number(el.shadowOffsetX || 0),
+            shadowOffsetY: Number(el.shadowOffsetY || 0),
           };
 
           // Width es necesario para wrapping
@@ -825,8 +964,13 @@ export async function POST(req: NextRequest) {
           } else if (Number.isFinite(Number(el.letterSpacing))) {
             textConfig.letterSpacing = Number(el.letterSpacing);
           }
-          if (el.fontStyle) textConfig.fontStyle = el.fontStyle;
+          const fontWeight = String(el.fontWeight ?? "").toLowerCase();
+          const isBold = fontWeight === "bold" || Number(fontWeight) >= 600;
+          const isItalic = String(el.fontStyle || "").toLowerCase().includes("italic");
+          textConfig.fontStyle = [isBold ? "bold" : "", isItalic ? "italic" : ""].filter(Boolean).join(" ") || "normal";
           if (el.textDecoration) textConfig.textDecoration = el.textDecoration;
+          if (["word", "char", "none"].includes(el.wrap)) textConfig.wrap = el.wrap;
+          if (typeof el.ellipsis === "boolean") textConfig.ellipsis = el.ellipsis;
 
           node = new Konva.default.Text(textConfig);
 
@@ -878,25 +1022,29 @@ export async function POST(req: NextRequest) {
               let innerY = 0;
 
               if (el._isDynamicImage === true) {
-                // For dynamically updated images, use object-fit: cover
+                // Dynamically replaced images use cover by default, and can
+                // opt into contain or fill through imageFit.
                 // Use FINAL dimensions (stored × scale) as the container
                 const containerWidth = finalWidth;
                 const containerHeight = finalHeight;
+                const imageFit = ["cover", "contain", "fill"].includes(el.imageFit) ? el.imageFit : "cover";
 
-                // Calculate scale to cover container (take the larger scale)
-                const scaleByWidth = containerWidth / imageObj.width;
-                const scaleByHeight = containerHeight / imageObj.height;
-                const coverScale = Math.max(scaleByWidth, scaleByHeight);
+                if (imageFit === "fill") {
+                  imageWidth = containerWidth;
+                  imageHeight = containerHeight;
+                } else {
+                  const scaleByWidth = containerWidth / imageObj.width;
+                  const scaleByHeight = containerHeight / imageObj.height;
+                  const fitScale = imageFit === "contain"
+                    ? Math.min(scaleByWidth, scaleByHeight)
+                    : Math.max(scaleByWidth, scaleByHeight);
+                  imageWidth = imageObj.width * fitScale;
+                  imageHeight = imageObj.height * fitScale;
+                  innerX = (containerWidth - imageWidth) / 2;
+                  innerY = (containerHeight - imageHeight) / 2;
+                }
 
-                // Image dimensions when scaled to cover
-                imageWidth = imageObj.width * coverScale;
-                imageHeight = imageObj.height * coverScale;
-
-                // Position to center the image (will be cropped by Konva)
-                innerX = -(imageWidth - containerWidth) / 2;
-                innerY = -(imageHeight - containerHeight) / 2;
-
-                log(`  - Dynamic image mode: cover ${containerWidth}x${containerHeight}, scaled to ${imageWidth}x${imageHeight}`);
+                log(`  - Dynamic image mode: ${imageFit} ${containerWidth}x${containerHeight}, scaled to ${imageWidth}x${imageHeight}`);
               } else {
                 // For template images, use the exact dimensions from the editor
                 imageWidth = finalWidth;
@@ -1194,7 +1342,9 @@ export async function GET() {
     requestBody: {
       templateId: "string (required) - ID of the template to render",
       layers: "object (optional) - Dynamic data to merge with template elements",
-      scale: "number (optional, 1-3) - Output resolution multiplier; defaults to 3"
+      format: "jpeg | jpg | png | webp (optional) - defaults to jpeg",
+      scale: "number (optional, 1-3) - Output resolution multiplier; defaults to 2",
+      transparent: "boolean (optional) - transparent canvas for PNG/WebP"
     },
     exampleRequest: {
       templateId: "your-template-id",

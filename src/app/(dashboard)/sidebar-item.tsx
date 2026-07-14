@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -10,6 +13,7 @@ interface SidebarItemProps {
   isActive?: boolean;
   onClick?: () => void;
   onboardingId?: string;
+  onPrefetch?: () => void;
 };
 
 export const SidebarItem = ({
@@ -19,16 +23,31 @@ export const SidebarItem = ({
   isActive,
   onClick,
   onboardingId,
+  onPrefetch,
 }: SidebarItemProps) => {
+  const router = useRouter();
+
   return (
-    <Link href={href} onClick={onClick} data-onboarding={onboardingId}>
+    <Link
+      href={href}
+      onClick={onClick}
+      data-onboarding={onboardingId}
+      onMouseEnter={() => {
+        router.prefetch(href);
+        onPrefetch?.();
+      }}
+      onFocus={() => {
+        router.prefetch(href);
+        onPrefetch?.();
+      }}
+    >
       <div className={cn(
-        "flex items-center px-3.5 py-3 rounded-xl border border-transparent transition-all duration-200",
-        "text-white/60 hover:bg-white/10 hover:text-white",
-        isActive && "border-[#c9ff5a] bg-[#c9ff5a] text-[#101426] font-bold shadow-[4px_4px_0_rgba(201,255,90,.18)]",
+        "flex items-center rounded-xl px-3.5 py-3 transition-all duration-200",
+        "text-[#596174] hover:bg-[#f6f5fb] hover:text-[#101426]",
+        isActive && "bg-[#eeeaff] font-bold text-[#5b35d5]",
       )}>
-        <Icon className="size-4 mr-2 stroke-2" />
-        <span className="text-sm font-medium">
+        <Icon className="mr-3 size-[18px] stroke-2" />
+        <span className="text-sm font-semibold">
           {label}
         </span>
       </div>

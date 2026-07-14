@@ -8,6 +8,7 @@ interface SidebarItemProps {
   label: string;
   isActive?: boolean;
   onClick: () => void;
+  onMouseEnter?: () => void;
 };
 
 export const SidebarItem = ({
@@ -15,17 +16,20 @@ export const SidebarItem = ({
   label,
   isActive,
   onClick,
+  onMouseEnter,
 }: SidebarItemProps) => {
   return (
     <Button
       variant="ghost"
       onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onFocus={onMouseEnter}
       className={cn(
-        "mx-1 my-0.5 h-[48px] w-[calc(100%-8px)] shrink flex-col rounded-lg p-1 text-white/75 hover:bg-white/10 hover:text-white",
-        isActive && "bg-[#5b35d5] text-white shadow-[inset_3px_0_0_#c9ff5a] hover:bg-[#5b35d5] hover:text-white"
+        "mx-1 my-0.5 h-[48px] w-[calc(100%-8px)] shrink flex-col rounded-lg p-1 text-[#596174] hover:bg-[#f6f5fb] hover:text-[#101426]",
+        isActive && "bg-[#eeeaff] font-bold text-[#5b35d5] hover:bg-[#eeeaff] hover:text-[#5b35d5]"
       )}
     >
-      <Icon className="size-5 shrink-0 stroke-[2.2] text-white" />
+      <Icon className="size-5 shrink-0 stroke-[2.2]" />
       <span className="mt-0.5 text-[9px] leading-none">
         {label}
       </span>

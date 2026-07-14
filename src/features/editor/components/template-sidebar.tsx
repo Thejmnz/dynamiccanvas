@@ -179,7 +179,7 @@ export const TemplateSidebar = ({ editor, activeTool, onChangeActiveTool }: Temp
                   onClick={() => void applyPreset(preset)}
                   className="group mb-5 block w-full break-inside-avoid text-left"
                 >
-                  <div className="relative overflow-hidden rounded-2xl border-2 border-[#101426]/10 bg-[#f1f1f4] shadow-sm transition group-hover:-translate-y-1 group-hover:border-[#5b35d5] group-hover:shadow-[6px_6px_0_#c9ff5a]">
+                  <div className="relative overflow-hidden rounded-2xl border-2 border-[#101426]/10 bg-[#f1f1f4] shadow-sm transition group-hover:-translate-y-1 group-hover:border-[#5b35d5] group-hover:shadow-[6px_6px_0_rgba(91,53,213,.18)]">
                     <div className="relative" style={{ aspectRatio: `${preset.width}/${preset.height}` }}>
                       {preset.previewPhotoUrl && (
                         <img

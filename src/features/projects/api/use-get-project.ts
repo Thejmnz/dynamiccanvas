@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 
 export type ResponseType = {
@@ -15,6 +15,24 @@ export type ResponseType = {
 };
 
 export const useGetProject = (id: string) => {
+  const queryClient = useQueryClient();
+
+  const getCachedProject = () => {
+    const projectLists = queryClient.getQueriesData<any>({
+      queryKey: ["projects"],
+    });
+
+    for (const [, cached] of projectLists) {
+      const pages = Array.isArray(cached?.pages) ? cached.pages : [];
+      for (const page of pages) {
+        const project = page?.data?.find((item: any) => item?.id === id);
+        if (project) return project;
+      }
+    }
+
+    return undefined;
+  };
+
   const query = useQuery({
     enabled: !!id,
     queryKey: ["project", { id }],
@@ -88,6 +106,10 @@ export const useGetProject = (id: string) => {
         json: canvasJson,
       };
     },
+    // The dashboard already fetched the complete project row. Reusing it
+    // removes a second Supabase round trip when opening the editor.
+    initialData: getCachedProject,
+    staleTime: 60 * 1000,
   });
 
   return query;

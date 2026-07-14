@@ -85,19 +85,19 @@ export default function PricingPage() {
         <p className="mt-2 text-sm text-[#101426]/55">{copy.subtitle}</p>
       </div>
 
-      <div className="mx-auto mt-6 flex w-fit items-center rounded-full border-2 border-[#101426] bg-white p-1 shadow-[4px_4px_0_#101426]">
+      <div className="mx-auto mt-6 flex w-fit items-center rounded-xl border border-[#101426]/10 bg-white p-1 shadow-sm">
         <button
           onClick={() => setYearly(false)}
-          className={`rounded-full px-5 py-2 text-sm font-black transition ${!yearly ? "bg-[#101426] text-white" : "text-[#101426]/55"}`}
+          className={`rounded-lg px-5 py-2 text-sm font-black transition ${!yearly ? "bg-[#5b35d5] text-white" : "text-[#596174] hover:bg-[#f6f5fb] hover:text-[#101426]"}`}
         >
           {copy.monthly}
         </button>
         <button
           onClick={() => setYearly(true)}
-          className={`flex items-center gap-2 rounded-full px-5 py-2 text-sm font-black transition ${yearly ? "bg-[#5b35d5] text-white" : "text-[#101426]/55"}`}
+          className={`flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-black transition ${yearly ? "bg-[#5b35d5] text-white" : "text-[#596174] hover:bg-[#f6f5fb] hover:text-[#101426]"}`}
         >
           {copy.annual}
-          <span className={`rounded-full px-2 py-0.5 text-[9px] ${yearly ? "bg-[#c9ff5a] text-[#101426]" : "bg-[#e9e5ff] text-[#5b35d5]"}`}>
+          <span className={`rounded-full px-2 py-0.5 text-[9px] ${yearly ? "bg-white/15 text-white" : "bg-[#eeeaff] text-[#5b35d5]"}`}>
             {copy.save}
           </span>
         </button>
@@ -109,10 +109,10 @@ export default function PricingPage() {
           return (
             <article
               key={plan.slug}
-              className={`relative flex flex-col rounded-[22px] border-2 border-[#101426] p-6 ${featured ? "bg-[#101426] text-white shadow-[7px_7px_0_#c9ff5a]" : "bg-white"}`}
+              className={`relative flex flex-col rounded-[22px] border border-[#101426]/10 p-6 shadow-[0_14px_38px_rgba(16,20,38,.055)] ${featured ? "bg-[#5b35d5] text-white" : "bg-white"}`}
             >
               {plan.popular && (
-                <span className={`w-fit rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${featured ? "bg-[#c9ff5a] text-[#101426]" : "bg-[#e9e5ff] text-[#5b35d5]"}`}>
+                <span className={`w-fit rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${featured ? "bg-white/15 text-white" : "bg-[#eeeaff] text-[#5b35d5]"}`}>
                   {copy.popular}
                 </span>
               )}
@@ -133,7 +133,7 @@ export default function PricingPage() {
               <ul className="flex-1 space-y-2.5">
                 {plan.features[isSpanish ? "es" : "en"].map((f) => (
                   <li key={f} className="flex gap-2 text-[13px] font-semibold leading-snug">
-                    <BadgeCheck className={`size-4 shrink-0 ${featured ? "text-[#c9ff5a]" : "text-[#5b35d5]"}`} />
+                    <BadgeCheck className={`size-4 shrink-0 ${featured ? "text-white" : "text-[#5b35d5]"}`} />
                     {f}
                   </li>
                 ))}
@@ -141,7 +141,7 @@ export default function PricingPage() {
               <button
                 onClick={() => handleCheckout(plan.slug)}
                 disabled={checkout.isPending}
-                className={`mt-5 flex h-11 items-center justify-center rounded-full font-black transition ${featured ? "bg-[#c9ff5a] text-[#101426] hover:bg-white" : "bg-[#101426] text-white hover:bg-[#5b35d5]"}`}
+                className={`mt-5 flex h-11 items-center justify-center rounded-xl font-black transition ${featured ? "bg-white text-[#5b35d5] hover:bg-[#eeeaff]" : "bg-[#5b35d5] text-white hover:bg-[#4f2bc5]"}`}
               >
                 {checkout.isPending ? <Loader2 className="size-4 animate-spin" /> : copy.choose}
               </button>

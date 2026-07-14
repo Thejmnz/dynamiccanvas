@@ -50,6 +50,8 @@ export type ImageCropState = {
 };
 
 export type EditableFabricImage = fabric.Image & {
+  isLoadingHd?: boolean;
+  loadingHdLabel?: string;
   imagePreset?: ImagePreset;
   imageBlur?: number;
   imageBrightness?: number;
@@ -71,6 +73,74 @@ export type EditableFabricImage = fabric.Image & {
   imageShadowOffsetY?: number;
   imageBlendMode?: string;
   imageMaskShape?: ImageMaskShape;
+};
+
+const installHdLoadingRenderer = () => {
+  const imagePrototype = fabric.Image.prototype as any;
+  if (imagePrototype.__dynamicCanvasHdLoadingRenderer) return;
+
+  const originalRender = imagePrototype._render;
+  imagePrototype._render = function (ctx: CanvasRenderingContext2D) {
+    originalRender.call(this, ctx);
+    if (!this.isLoadingHd) return;
+
+    const zoom = Math.max(0.01, Number(this.canvas?.getZoom?.() || 1));
+    const scaleX = Math.max(0.01, Math.abs(Number(this.scaleX || 1)) * zoom);
+    const scaleY = Math.max(0.01, Math.abs(Number(this.scaleY || 1)) * zoom);
+    const label = String(this.loadingHdLabel || "CARGANDO HD…");
+
+    ctx.save();
+    // Keep the watermark readable at every image size and canvas zoom while
+    // retaining the image's rotation and center point.
+    ctx.scale(1 / scaleX, 1 / scaleY);
+    ctx.font = "700 12px Inter, Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const paddingX = 12;
+    const badgeHeight = 30;
+    const badgeWidth = Math.ceil(ctx.measureText(label).width) + paddingX * 2;
+    const left = -badgeWidth / 2;
+    const top = -badgeHeight / 2;
+    const radius = 8;
+
+    ctx.fillStyle = "rgba(15, 23, 42, 0.82)";
+    ctx.beginPath();
+    ctx.moveTo(left + radius, top);
+    ctx.lineTo(left + badgeWidth - radius, top);
+    ctx.quadraticCurveTo(left + badgeWidth, top, left + badgeWidth, top + radius);
+    ctx.lineTo(left + badgeWidth, top + badgeHeight - radius);
+    ctx.quadraticCurveTo(
+      left + badgeWidth,
+      top + badgeHeight,
+      left + badgeWidth - radius,
+      top + badgeHeight,
+    );
+    ctx.lineTo(left + radius, top + badgeHeight);
+    ctx.quadraticCurveTo(left, top + badgeHeight, left, top + badgeHeight - radius);
+    ctx.lineTo(left, top + radius);
+    ctx.quadraticCurveTo(left, top, left + radius, top);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(label, 0, 0);
+    ctx.restore();
+  };
+
+  imagePrototype.__dynamicCanvasHdLoadingRenderer = true;
+};
+
+installHdLoadingRenderer();
+
+export const setImageHdLoading = (
+  image: EditableFabricImage,
+  loading: boolean,
+  label?: string,
+) => {
+  image.isLoadingHd = loading;
+  if (label) image.loadingHdLabel = label;
+  image.set({ dirty: true } as any);
+  image.canvas?.requestRenderAll();
 };
 
 export const DEFAULT_IMAGE_EFFECTS: ImageEffectSettings = {

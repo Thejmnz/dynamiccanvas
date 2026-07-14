@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, CheckCircle2, Clock3, ExternalLink, Images } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
 import { BrandLoading } from "@/components/brand-loading";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
+import { useUserRole } from "@/hooks/use-user-role";
+import { fetchRenders, rendersQueryKey } from "@/features/dashboard/api/dashboard-prefetch";
 
 type RenderRecord = {
   id: string;
@@ -23,30 +26,16 @@ type RenderRecord = {
 
 export default function RendersPage() {
   const { language } = useLanguage();
+  const { userId } = useUserRole();
   const searchParams = useSearchParams();
   const templateId = searchParams.get("templateId");
-  const [items, setItems] = useState<RenderRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/renders", { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Failed to load renders");
-        return response.json();
-      })
-      .then((result) => {
-        if (!cancelled) setItems(result.data || []);
-      })
-      .catch(() => {
-        if (!cancelled) setError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, []);
+  const { data: items = [], isPending: loading, isError: error } = useQuery<RenderRecord[]>({
+    queryKey: rendersQueryKey(userId || ""),
+    queryFn: fetchRenders,
+    enabled: Boolean(userId),
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
 
   const visibleItems = useMemo(
     () => templateId ? items.filter((item) => item.templateId === templateId) : items,

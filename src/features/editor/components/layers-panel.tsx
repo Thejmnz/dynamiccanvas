@@ -38,6 +38,10 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Editor } from "@/features/editor/types";
+import {
+  isFabricObjectLocked,
+  setFabricObjectLocked,
+} from "@/features/editor/utils";
 import { cn } from "@/lib/utils";
 
 interface LayersPanelProps {
@@ -75,9 +79,7 @@ const getLayerId = (object: LayerObject) => {
   return object.__layerId;
 };
 
-const isLocked = (object: LayerObject) => (
-  object.locked === true || object.selectable === false
-);
+const isLocked = (object: LayerObject) => isFabricObjectLocked(object);
 
 const getTypeLabel = (type?: string) => {
   switch (type) {
@@ -345,17 +347,12 @@ export const LayersPanel = ({ editor }: LayersPanelProps) => {
 
   const toggleLock = (object: LayerObject) => {
     const nextLocked = !isLocked(object);
-    object.locked = nextLocked;
-    object.set({ selectable: !nextLocked, evented: !nextLocked });
-
-    if (nextLocked && editor?.canvas.getActiveObjects().includes(object)) {
-      editor.canvas.discardActiveObject();
-    }
+    setFabricObjectLocked(object, nextLocked);
     commitObjectChange(object);
   };
 
   const selectObject = (object: LayerObject) => {
-    if (!editor || object.visible === false || isLocked(object)) return;
+    if (!editor || object.visible === false) return;
     editor.canvas.setActiveObject(object);
     editor.canvas.requestRenderAll();
     refresh();

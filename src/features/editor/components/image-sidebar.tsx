@@ -13,32 +13,22 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  EditableFabricImage,
+  setImageHdLoading,
+} from "@/features/editor/image-effects";
+import {
+  fetchPixabayPage,
+  getPixabayThumbnailUrl,
+  PixabayImage,
+  preloadPixabayImages,
+} from "@/features/editor/pixabay-cache";
 
 interface ImageSidebarProps {
   editor: Editor | undefined;
   activeTool: ActiveTool;
   onChangeActiveTool: (tool: ActiveTool) => void;
 }
-
-type PixabayImage = {
-  id: number;
-  pageURL: string;
-  tags: string;
-  previewURL: string;
-  webformatURL: string;
-  largeImageURL: string;
-  webformatWidth: number;
-  webformatHeight: number;
-  user: string;
-  userId: number;
-};
-
-type PixabayResponse = {
-  total: number;
-  totalHits: number;
-  hits: PixabayImage[];
-  error?: string;
-};
 
 export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSidebarProps) => {
   const { t, language } = useLanguage();
@@ -65,18 +55,15 @@ export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSi
     append ? setIsLoadingMore(true) : setIsLoading(true);
     setError("");
 
-    const params = new URLSearchParams({
-      page: String(nextPage),
-      lang: language === "es" ? "es" : "en",
-    });
-    if (query) params.set("q", query);
-
     try {
-      const response = await fetch(`/api/pixabay?${params}`, { cache: "no-store" });
-      const data = await response.json() as PixabayResponse;
-      if (!response.ok) throw new Error(data.error || "Pixabay request failed");
+      const data = await fetchPixabayPage({
+        query,
+        page: nextPage,
+        language: language === "es" ? "es" : "en",
+      });
 
       setImages((current) => append ? [...current, ...data.hits] : data.hits);
+      preloadPixabayImages(data.hits, 24);
       setTotalHits(data.totalHits || 0);
       setPage(nextPage);
       setHasLoaded(true);
@@ -109,22 +96,45 @@ export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSi
     setImportingId(image.id);
 
     try {
-      const response = await fetch("/api/pixabay", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: image.id, imageUrl: image.largeImageURL }),
-      });
-      const data = await response.json() as { url?: string; error?: string };
-      if (!response.ok || !data.url) throw new Error(data.error || "Import failed");
-
-      editor.addImage(data.url);
+      // The gallery preview is already in the browser cache, so it can be
+      // placed on the canvas immediately while the HD asset is persisted.
+      // Use Pixabay's stable CDN thumbnail for the immediate canvas object.
+      // The signed webformat URL can expire; the fresh HD asset replaces this
+      // source in the background without changing its visual dimensions.
+      const canvasImage = await editor.addImage(getPixabayThumbnailUrl(image));
+      if (!canvasImage) throw new Error("Could not decode image");
+      setImageHdLoading(
+        canvasImage as EditableFabricImage,
+        true,
+        language === "es" ? "CARGANDO HD…" : "LOADING HD…",
+      );
+      setImportingId(null);
       toast.success(language === "es" ? "Imagen agregada al lienzo" : "Image added to canvas");
+
+      void (async () => {
+        try {
+          const response = await fetch("/api/pixabay", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: image.id, imageUrl: image.largeImageURL }),
+          });
+          const data = await response.json() as { url?: string; error?: string };
+          if (!response.ok || !data.url) throw new Error(data.error || "Import failed");
+          await editor.replaceImageObjectSource(canvasImage, data.url);
+        } catch (persistError) {
+          console.error("Could not upgrade Pixabay image to HD:", persistError);
+          toast.error(language === "es"
+            ? "La imagen se agregó, pero no se pudo guardar la versión HD."
+            : "The image was added, but its HD version could not be saved.");
+        } finally {
+          setImageHdLoading(canvasImage as EditableFabricImage, false);
+        }
+      })();
     } catch (importError) {
       console.error(importError);
       toast.error(language === "es"
         ? "No se pudo agregar la imagen."
         : "Could not add the image.");
-    } finally {
       setImportingId(null);
     }
   };
@@ -219,7 +229,7 @@ export const ImageSidebar = ({ editor, activeTool, onChangeActiveTool }: ImageSi
                     className="relative block h-28 w-full overflow-hidden text-left hover:opacity-90 disabled:cursor-wait"
                   >
                     <img
-                      src={`/api/pixabay?imageUrl=${encodeURIComponent(image.webformatURL || image.previewURL)}`}
+                      src={getPixabayThumbnailUrl(image)}
                       alt={image.tags}
                       className="h-full w-full object-cover"
                       loading="lazy"

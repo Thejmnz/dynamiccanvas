@@ -3,22 +3,22 @@
 import Link from "next/link";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/language-switcher";
-import { BrandMark } from "@/components/brand-mark";
+import { BrandLogo } from "@/components/brand-mark";
 
 export default function SecurityPage() {
   const { t } = useLanguage();
 
   return (
-    <div className="dark min-h-screen bg-[#101622] text-slate-100 antialiased">
+    <div className="legal-modern min-h-screen bg-[#fafafe] text-[#101426] antialiased">
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#101622]/80 backdrop-blur-md">
+      <nav className="sticky top-0 z-50 w-full border-b border-[#101426]/10 bg-white/90 shadow-[0_8px_30px_rgba(16,20,38,.035)] backdrop-blur-xl">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             <Link
               href="/"
               className="flex items-center gap-2 group cursor-pointer"
             >
-              <BrandMark />
+              <BrandLogo className="h-9" />
             </Link>
             <LanguageSwitcher />
           </div>

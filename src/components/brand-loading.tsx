@@ -14,15 +14,15 @@ export const BrandLoading = ({
     role="status"
     aria-live="polite"
     className={cn(
-      "brand-dots flex items-center justify-center bg-[#f6f5ef]",
-      fullScreen ? "min-h-screen w-full" : "min-h-56 w-full rounded-[24px] border-2 border-dashed border-[#101426]/15",
+      "modern-app-background flex items-center justify-center bg-[#f8f9fc]",
+      fullScreen ? "min-h-screen w-full" : "min-h-56 w-full rounded-[24px] border border-[#101426]/8",
       className,
     )}
   >
     <div className="flex flex-col items-center">
       <div className="relative">
         <span className="absolute -inset-5 animate-ping rounded-[24px] bg-[#5b35d5]/10 [animation-duration:1.8s]" />
-        <BrandMark className="relative size-16 rounded-[20px] text-xl shadow-[6px_6px_0_#c9ff5a] animate-[dc-loader-bob_1.15s_ease-in-out_infinite]" />
+        <BrandMark className="relative size-16 animate-[dc-loader-bob_1.15s_ease-in-out_infinite]" />
       </div>
       <div className="mt-7 flex items-center gap-1.5" aria-hidden="true">
         {[0, 1, 2].map((index) => (

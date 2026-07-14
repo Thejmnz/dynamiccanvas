@@ -3,14 +3,10 @@
 @tailwind utilities;
 
 .editor-canvas-background {
-  background-color: #f1f0e9;
-  background-image: radial-gradient(
-    circle,
-    rgba(91, 53, 213, 0.17) 1.35px,
-    transparent 1.5px
-  );
-  background-position: 0 0;
-  background-size: 26px 26px;
+  background-color: #f6f5fb;
+  background-image:
+    radial-gradient(circle at 12% 8%, rgba(91, 53, 213, 0.065), transparent 28rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(246, 245, 251, 0.96));
 }
 
 @keyframes dc-loader-bob {
@@ -142,6 +138,16 @@ html {
     background-size: 24px 24px;
   }
 
+  .dashboard-tech-grid-light {
+    background-color: #fafafe;
+    background-image:
+      radial-gradient(circle at 8% 0%, rgba(91, 53, 213, 0.08), transparent 30rem),
+      radial-gradient(circle at 94% 3%, rgba(130, 102, 230, 0.055), transparent 26rem),
+      linear-gradient(180deg, rgba(255,255,255,.98), rgba(250,250,254,.98));
+    background-size: auto, auto, auto;
+    background-attachment: fixed;
+  }
+
   .brand-card {
     @apply rounded-[1.5rem] border-2 border-[#101426] bg-white;
   }
@@ -236,4 +242,297 @@ html {
 html.dragging-layer,
 html.dragging-layer * {
   cursor: grabbing !important;
+}
+
+@keyframes hero-word-reveal {
+  0% {
+    opacity: 0;
+    transform: translateY(38%);
+    filter: blur(6px);
+  }
+  16%,
+  82% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-28%);
+    filter: blur(4px);
+  }
+}
+
+.hero-rotating-word {
+  animation: hero-word-reveal 2.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes hero-demo-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.hero-demo-enter {
+  animation: hero-demo-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes hero-story-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.hero-story-progress {
+  width: 100%;
+  animation: hero-story-progress 3.1s linear both;
+}
+
+@keyframes hero-story-image-enter {
+  from { opacity: 0; transform: scale(1.06); filter: blur(3px); }
+  to { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+.hero-story-image {
+  animation: hero-story-image-enter 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes hero-json-cursor-blink {
+  0%, 48% { opacity: 1; }
+  49%, 100% { opacity: 0; }
+}
+
+.hero-json-cursor {
+  display: inline-block;
+  width: 1px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.12em;
+  background: #c9ff5a;
+  animation: hero-json-cursor-blink 720ms steps(1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-rotating-word,
+  .hero-demo-enter,
+  .hero-story-progress,
+  .hero-story-image,
+  .hero-json-cursor {
+    animation: none;
+  }
+}
+
+/* Modern product UI -------------------------------------------------------
+   Shared visual reset for public and authenticated surfaces. The editor can
+   keep its functional controls while legacy offset shadows and heavy outlines
+   are softened everywhere else. */
+.modern-app-background {
+  background-color: #fafafe;
+  background-image:
+    radial-gradient(circle at 10% 2%, rgba(91, 53, 213, 0.075), transparent 29rem),
+    radial-gradient(circle at 92% 5%, rgba(130, 102, 230, 0.05), transparent 25rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(250, 250, 254, 0.99));
+  background-attachment: fixed;
+}
+
+.auth-modern-background {
+  background-color: #fafafe;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.78)),
+    radial-gradient(circle at 20% 15%, rgba(91, 53, 213, 0.13), transparent 34rem),
+    radial-gradient(circle at 85% 86%, rgba(130, 102, 230, 0.1), transparent 30rem);
+}
+
+.docs-hero-background {
+  background:
+    radial-gradient(circle at 14% 10%, rgba(91, 53, 213, 0.1), transparent 28rem),
+    radial-gradient(circle at 88% 18%, rgba(130, 102, 230, 0.08), transparent 24rem),
+    linear-gradient(180deg, #ffffff, #f8f8fc);
+}
+
+/* The landing hero deliberately keeps its original dark campaign identity,
+   while the rest of the product uses the lighter documentation system. */
+.modern-ui .landing-dark-hero :where(div, span)[class~="bg-[#c9ff5a]"] {
+  background-color: #c9ff5a !important;
+}
+
+.modern-ui {
+  --dc-page: #fafafe;
+  --dc-surface: #ffffff;
+  --dc-surface-muted: #f6f5fb;
+  --dc-active: #eeeaff;
+  --dc-primary: #5b35d5;
+  --dc-primary-hover: #4f2bc5;
+  --dc-ink: #101426;
+  --dc-muted: #596174;
+  --dc-border: rgba(16, 20, 38, 0.1);
+  --dc-shadow: 0 14px 38px rgba(16, 20, 38, 0.055);
+  background-color: var(--dc-page);
+}
+
+.modern-ui .brand-card {
+  border-width: 1px !important;
+  border-color: rgba(16, 20, 38, 0.1) !important;
+  box-shadow: 0 18px 48px rgba(16, 20, 38, 0.08);
+}
+
+.modern-ui .brand-shadow {
+  box-shadow: 0 18px 48px rgba(16, 20, 38, 0.09) !important;
+}
+
+.modern-ui [class~="border-2"] {
+  border-width: 1px !important;
+}
+
+.modern-ui [class*="border-[#101426]"] {
+  border-color: rgba(16, 20, 38, 0.11) !important;
+}
+
+.modern-ui [class~="bg-[#f6f5ef]"],
+.modern-ui [class~="bg-[#f6f7fb]"],
+.modern-ui [class~="bg-[#f8f9fc]"] {
+  background-color: var(--dc-page) !important;
+}
+
+.modern-ui :where(article, section, div)[class~="bg-[#c9ff5a]"] {
+  background-color: var(--dc-active) !important;
+}
+
+.modern-ui button[class~="bg-[#c9ff5a]"],
+.modern-ui a[class~="bg-[#c9ff5a]"] {
+  background-color: var(--dc-primary) !important;
+  color: #fff !important;
+}
+
+.modern-ui :where(article, section, div)[class~="bg-[#ffb7aa]"] {
+  background-color: #fff1ed !important;
+}
+
+.modern-ui :where(article, section, div)[class~="bg-[#ffd166]"] {
+  background-color: #fff8e7 !important;
+}
+
+.modern-ui :where(input, textarea, select) {
+  border-color: var(--dc-border);
+}
+
+.modern-ui :where(input, textarea, select):focus {
+  border-color: rgba(91, 53, 213, 0.45);
+}
+
+.editor-selection-toolbar .bg-gray-100 {
+  background-color: #eeeaff !important;
+  color: #5b35d5 !important;
+}
+
+.editor-selection-toolbar [class*="hover:bg-slate-100"]:hover,
+.modern-ui [class*="hover:bg-gray-100"]:hover,
+.modern-ui [class*="hover:bg-slate-100"]:hover {
+  background-color: #f6f5fb !important;
+}
+
+.legal-modern {
+  background-image:
+    radial-gradient(circle at 12% 0%, rgba(91, 53, 213, 0.075), transparent 28rem),
+    linear-gradient(180deg, #ffffff, #fafafe 34rem);
+}
+
+.legal-modern .text-white,
+.legal-modern .text-slate-100 {
+  color: #101426 !important;
+}
+
+.legal-modern .text-slate-300 {
+  color: rgba(16, 20, 38, 0.66) !important;
+}
+
+.legal-modern .text-slate-400 {
+  color: #596174 !important;
+}
+
+.legal-modern .border-white\/10 {
+  border-color: rgba(16, 20, 38, 0.1) !important;
+}
+
+.legal-modern main section {
+  margin-bottom: 1rem !important;
+  border: 1px solid rgba(16, 20, 38, 0.09);
+  border-radius: 1.25rem;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 1.5rem;
+  box-shadow: 0 14px 38px rgba(16, 20, 38, 0.045);
+}
+
+.legal-modern [class*="text-[#135bec]"] {
+  color: #5b35d5 !important;
+}
+
+.landing-modern #pricing button[class~="bg-[#101426]"] {
+  background-color: #5b35d5 !important;
+}
+
+.landing-modern #pricing article[class~="bg-[#101426]"] {
+  background-color: #5b35d5 !important;
+  box-shadow: 0 20px 54px rgba(91, 53, 213, 0.18) !important;
+}
+
+.landing-modern #pricing article[class~="bg-[#101426]"] [class~="bg-[#c9ff5a]"] {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  color: #fff !important;
+}
+
+.landing-modern #pricing article[class~="bg-[#101426]"] a[class~="bg-[#c9ff5a]"] {
+  background-color: #fff !important;
+  color: #5b35d5 !important;
+}
+
+.landing-modern #pricing article[class~="bg-[#101426]"] [class*="text-[#c9ff5a]"] {
+  color: #fff !important;
+}
+
+.modern-ui [class*="shadow-[3px_"],
+.modern-ui [class*="shadow-[4px_"],
+.modern-ui [class*="shadow-[5px_"],
+.modern-ui [class*="shadow-[6px_"],
+.modern-ui [class*="shadow-[7px_"],
+.modern-ui [class*="shadow-[8px_8px_"],
+.modern-ui [class*="shadow-[9px_"],
+.modern-ui [class*="shadow-[10px_10px_"],
+.modern-ui [class*="shadow-[10px_12px_"],
+.modern-ui [class*="shadow-[12px_12px_"] {
+  box-shadow: 0 18px 46px rgba(16, 20, 38, 0.1) !important;
+}
+
+.landing-modern article[class*="bg-[#c9ff5a]"],
+.docs-modern [class*="bg-[#c9ff5a]"]:not(button):not(a) {
+  background-color: #f0edff !important;
+}
+
+.landing-modern article[class*="bg-[#ffb7aa]"],
+.docs-modern [class*="bg-[#ffb7aa]"] {
+  background-color: #fff1ed !important;
+}
+
+.landing-modern article[class*="bg-[#ffd166]"],
+.docs-modern [class*="bg-[#ffd166]"] {
+  background-color: #fff8e7 !important;
+}
+
+.landing-modern article,
+.docs-modern article,
+.docs-modern [class*="rounded-[22px]"] {
+  box-shadow: 0 14px 38px rgba(16, 20, 38, 0.055);
+}
+
+.modern-ui button,
+.modern-ui a {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform, filter;
+  transition-duration: 180ms;
+  transition-timing-function: ease;
 }

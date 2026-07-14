@@ -63,7 +63,11 @@ export async function GET() {
             a.localeCompare(b),
         );
 
-        return NextResponse.json(fontFiles);
+        return NextResponse.json(fontFiles, {
+            headers: {
+                "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+            },
+        });
     } catch (error) {
         console.error("Error reading fonts directory:", error);
         return NextResponse.json({ error: "Failed to load fonts" }, { status: 500 });

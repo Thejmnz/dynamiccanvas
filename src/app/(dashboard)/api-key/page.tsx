@@ -4,76 +4,33 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Copy, RefreshCw, Loader2, Eye, EyeOff } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Copy, RefreshCw, Loader2, Eye, EyeOff, KeyRound } from "lucide-react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { BrandLoading } from "@/components/brand-loading";
-import { useAuth } from "@/lib/contexts/AuthContext";
+import { useUserRole } from "@/hooks/use-user-role";
+import { apiKeyQueryKey, fetchOrCreateApiKey } from "@/features/dashboard/api/dashboard-prefetch";
 
-const generateExampleApiKey = () =>
+const generateApiKey = () =>
   typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
     : `key-${Math.random().toString(36).substring(2, 10)}`;
 
 export default function ApiKeyPage() {
   const { language } = useLanguage();
-  const { user } = useAuth();
-  const [apiKey, setApiKey] = useState<string>("");
-  const [isLoading, setIsLoading] = useState(true);
+  const { userId = "" } = useUserRole();
+  const queryClient = useQueryClient();
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [showKey, setShowKey] = useState(false);
-
-  useEffect(() => {
-    const loadApiKey = async () => {
-      try {
-        if (!user) {
-          setIsLoading(false);
-          return;
-        }
-        const userId = user.id;
-
-        const { data: apiKeyData, error: apiKeyError } = await supabase
-          .from('user_api_keys')
-          .select('api_key')
-          .eq('user_id', userId)
-          .maybeSingle();
-
-        if (apiKeyError) {
-          console.error("Error fetching API Key:", apiKeyError);
-          toast.error(language === "es" ? "No se pudo cargar la API Key" : "Could not load API Key");
-          return;
-        }
-
-        if (apiKeyData?.api_key) {
-          setApiKey(apiKeyData.api_key);
-        } else {
-          const newKey = generateExampleApiKey();
-          setApiKey(newKey);
-          const now = new Date().toISOString();
-
-          const { error: insertError } = await supabase
-            .from('user_api_keys')
-            .upsert(
-              { user_id: userId, api_key: newKey, createdAt: now, updatedAt: now },
-              { onConflict: 'user_id' }
-            );
-
-          if (insertError) {
-            console.error("Error saving API Key:", insertError);
-            toast.error(language === "es" ? "Error al guardar la API Key" : "Failed to save API Key");
-          }
-        }
-      } catch (error) {
-        console.error('Error loading API key:', error);
-        toast.error(language === "es" ? "Error al cargar" : "Error loading");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadApiKey();
-  }, [user?.id]);
+  const { data: apiKey = "", isPending: isLoading } = useQuery({
+    queryKey: apiKeyQueryKey(userId),
+    queryFn: () => fetchOrCreateApiKey(userId),
+    enabled: Boolean(userId),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
 
   const copyApiKey = () => {
     if (!apiKey) return;
@@ -87,12 +44,11 @@ export default function ApiKeyPage() {
   const regenerateApiKey = async () => {
     setIsRegenerating(true);
     try {
-      if (!user) {
+      if (!userId) {
         toast.error(language === "es" ? "No autenticado" : "Not authenticated");
         return;
       }
-      const userId = user.id;
-      const newKey = generateExampleApiKey();
+      const newKey = generateApiKey();
       const now = new Date().toISOString();
 
       const { error: updateError } = await supabase
@@ -104,7 +60,7 @@ export default function ApiKeyPage() {
         console.error("Error regenerating API Key:", updateError);
         toast.error(language === "es" ? "Error al regenerar" : "Failed to regenerate");
       } else {
-        setApiKey(newKey);
+        queryClient.setQueryData(apiKeyQueryKey(userId), newKey);
         toast.success(language === "es" ? "API Key regenerada!" : "API Key regenerated!");
       }
     } catch (error) {
@@ -124,17 +80,20 @@ export default function ApiKeyPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-3xl py-8">
-      <Card className="rounded-[24px] border-2 border-[#101426] bg-white shadow-[7px_7px_0_#d9ccff]">
-        <CardHeader>
-          <CardTitle>{language === "es" ? "Tu API Key" : "Your API Key"}</CardTitle>
-          <CardDescription>
+    <div className="container mx-auto max-w-4xl py-8">
+      <Card className="rounded-[24px] border border-[#101426]/10 bg-white shadow-[0_22px_60px_rgba(16,20,38,.08)]">
+        <CardHeader className="docs-hero-background rounded-t-[24px] border-b border-[#101426]/10 p-7">
+          <div className="mb-4 flex size-11 items-center justify-center rounded-xl bg-[#eeeaff] text-[#5b35d5]">
+            <KeyRound className="size-5" />
+          </div>
+          <CardTitle className="text-3xl font-black tracking-[-0.035em] text-[#101426]">{language === "es" ? "Tu API Key" : "Your API Key"}</CardTitle>
+          <CardDescription className="text-sm leading-relaxed text-[#596174]">
             {language === "es"
               ? "Usa esta clave para autenticar tus solicitudes a la API."
               : "Use this key to authenticate your API requests."}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 p-7">
           <>
               {/* API Key Display */}
               <div className="space-y-2">
@@ -177,7 +136,7 @@ export default function ApiKeyPage() {
                 <Button
                   variant="ghost"
                   onClick={copyApiKey}
-                  className="flex-1 h-12 rounded-full border-2 border-[#101426] bg-[#c9ff5a] text-[#101426] font-black shadow-[5px_5px_0_#101426] transition hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#101426] hover:bg-[#c9ff5a] hover:text-[#101426]"
+                  className="h-12 flex-1 rounded-xl border-0 bg-gradient-to-r from-[#5b35d5] to-[#6f4bea] font-bold text-white shadow-[0_12px_28px_rgba(91,53,213,.22)] transition hover:-translate-y-0.5 hover:brightness-105"
                 >
                   <Copy className="h-4 w-4 mr-2" />
                   {language === "es" ? "Copiar API Key" : "Copy API Key"}
@@ -186,7 +145,7 @@ export default function ApiKeyPage() {
                   variant="ghost"
                   onClick={regenerateApiKey}
                   disabled={isRegenerating}
-                  className="flex-1 h-12 rounded-full border-2 border-[#101426] bg-white text-[#101426] font-black shadow-[5px_5px_0_#101426] transition hover:-translate-y-0.5 hover:bg-[#c9ff5a] hover:shadow-[3px_3px_0_#101426] hover:text-[#101426] disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_#101426]"
+                  className="h-12 flex-1 rounded-xl border border-[#101426]/12 bg-white font-bold text-[#101426] shadow-sm transition hover:-translate-y-0.5 hover:border-[#5b35d5]/30 hover:bg-[#f5f2ff] disabled:opacity-50 disabled:hover:translate-y-0"
                 >
                   {isRegenerating ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
