@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Fragment, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
   Users, FileCode, Key, Search, ChevronDown, ChevronUp, Mail,
   Calendar, Shield, Activity, Sparkles, Save, X, Plus, Trash2, Newspaper,
+  MessageSquare, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
@@ -69,7 +70,7 @@ export default function AdminDashboard() {
     data: overview,
     isPending: loading,
     refetch,
-  } = useQuery<{ users: UserStats[]; stats: AdminStats; news: any[] }>({
+  } = useQuery<{ users: UserStats[]; stats: AdminStats; news: any[]; feedback: any[] }>({
     queryKey: adminOverviewQueryKey,
     queryFn: fetchAdminOverview,
     enabled: !roleLoading && isAuthenticated && role === "superadmin",
@@ -79,6 +80,7 @@ export default function AdminDashboard() {
   const usersList = overview?.users ?? [];
   const stats = overview?.stats ?? null;
   const newsList = overview?.news ?? [];
+  const feedbackList = overview?.feedback ?? [];
 
   useEffect(() => {
     if (roleLoading) return;
@@ -137,6 +139,21 @@ export default function AdminDashboard() {
       await fetch(`/api/news?id=${id}`, { method: "DELETE" });
       void refetch();
     } catch { }
+  };
+
+  const handleFeedbackStatus = async (id: string, status: string) => {
+    try {
+      const response = await fetch(`/api/feedback/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!response.ok) throw new Error("Failed");
+      toast.success("Feedback status updated");
+      void refetch();
+    } catch {
+      toast.error("Could not update feedback");
+    }
   };
 
   if (loading) {
@@ -201,9 +218,8 @@ export default function AdminDashboard() {
             </thead>
             <tbody className="divide-y divide-[#101426]/8">
               {filteredUsers.map((user) => (
-                <>
+                <Fragment key={user.id}>
                   <tr
-                    key={user.id}
                     className="hover:bg-[#101426]/3 transition-colors cursor-pointer"
                     onClick={() => setExpandedUser(expandedUser === user.id ? null : user.id)}
                   >
@@ -319,7 +335,7 @@ export default function AdminDashboard() {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>
@@ -378,6 +394,47 @@ export default function AdminDashboard() {
             ))}
             {newsList.length === 0 && <p className="text-sm text-[#101426]/30 text-center py-4">No news published.</p>}
           </div>
+        </div>
+      </div>
+
+      {/* Product Feedback */}
+      <div className="mt-6 overflow-hidden rounded-[22px] border border-[#101426]/10 bg-white shadow-[0_14px_38px_rgba(16,20,38,.055)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#101426]/8 p-5">
+          <div className="flex items-center gap-2">
+            <span className="flex size-9 items-center justify-center rounded-xl bg-[#eeeaff] text-[#5b35d5]"><MessageSquare className="size-4" /></span>
+            <div>
+              <h2 className="text-base font-black">Product Feedback</h2>
+              <p className="text-xs text-[#101426]/40">Ideas, votes and conversations from users</p>
+            </div>
+          </div>
+          <button onClick={() => router.push("/feedback")} className="rounded-xl bg-[#5b35d5] px-4 py-2 text-xs font-black text-white transition hover:bg-[#4826bd]">Open feedback board</button>
+        </div>
+
+        <div className="divide-y divide-[#101426]/8">
+          {feedbackList.slice(0, 12).map((item: any) => (
+            <div key={item.id} className="grid gap-3 p-4 transition hover:bg-[#fafafe] sm:grid-cols-[1fr_auto] sm:items-center">
+              <button onClick={() => router.push(`/feedback?post=${item.id}`)} className="min-w-0 text-left">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-[#f1eff8] px-2 py-0.5 text-[9px] font-black uppercase text-[#656979]">{item.category}</span>
+                  <span className="text-[10px] font-semibold text-[#101426]/35">{item.authorName}</span>
+                </div>
+                <div className="mt-1 truncate text-sm font-black">{item.title}</div>
+                <div className="mt-1 flex items-center gap-3 text-[10px] font-bold text-[#101426]/40">
+                  <span className="flex items-center gap-1"><ArrowUp className="size-3" />{item.upvotes}</span>
+                  <span className="flex items-center gap-1"><ArrowDown className="size-3" />{item.downvotes}</span>
+                  <span className="flex items-center gap-1"><MessageSquare className="size-3" />{item.comments?.length || 0}</span>
+                </div>
+              </button>
+              <select value={item.status} onChange={(event) => void handleFeedbackStatus(item.id, event.target.value)} className="h-9 rounded-xl border border-[#101426]/10 bg-white px-3 text-xs font-black outline-none focus:border-[#5b35d5]/40">
+                <option value="open">Received</option>
+                <option value="planned">Planned</option>
+                <option value="in_progress">In progress</option>
+                <option value="completed">Completed</option>
+                <option value="declined">Not planned</option>
+              </select>
+            </div>
+          ))}
+          {feedbackList.length === 0 && <p className="py-10 text-center text-sm font-semibold text-[#101426]/35">No feedback submitted yet.</p>}
         </div>
       </div>
     </div>

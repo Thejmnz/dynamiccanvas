@@ -94,15 +94,15 @@ export const UserButton = () => {
           <div className="px-1 text-[10px] font-black uppercase tracking-wider text-[#101426]/35">
             {t("feedback") || "Feedback"}
           </div>
-          <DropdownMenuItem className="h-9 cursor-pointer rounded-lg" onClick={() => window.open("mailto:hello@dynamiccanvas.app?subject=Feature%20Suggestion", "_blank")}>
+          <DropdownMenuItem className="h-9 cursor-pointer rounded-lg" onClick={() => router.push("/feedback")}>
             <Lightbulb className="size-4 mr-2 text-[#5b35d5]" />
             {t("suggest_features") || "Suggest Features"}
           </DropdownMenuItem>
-          <DropdownMenuItem className="h-9 cursor-pointer rounded-lg" onClick={() => router.push("/dashboard#roadmap")}>
+          <DropdownMenuItem className="h-9 cursor-pointer rounded-lg" onClick={() => router.push("/roadmap")}>
             <Flag className="size-4 mr-2 text-[#5b35d5]" />
             {t("roadmap") || "Roadmap"}
           </DropdownMenuItem>
-          <DropdownMenuItem className="h-9 cursor-pointer rounded-lg" onClick={() => router.push("/dashboard#changelog")}>
+          <DropdownMenuItem className="h-9 cursor-pointer rounded-lg" onClick={() => router.push("/changelog")}>
             <GitBranch className="size-4 mr-2 text-[#5b35d5]" />
             {t("changelog") || "Changelog"}
           </DropdownMenuItem>
@@ -115,7 +115,7 @@ export const UserButton = () => {
           <div className="px-1 text-[10px] font-black uppercase tracking-wider text-[#101426]/35">
             {t("support") || "Support"}
           </div>
-          <DropdownMenuItem className="h-9 cursor-pointer rounded-lg" onClick={() => router.push("/docs")}>
+          <DropdownMenuItem className="h-9 cursor-pointer rounded-lg" onClick={() => router.push("/help")}>
             <BookOpen className="size-4 mr-2 text-[#5b35d5]" />
             {t("knowledge_base") || "Knowledge Base"}
           </DropdownMenuItem>

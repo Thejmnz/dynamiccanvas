@@ -34,7 +34,11 @@ export default function AuthCallbackPage() {
         });
         if (result?.error) throw new Error(result.error);
         if (!cancelled) {
-          router.replace("/dashboard");
+          const requestedPath = new URLSearchParams(window.location.search).get("next");
+          const safePath = requestedPath?.startsWith("/") && !requestedPath.startsWith("//")
+            ? requestedPath
+            : "/dashboard";
+          router.replace(safePath);
           router.refresh();
         }
       } catch (error) {

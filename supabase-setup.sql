@@ -170,44 +170,31 @@ ALTER TABLE "dynamic_canvas_templates" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "user_api_keys" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "subscription" ENABLE ROW LEVEL SECURITY;
 
--- User policies
-CREATE POLICY "Users can view own data" ON "user" FOR SELECT USING (true);
-CREATE POLICY "Users can update own data" ON "user" FOR UPDATE USING (true);
+-- Keep NextAuth, billing and verification tables server-only. The browser only
+-- receives CRUD grants for the two resources it currently accesses directly.
+REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
 
--- Account policies
-CREATE POLICY "Users can view own accounts" ON "account" FOR SELECT USING (true);
-CREATE POLICY "Users can insert own accounts" ON "account" FOR INSERT WITH CHECK (true);
-CREATE POLICY "Users can update own accounts" ON "account" FOR UPDATE USING (true);
-CREATE POLICY "Users can delete own accounts" ON "account" FOR DELETE USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON "dynamic_canvas_templates" TO authenticated;
+CREATE POLICY "templates_select_own" ON "dynamic_canvas_templates"
+  FOR SELECT TO authenticated USING (user_id = auth.uid()::text);
+CREATE POLICY "templates_insert_own" ON "dynamic_canvas_templates"
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
+CREATE POLICY "templates_update_own" ON "dynamic_canvas_templates"
+  FOR UPDATE TO authenticated USING (user_id = auth.uid()::text)
+  WITH CHECK (user_id = auth.uid()::text);
+CREATE POLICY "templates_delete_own" ON "dynamic_canvas_templates"
+  FOR DELETE TO authenticated USING (user_id = auth.uid()::text);
 
--- Session policies
-CREATE POLICY "Users can view own sessions" ON "session" FOR SELECT USING (true);
-CREATE POLICY "Users can insert own sessions" ON "session" FOR INSERT WITH CHECK (true);
-CREATE POLICY "Users can update own sessions" ON "session" FOR UPDATE USING (true);
-CREATE POLICY "Users can delete own sessions" ON "session" FOR DELETE USING (true);
-
--- Project policies
-CREATE POLICY "Users can view own projects" ON "project" FOR SELECT USING (true);
-CREATE POLICY "Users can insert own projects" ON "project" FOR INSERT WITH CHECK (true);
-CREATE POLICY "Users can update own projects" ON "project" FOR UPDATE USING (true);
-CREATE POLICY "Users can delete own projects" ON "project" FOR DELETE USING (true);
-
--- Templates policies (public read, user-specific write)
-CREATE POLICY "Templates are viewable by all" ON "dynamic_canvas_templates" FOR SELECT USING (true);
-CREATE POLICY "Users can insert templates" ON "dynamic_canvas_templates" FOR INSERT WITH CHECK (true);
-CREATE POLICY "Users can update own templates" ON "dynamic_canvas_templates" FOR UPDATE USING (true);
-CREATE POLICY "Users can delete own templates" ON "dynamic_canvas_templates" FOR DELETE USING (true);
-
--- API Keys policies
-CREATE POLICY "Users can view own API keys" ON "user_api_keys" FOR SELECT USING (true);
-CREATE POLICY "Users can insert own API keys" ON "user_api_keys" FOR INSERT WITH CHECK (true);
-CREATE POLICY "Users can update own API keys" ON "user_api_keys" FOR UPDATE USING (true);
-CREATE POLICY "Users can delete own API keys" ON "user_api_keys" FOR DELETE USING (true);
-
--- Subscription policies
-CREATE POLICY "Users can view own subscription" ON "subscription" FOR SELECT USING (true);
-CREATE POLICY "Users can insert own subscription" ON "subscription" FOR INSERT WITH CHECK (true);
-CREATE POLICY "Users can update own subscription" ON "subscription" FOR UPDATE USING (true);
+GRANT SELECT, INSERT, UPDATE, DELETE ON "user_api_keys" TO authenticated;
+CREATE POLICY "api_keys_select_own" ON "user_api_keys"
+  FOR SELECT TO authenticated USING (user_id = auth.uid()::text);
+CREATE POLICY "api_keys_insert_own" ON "user_api_keys"
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid()::text);
+CREATE POLICY "api_keys_update_own" ON "user_api_keys"
+  FOR UPDATE TO authenticated USING (user_id = auth.uid()::text)
+  WITH CHECK (user_id = auth.uid()::text);
+CREATE POLICY "api_keys_delete_own" ON "user_api_keys"
+  FOR DELETE TO authenticated USING (user_id = auth.uid()::text);
 
 -- ===========================================
 -- VERIFICAR TABLAS CREADAS

@@ -11,7 +11,6 @@ import {
   Clipboard,
   Code2,
   Copy,
-  ExternalLink,
   FileImage,
   Gauge,
   ImageIcon,
@@ -35,6 +34,7 @@ import {
   commonLayerProperties,
   imageLayerProperties,
   requestProperties,
+  responseProperties,
   shapeLayerProperties,
   textLayerProperties,
   type ApiProperty,
@@ -64,6 +64,7 @@ const docsCopy = {
     output: "Calidad y respuesta",
     errors: "Errores",
     integrations: "Integraciones",
+    examples: "Ejemplos completos",
     limits: "Límites",
     overviewTitle: "Una API, dos equipos, un solo flujo",
     overviewText: "El equipo creativo controla la composición en el editor. Desarrollo solo envía los datos que cambian. Dynamic Canvas carga la plantilla, actualiza las capas y produce el render final.",
@@ -148,6 +149,7 @@ const docsCopy = {
     output: "Quality and response",
     errors: "Errors",
     integrations: "Integrations",
+    examples: "Complete examples",
     limits: "Limits",
     overviewTitle: "One API, two teams, one workflow",
     overviewText: "The creative team controls composition in the editor. Development only sends the data that changes. Dynamic Canvas loads the template, updates its layers and produces the final render.",
@@ -224,6 +226,7 @@ const navItems = [
   ["output", "output"],
   ["errors", "errors"],
   ["integrations", "integrations"],
+  ["examples", "examples"],
   ["limits", "limits"],
 ] as const;
 
@@ -279,6 +282,58 @@ const responseCode = `{
   "pixelRatio": 2,
   "totalTimeMs": 1840,
   "creditsRemaining": 999
+}`;
+
+const pythonCode = `import os
+import requests
+
+response = requests.post(
+    "https://your-domain.com/api/render",
+    headers={
+        "Authorization": f"Bearer {os.environ['DYNAMIC_CANVAS_API_KEY']}",
+        "Content-Type": "application/json",
+    },
+    json={
+        "templateId": "YOUR_TEMPLATE_UUID",
+        "layers": {
+            "headline": {"text": "Summer sale", "color": "#5b35d5"},
+            "product_image": {
+                "image_url": "https://example.com/product.png",
+                "imageFit": "cover",
+            },
+        },
+        "format": "png",
+        "scale": 2,
+    },
+    timeout=60,
+)
+response.raise_for_status()
+render = response.json()
+print(render["imageUrl"])`;
+
+const noCodeCode = `Method: POST
+URL: https://your-domain.com/api/render
+
+Headers:
+  Authorization: Bearer YOUR_API_KEY
+  Content-Type: application/json
+
+JSON body:
+{
+  "templateId": "YOUR_TEMPLATE_UUID",
+  "layers": {
+    "headline": { "text": "Summer sale" },
+    "product_image": { "image_url": "https://example.com/product.png" }
+  },
+  "format": "jpeg",
+  "scale": 2
+}`;
+
+const creditsErrorCode = `HTTP 402
+{
+  "error": "No credits remaining. A paid plan is required to continue rendering.",
+  "upgradeRequired": true,
+  "creditsRemaining": 0
 }`;
 
 function CodeBlock({ code, label }: { code: string; label: string }) {
@@ -381,7 +436,6 @@ export default function DocsPage() {
         <div className="mb-5 rounded-2xl border border-[#5b35d5]/12 bg-[#f4f1ff] p-4"><div className="flex items-center gap-2 text-xs font-extrabold text-[#5b35d5]"><span className="size-2 animate-pulse rounded-full bg-emerald-500" />{c.live}</div><div className="mt-2 font-mono text-[11px] text-[#101426]/45">POST /api/render</div></div>
         <p className="mb-3 px-3 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#101426]/35">{c.nav}</p>
         <nav className="space-y-1">{navItems.map(([id, key], index) => <button key={id} onClick={() => goTo(id)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${active === id ? "bg-[#eeeaff] font-bold text-[#5b35d5]" : "text-[#101426]/55 hover:bg-[#f6f5fb] hover:text-[#101426]"}`}><span className="font-mono text-[10px] opacity-50">{String(index + 1).padStart(2, "0")}</span>{c[key]}</button>)}</nav>
-        <div className="mt-7 border-t border-[#101426]/10 pt-5"><Link href="/playground" className="flex items-center justify-between rounded-xl bg-gradient-to-r from-[#5b35d5] to-[#6f4bea] px-4 py-3 text-sm font-bold text-white shadow-[0_10px_28px_rgba(91,53,213,.18)] hover:brightness-105">{c.playground}<ExternalLink className="size-4" /></Link></div>
       </aside>
 
       <main className="pt-[72px] lg:pl-[292px]">
@@ -408,13 +462,15 @@ export default function DocsPage() {
 
           <section id="shape-properties" className="scroll-mt-28"><SectionHeading number="09" title={c.shapeReference} text={language === "es" ? "Las formas admitidas por el render son rectángulo, círculo, triángulo y diamante. También reciben todas las propiedades comunes." : "Rendered shape types are rectangle, circle, triangle, and diamond. They also accept every common property."} /><PropertyTable properties={shapeLayerProperties} /></section>
 
-          <section id="output" className="scroll-mt-28"><SectionHeading number="10" title={c.outputTitle} text={c.outputText} /><div className="mt-8 grid gap-5 lg:grid-cols-[.65fr_1.35fr]"><div className="rounded-[22px] border-2 border-[#101426] bg-[#5b35d5] p-6 text-white"><Gauge className="size-9 text-[#c9ff5a]" /><div className="mt-8 text-5xl font-black">2×</div><p className="mt-2 text-sm text-white/60">Default pixel ratio</p><div className="mt-6 border-t border-white/15 pt-4 text-xs text-white/50">JPEG · PNG · WebP · safe cap ≈ 4096 px</div></div><CodeBlock code={responseCode} label={c.response} /></div></section>
+          <section id="output" className="scroll-mt-28"><SectionHeading number="10" title={c.outputTitle} text={c.outputText} /><div className="mt-8 grid gap-5 lg:grid-cols-[.65fr_1.35fr]"><div className="rounded-[22px] border-2 border-[#101426] bg-[#5b35d5] p-6 text-white"><Gauge className="size-9 text-[#c9ff5a]" /><div className="mt-8 text-5xl font-black">2×</div><p className="mt-2 text-sm text-white/60">Default pixel ratio</p><div className="mt-6 border-t border-white/15 pt-4 text-xs text-white/50">JPEG · PNG · WebP · safe cap ≈ 4096 px</div></div><CodeBlock code={responseCode} label={c.response} /></div><div className="mt-7 grid gap-4 md:grid-cols-3">{[["JPEG", language === "es" ? "Fotografías y archivos compactos. No admite transparencia." : "Photos and compact files. No transparency."], ["PNG", language === "es" ? "Salida sin pérdida y fondos transparentes." : "Lossless output and transparent backgrounds."], ["WebP", language === "es" ? "Compresión moderna y transparencia con menor peso." : "Modern compression and transparency at a smaller size."]].map(([format, description]) => <div key={format} className="rounded-2xl border border-[#101426]/10 bg-white p-5"><div className="font-mono text-sm font-black text-[#5b35d5]">{format}</div><p className="mt-2 text-sm leading-relaxed text-[#101426]/55">{description}</p></div>)}</div><div className="mt-7 rounded-2xl border border-[#101426]/10 bg-[#f4f1ff] p-5 text-sm leading-relaxed text-[#101426]/65"><strong>{language === "es" ? "Cálculo:" : "Calculation:"}</strong> {language === "es" ? "dimensión final = dimensión de plantilla × pixelRatio. Puedes solicitar de 1× a 3×; si el lado mayor superaría aproximadamente 4096 px, la API reduce la escala aplicada y la informa en pixelRatio." : "final dimension = template dimension × pixelRatio. You may request 1× to 3×; if the longest side would exceed approximately 4096 px, the API reduces the applied scale and reports it in pixelRatio."}</div><PropertyTable properties={responseProperties} /></section>
 
-          <section id="errors" className="scroll-mt-28"><SectionHeading number="11" title={c.errorsTitle} text={c.errorsText} /><div className="mt-8 overflow-hidden rounded-[22px] border-2 border-[#101426] bg-white">{[["400", "Invalid JSON · Missing templateId · Invalid layers or format"], ["401", "Missing/Invalid Authorization header · Invalid API key"], ["402", "Credits exhausted"], ["403", "User account not found"], ["404", "Template not found or not owned by this account"], ["500", "Internal render error · reserved credit is refunded"]].map(([status, message]) => <div key={status} className="flex items-center gap-4 border-b border-[#101426]/10 px-5 py-4 last:border-0"><span className={`rounded-lg px-2.5 py-1 font-mono text-xs font-black ${status === "500" ? "bg-[#ffb7aa]" : status === "401" || status === "402" ? "bg-[#ffd166]" : "bg-[#e9e5ff]"}`}>{status}</span><code className="text-sm text-[#101426]/65">{message}</code></div>)}</div></section>
+          <section id="errors" className="scroll-mt-28"><SectionHeading number="11" title={c.errorsTitle} text={c.errorsText} /><div className="mt-8 overflow-hidden rounded-[22px] border-2 border-[#101426] bg-white">{[["400", language === "es" ? "JSON inválido, falta templateId, layers no es un objeto o format no es compatible" : "Invalid JSON, missing templateId, layers is not an object, or unsupported format"], ["401", language === "es" ? "Falta Authorization Bearer o la API Key es inválida/revocada" : "Missing Authorization Bearer or invalid/revoked API Key"], ["402", language === "es" ? "Créditos agotados; la respuesta incluye upgradeRequired y creditsRemaining" : "Credits exhausted; response includes upgradeRequired and creditsRemaining"], ["403", language === "es" ? "No se encontró una cuenta de usuario habilitada" : "No enabled user account was found"], ["404", language === "es" ? "Plantilla inexistente o perteneciente a otra cuenta" : "Template not found or owned by another account"], ["500", language === "es" ? "Error interno; si se reservó un crédito se devuelve automáticamente" : "Internal error; any reserved credit is automatically refunded"]].map(([status, message]) => <div key={status} className="flex items-start gap-4 border-b border-[#101426]/10 px-5 py-4 last:border-0"><span className={`rounded-lg px-2.5 py-1 font-mono text-xs font-black ${status === "500" ? "bg-[#ffb7aa]" : status === "401" || status === "402" ? "bg-[#ffd166]" : "bg-[#e9e5ff]"}`}>{status}</span><span className="text-sm leading-relaxed text-[#101426]/65">{message}</span></div>)}</div><div className="mt-7"><CodeBlock code={creditsErrorCode} label={language === "es" ? "Ejemplo · créditos agotados" : "Example · credits exhausted"} /></div><div className="mt-5 rounded-2xl border border-[#101426]/10 bg-white p-5 text-sm leading-relaxed text-[#101426]/60"><strong className="text-[#101426]">{language === "es" ? "Reintentos:" : "Retries:"}</strong> {language === "es" ? "reintenta errores 500 con espera progresiva. No reintentes automáticamente 400, 401, 402, 403 o 404 hasta corregir su causa. La API no usa una clave de idempotencia: cada petición exitosa crea un render nuevo." : "retry 500 errors with progressive backoff. Do not automatically retry 400, 401, 402, 403, or 404 until their cause is fixed. The API does not use an idempotency key: every successful request creates a new render."}</div></section>
 
-          <section id="integrations" className="scroll-mt-28"><SectionHeading number="12" title={c.integrationsTitle} text={c.integrationsText} /><div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{["fetch", "cURL", "Python", "n8n", "Make", "Zapier"].map((name, index) => <div key={name} className={`flex h-24 items-center justify-center rounded-2xl border-2 border-[#101426] text-sm font-black ${index % 3 === 0 ? "bg-[#c9ff5a]" : index % 3 === 1 ? "bg-[#e9e5ff]" : "bg-white"}`}>{name}</div>)}</div></section>
+          <section id="integrations" className="scroll-mt-28"><SectionHeading number="12" title={c.integrationsTitle} text={c.integrationsText} /><div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{["fetch", "cURL", "Python", "n8n", "Make", "Zapier"].map((name, index) => <div key={name} className={`flex h-24 items-center justify-center rounded-2xl border-2 border-[#101426] text-sm font-black ${index % 3 === 0 ? "bg-[#c9ff5a]" : index % 3 === 1 ? "bg-[#e9e5ff]" : "bg-white"}`}>{name}</div>)}</div><div className="mt-7 rounded-2xl border border-[#101426]/10 bg-white p-5 text-sm leading-relaxed text-[#101426]/60"><strong className="text-[#101426]">{language === "es" ? "Regla de integración:" : "Integration rule:"}</strong> {language === "es" ? "envía siempre la API Key desde un servidor o desde el almacén de credenciales de tu herramienta no-code. Nunca la expongas en JavaScript público del navegador. Cada ejecución exitosa genera un archivo nuevo y consume un crédito." : "always send the API Key from a server or your no-code tool's credential vault. Never expose it in public browser JavaScript. Every successful execution creates a new file and consumes one credit."}</div></section>
 
-          <section id="limits" className="scroll-mt-28"><SectionHeading number="13" title={c.limitsTitle} text={c.limitsText} /><div className="mt-8 overflow-x-auto rounded-[22px] border-2 border-[#101426] bg-white"><table className="w-full min-w-[560px]"><thead className="bg-[#101426] text-white"><tr><th className="px-5 py-4 text-left text-xs font-black uppercase">{c.plan}</th><th className="px-5 py-4 text-left text-xs font-black uppercase">{c.requests}</th><th className="px-5 py-4 text-left text-xs font-black uppercase">{c.renders}</th></tr></thead><tbody>{[[c.free, "3", language === "es" ? "50 créditos de bienvenida" : "50 welcome credits"], [c.pro, "15", language === "es" ? "1.000 créditos / mes" : "1,000 credits / month"], [c.enterprise, "100", language === "es" ? "5.000 créditos / mes" : "5,000 credits / month"], [c.unlimited, language === "es" ? "Ilimitadas" : "Unlimited", language === "es" ? "25.000 créditos / mes" : "25,000 credits / month"]].map((row, index) => <tr key={row[0]} className={index === 2 ? "bg-[#c9ff5a]" : "border-t border-[#101426]/10"}><td className="px-5 py-4 font-black">{row[0]}</td><td className="px-5 py-4">{row[1]}</td><td className="px-5 py-4">{row[2]}</td></tr>)}</tbody></table></div></section>
+          <section id="examples" className="scroll-mt-28"><SectionHeading number="13" title={c.examples} text={language === "es" ? "Los cuatro ejemplos siguientes envían el mismo contrato. Sustituye el dominio, la API Key, el templateId y los IDs de capa por valores de tu cuenta." : "The following four examples send the same contract. Replace the domain, API Key, templateId, and layer IDs with values from your account."} /><div className="mt-8 grid gap-7"><CodeBlock code={curlCode} label="cURL" /><CodeBlock code={jsCode} label="JavaScript · Node.js" /><CodeBlock code={pythonCode} label="Python · requests" /><CodeBlock code={noCodeCode} label="n8n · Make · Zapier · HTTP module" /></div></section>
+
+          <section id="limits" className="scroll-mt-28"><SectionHeading number="14" title={c.limitsTitle} text={c.limitsText} /><div className="mt-8 overflow-x-auto rounded-[22px] border-2 border-[#101426] bg-white"><table className="w-full min-w-[560px]"><thead className="bg-[#101426] text-white"><tr><th className="px-5 py-4 text-left text-xs font-black uppercase">{c.plan}</th><th className="px-5 py-4 text-left text-xs font-black uppercase">{c.requests}</th><th className="px-5 py-4 text-left text-xs font-black uppercase">{c.renders}</th></tr></thead><tbody>{[[c.free, "3", language === "es" ? "50 créditos de bienvenida" : "50 welcome credits"], [c.pro, "15", language === "es" ? "1.000 créditos / mes" : "1,000 credits / month"], [c.enterprise, "100", language === "es" ? "5.000 créditos / mes" : "5,000 credits / month"], [c.unlimited, language === "es" ? "Ilimitadas" : "Unlimited", language === "es" ? "25.000 créditos / mes" : "25,000 credits / month"]].map((row, index) => <tr key={row[0]} className={index === 2 ? "bg-[#c9ff5a]" : "border-t border-[#101426]/10"}><td className="px-5 py-4 font-black">{row[0]}</td><td className="px-5 py-4">{row[1]}</td><td className="px-5 py-4">{row[2]}</td></tr>)}</tbody></table></div><div className="mt-5 rounded-2xl border border-[#101426]/10 bg-[#fafafe] p-5 text-sm leading-relaxed text-[#101426]/60">{language === "es" ? "No confundas créditos con solicitudes por minuto: los créditos son la cantidad de renders disponibles. Si una petición falla después de reservar un crédito por un error interno, el sistema lo devuelve automáticamente." : "Do not confuse credits with requests per minute: credits are the number of renders available. If a request fails after reserving a credit because of an internal error, the system automatically refunds it."}</div></section>
 
           <section className="rounded-[30px] border-2 border-[#101426] bg-[#c9ff5a] p-7 shadow-[8px_8px_0_#101426] sm:p-10"><Sparkles className="size-9 text-[#5b35d5]" /><h2 className="mt-5 text-3xl font-black tracking-tight sm:text-4xl">{c.nextTitle}</h2><p className="mt-3 max-w-2xl text-[#101426]/60">{c.nextText}</p><Link href="/playground" className="mt-7 inline-flex items-center gap-2 rounded-full bg-[#5b35d5] px-6 py-3 font-bold text-white hover:bg-[#101426]">{c.playground}<ArrowRight className="size-4" /></Link></section>
         </div>

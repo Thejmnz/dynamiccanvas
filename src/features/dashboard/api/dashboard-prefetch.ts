@@ -52,21 +52,23 @@ export const fetchRenders = async () => {
 };
 
 export const fetchAdminOverview = async () => {
-  const [usersResponse, statsResponse, newsResponse] = await Promise.all([
+  const [usersResponse, statsResponse, newsResponse, feedbackResponse] = await Promise.all([
     fetch("/api/admin/users"),
     fetch("/api/admin/stats"),
     fetch("/api/news"),
+    fetch("/api/feedback", { cache: "no-store" }),
   ]);
 
-  if (!usersResponse.ok || !statsResponse.ok || !newsResponse.ok) {
+  if (!usersResponse.ok || !statsResponse.ok || !newsResponse.ok || !feedbackResponse.ok) {
     throw new Error("Failed to load admin overview");
   }
 
-  const [users, stats, news] = await Promise.all([
+  const [users, stats, news, feedback] = await Promise.all([
     usersResponse.json(),
     statsResponse.json(),
     newsResponse.json(),
+    feedbackResponse.json(),
   ]);
 
-  return { users, stats, news: news.data ?? [] };
+  return { users, stats, news: news.data ?? [], feedback: feedback.data ?? [] };
 };

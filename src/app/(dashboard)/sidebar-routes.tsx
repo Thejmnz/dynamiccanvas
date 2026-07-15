@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Code, Shield, KeyRound, BookOpen, Images, MessageCircle } from "lucide-react";
+import { Home, Code, Shield, KeyRound, BookOpen, Images, MessageCircle, Map } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -121,6 +121,12 @@ export const SidebarRoutes = () => {
           icon={BookOpen}
           label={t("documentation")}
           isActive={pathname === "/docs"}
+        />
+        <SidebarItem
+          href="/roadmap"
+          icon={Map}
+          label={language === "es" ? "Hoja de ruta" : "Roadmap"}
+          isActive={pathname === "/roadmap"}
         />
         <button
           type="button"

@@ -38,6 +38,7 @@ import { useGetProjects } from "@/features/projects/api/use-get-projects";
 import { useDuplicateProject } from "@/features/projects/api/use-duplicate-project";
 import { useDeleteProject } from "@/features/projects/api/use-delete-project";
 import { useConfirm } from "@/hooks/use-confirm";
+import { useUserCredits } from "@/hooks/use-user-credits";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,7 +101,7 @@ export const ProjectsSection = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [folders, setFolders] = useState<TemplateFolder[]>([]);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
-  const [foldersPaid, setFoldersPaid] = useState(false);
+  const [foldersPaidFromApi, setFoldersPaidFromApi] = useState(false);
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [folderName, setFolderName] = useState("");
   const [folderBusy, setFolderBusy] = useState(false);
@@ -117,6 +118,10 @@ export const ProjectsSection = () => {
   const removeMutation = useDeleteProject();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { data: userCredits } = useUserCredits();
+  const foldersPaid = userCredits
+    ? ["creator", "agency", "business", "unlimited"].includes(userCredits.plan)
+    : foldersPaidFromApi;
   const warmedProjectIds = React.useRef(new Set<string>());
   const {
     data,
@@ -134,12 +139,12 @@ export const ProjectsSection = () => {
       if (foldersResponse.ok) {
         const result = await foldersResponse.json();
         setFolders(result.data || []);
-        setFoldersPaid(Boolean(result.paid));
+        setFoldersPaidFromApi(Boolean(result.paid));
       } else {
-        setFoldersPaid(false);
+        setFoldersPaidFromApi(false);
       }
     } catch {
-      setFoldersPaid(false);
+      setFoldersPaidFromApi(false);
       // The template list remains usable if folders cannot be loaded.
     }
   };

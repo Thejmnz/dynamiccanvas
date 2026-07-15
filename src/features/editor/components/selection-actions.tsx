@@ -11,6 +11,7 @@ import {
   isFabricObjectLocked,
   setFabricObjectLocked,
 } from "@/features/editor/utils";
+import { useLanguage } from "@/lib/contexts/LanguageContext";
 
 interface SelectionActionsProps {
   editor?: Editor;
@@ -21,8 +22,34 @@ interface MenuPosition {
   top: number;
 }
 
-const getObjectName = (object: fabric.Object, canvas: fabric.Canvas) => {
-  if (object.name && object.name !== "clip") return object.name;
+const getObjectName = (
+  object: fabric.Object,
+  canvas: fabric.Canvas,
+  language: "en" | "es",
+) => {
+  if (object.name && object.name !== "clip") {
+    const match = object.name.match(/^(Texto|Text|Imagen|Image|Rectángulo|Rectangle|Círculo|Circle|Triángulo|Triangle|Trazo|Path|Elemento|Element)\s+(\d+)$/i);
+    if (!match) return object.name;
+
+    const translated: Record<string, { en: string; es: string }> = {
+      texto: { en: "Text", es: "Texto" },
+      text: { en: "Text", es: "Texto" },
+      imagen: { en: "Image", es: "Imagen" },
+      image: { en: "Image", es: "Imagen" },
+      rectángulo: { en: "Rectangle", es: "Rectángulo" },
+      rectangle: { en: "Rectangle", es: "Rectángulo" },
+      círculo: { en: "Circle", es: "Círculo" },
+      circle: { en: "Circle", es: "Círculo" },
+      triángulo: { en: "Triangle", es: "Triángulo" },
+      triangle: { en: "Triangle", es: "Triángulo" },
+      trazo: { en: "Path", es: "Trazo" },
+      path: { en: "Path", es: "Trazo" },
+      elemento: { en: "Element", es: "Elemento" },
+      element: { en: "Element", es: "Elemento" },
+    };
+    const prefix = translated[match[1].toLocaleLowerCase("es")];
+    return prefix ? `${prefix[language]} ${match[2]}` : object.name;
+  }
 
   if (["textbox", "text", "i-text"].includes(object.type || "")) {
     const text = (object as fabric.Text).text?.trim();
@@ -40,19 +67,19 @@ const getObjectName = (object: fabric.Object, canvas: fabric.Canvas) => {
     case "textbox":
     case "text":
     case "i-text":
-      return "Texto";
+      return language === "es" ? "Texto" : "Text";
     case "image":
-      return "Imagen";
+      return language === "es" ? "Imagen" : "Image";
     case "rect":
-      return "Rectángulo";
+      return language === "es" ? "Rectángulo" : "Rectangle";
     case "circle":
-      return "Círculo";
+      return language === "es" ? "Círculo" : "Circle";
     case "triangle":
-      return "Triángulo";
+      return language === "es" ? "Triángulo" : "Triangle";
     case "path":
-      return "Trazo";
+      return language === "es" ? "Trazo" : "Path";
     default:
-      return "Elemento";
+      return language === "es" ? "Elemento" : "Element";
     }
   })();
 
@@ -60,6 +87,7 @@ const getObjectName = (object: fabric.Object, canvas: fabric.Canvas) => {
 };
 
 export const SelectionActions = ({ editor }: SelectionActionsProps) => {
+  const { language } = useLanguage();
   const [position, setPosition] = useState<MenuPosition | null>(null);
 
   const updatePosition = useCallback(() => {
@@ -131,16 +159,20 @@ export const SelectionActions = ({ editor }: SelectionActionsProps) => {
       onMouseDown={(event) => event.stopPropagation()}
     >
       <span className="max-w-24 truncate px-1 text-xs font-medium text-slate-600">
-        {getObjectName(object, editor.canvas)}
+        {getObjectName(object, editor.canvas, language)}
       </span>
       <div className="h-4 w-px bg-slate-200" />
-      <Hint label={locked ? "Desbloquear" : "Bloquear"} side="bottom" sideOffset={5}>
+      <Hint label={locked
+        ? (language === "es" ? "Desbloquear" : "Unlock")
+        : (language === "es" ? "Bloquear" : "Lock")} side="bottom" sideOffset={5}>
         <Button
           size="icon"
           variant="ghost"
           className="size-7"
           onClick={toggleObjectLock}
-          aria-label={locked ? "Desbloquear capa" : "Bloquear capa"}
+          aria-label={locked
+            ? (language === "es" ? "Desbloquear capa" : "Unlock layer")
+            : (language === "es" ? "Bloquear capa" : "Lock layer")}
         >
           {locked
             ? <Lock className="size-3.5" />
@@ -148,12 +180,12 @@ export const SelectionActions = ({ editor }: SelectionActionsProps) => {
         </Button>
       </Hint>
       {!locked && (
-        <Hint label="Duplicar" side="bottom" sideOffset={5}>
+        <Hint label={language === "es" ? "Duplicar" : "Duplicate"} side="bottom" sideOffset={5}>
           <Button
             size="icon"
             variant="ghost"
             className="size-7"
-            aria-label="Duplicar capa"
+            aria-label={language === "es" ? "Duplicar capa" : "Duplicate layer"}
             onClick={() => {
               editor.onCopy();
               editor.onPaste();
@@ -163,12 +195,12 @@ export const SelectionActions = ({ editor }: SelectionActionsProps) => {
           </Button>
         </Hint>
       )}
-      <Hint label="Eliminar" side="bottom" sideOffset={5}>
+      <Hint label={language === "es" ? "Eliminar" : "Delete"} side="bottom" sideOffset={5}>
         <Button
           size="icon"
           variant="ghost"
           className="size-7 text-red-600"
-          aria-label="Eliminar capa"
+          aria-label={language === "es" ? "Eliminar capa" : "Delete layer"}
           onClick={editor.delete}
         >
           <Trash2 className="size-3.5" />

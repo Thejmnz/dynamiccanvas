@@ -11,25 +11,18 @@ import {
   Braces,
   Check,
   ChevronRight,
-  CirclePlay,
-  Code2,
   FileImage,
   Gauge,
-  ImageIcon,
   Infinity as InfinityIcon,
-  Layers3,
   Palette,
   Play,
   Rocket,
   ShieldCheck,
-  Sparkles,
   Terminal,
   Users,
   Timer,
   Server,
   Lock,
-  Type,
-  Shapes,
   Upload,
   WandSparkles,
   Zap,
@@ -718,8 +711,7 @@ export default function HomePage() {
       <section id="how" className="border-b border-[#101426]/10 bg-white py-24 lg:py-32">
         <div className="mx-auto max-w-[1240px] px-5 sm:px-8 lg:px-12">
           <div className="max-w-3xl">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-[#5b35d5]">{c.flowKicker}</p>
-            <h2 className="mt-5 text-5xl font-black leading-none tracking-[-0.055em] sm:text-7xl">{c.flowTitle}</h2>
+            <h2 className="text-5xl font-black leading-none tracking-[-0.055em] sm:text-7xl">{c.flowTitle}</h2>
           </div>
 
           <div className="mt-14 grid items-center gap-14 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
@@ -769,8 +761,7 @@ export default function HomePage() {
 
         <div className="relative mx-auto grid max-w-[1240px] items-center gap-16 px-5 sm:px-8 lg:grid-cols-[0.88fr_1.12fr] lg:gap-20 lg:px-12">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-[#c9ff5a]">{c.apiShowcaseKicker}</p>
-            <h2 className="mt-5 max-w-2xl text-4xl font-black leading-[0.94] tracking-[-0.055em] sm:text-6xl">{c.apiShowcaseTitle}</h2>
+            <h2 className="max-w-2xl text-4xl font-black leading-[0.94] tracking-[-0.055em] sm:text-6xl">{c.apiShowcaseTitle}</h2>
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/62">{c.apiShowcaseText}</p>
 
             <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-1">
@@ -805,72 +796,115 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="product" className="bg-[#e9e5ff] px-5 py-24 sm:px-8 lg:px-12 lg:py-32">
-        <div className="mx-auto max-w-[1440px]">
-          <div className="mb-14 max-w-3xl"><p className="text-xs font-black uppercase tracking-[0.2em] text-[#5b35d5]">{c.bentoKicker}</p><h2 className="mt-5 text-4xl font-black leading-none tracking-[-0.045em] sm:text-6xl">{c.bentoTitle}</h2></div>
-          <div className="grid auto-rows-[minmax(220px,auto)] gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <article className="relative overflow-hidden rounded-[28px] border-2 border-[#101426] bg-white p-7 lg:col-span-2 lg:row-span-2">
-              <div className="relative z-10 max-w-md"><span className="mb-5 flex size-12 items-center justify-center rounded-xl bg-[#5b35d5] text-white"><Palette /></span><h3 className="text-3xl font-black">{c.editorTitle}</h3><p className="mt-3 leading-relaxed text-[#101426]/60">{c.editorText}</p></div>
-              <div className="relative z-10 mt-9 flex overflow-hidden rounded-2xl border border-[#101426]/10 bg-[#f6f5fb] pointer-events-none select-none" style={{ height: 280 }}>
-                <div className="flex w-[48px] shrink-0 flex-col gap-1.5 border-r border-[#101426]/10 bg-white p-1.5">
-                  {[Layers3, ImageIcon, Type, Shapes, Upload].map((Icon, i) => (
-                    <div key={i} className={`flex aspect-square items-center justify-center rounded-lg ${i === 0 ? "bg-[#eeeaff]" : "bg-transparent"}`}>
-                      <Icon className={`size-4 ${i === 0 ? "text-[#5b35d5]" : "text-[#596174]/55"}`} />
+      <section id="product" className="relative overflow-hidden border-y border-[#101426]/8 bg-[#f7f8fc] px-5 py-24 sm:px-8 lg:px-12 lg:py-32">
+        <div className="pointer-events-none absolute -left-40 top-20 size-[420px] rounded-full bg-[#dfe8ff]/70 blur-[110px]" />
+        <div className="pointer-events-none absolute -right-44 bottom-0 size-[440px] rounded-full bg-[#e6dcff]/55 blur-[120px]" />
+        <div className="relative mx-auto max-w-[1320px]">
+          <div className="mb-14 max-w-3xl">
+            <h2 className="text-4xl font-black leading-none tracking-[-0.05em] sm:text-6xl">{c.bentoTitle}</h2>
+          </div>
+
+          <div className="grid auto-rows-[minmax(220px,auto)] gap-5 md:grid-cols-2 lg:grid-cols-3">
+            <article className="relative overflow-hidden rounded-[28px] border border-[#dfe2ec] bg-white p-7 shadow-[0_16px_48px_rgba(43,37,72,.07)] lg:col-span-3 sm:p-8">
+              <div className="relative z-10 flex max-w-2xl items-start gap-5">
+                <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#e9e5ff] text-[#5b35d5]"><Palette className="size-6" /></span>
+                <div><h3 className="text-2xl font-black tracking-[-0.03em] sm:text-3xl">{c.editorTitle}</h3><p className="mt-3 max-w-xl leading-relaxed text-[#596174]">{c.editorText}</p></div>
+              </div>
+              <div className="relative z-10 mt-8 overflow-hidden rounded-[20px] border border-[#dfe2ec] bg-[#f4f5fa] shadow-[0_18px_45px_rgba(29,27,48,.12)]">
+                <Image
+                  src={language === "es" ? "/landing/editor-workspace-es.webp" : "/landing/editor-workspace-en.webp"}
+                  alt={c.editorTitle}
+                  width={1800}
+                  height={922}
+                  sizes="(min-width: 1024px) 760px, 92vw"
+                  className="block h-auto w-full"
+                />
+              </div>
+            </article>
+
+            <article className="rounded-[28px] border border-[#dfe2ec] bg-white p-7 shadow-[0_16px_48px_rgba(43,37,72,.07)]">
+              <span className="flex size-12 items-center justify-center rounded-2xl bg-[#e5f8f1] text-[#14795d]"><Blocks className="size-6" /></span>
+              <h3 className="mt-7 text-2xl font-black tracking-[-0.03em]">{c.automationTitle}</h3><p className="mt-3 text-sm leading-relaxed text-[#596174]">{c.automationText}</p><div className="mt-6 flex flex-wrap gap-2">{["n8n", "Make", "Zapier"].map(x => <span key={x} className="rounded-full border border-[#cfe8df] bg-[#f2fbf7] px-3 py-1.5 text-[10px] font-black text-[#14795d]">{x}</span>)}</div>
+            </article>
+
+            <article className="relative overflow-hidden rounded-[28px] border border-[#dfe2ec] bg-white p-7 shadow-[0_16px_48px_rgba(43,37,72,.07)] lg:col-span-2 sm:p-8">
+              <div className="pointer-events-none absolute -bottom-20 -left-12 size-56 rounded-full bg-[#fff0e8] blur-3xl" />
+              <div className="relative grid gap-8 sm:grid-cols-[minmax(0,1fr)_minmax(300px,.9fr)] sm:items-center">
+                <div className="flex items-start gap-5">
+                  <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#fff0e8] text-[#d85a26]"><FileImage className="size-6" /></span>
+                  <div>
+                    <h3 className="text-2xl font-black tracking-[-0.03em]">{c.formatsTitle}</h3>
+                    <p className="mt-3 max-w-md text-sm leading-relaxed text-[#596174]">{c.formatsText}</p>
+                    <div className="mt-5 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-[#596174]">
+                      <span className="rounded-full border border-[#e4e7ef] bg-[#f8f9fc] px-3 py-1.5">2× HD</span>
+                      <span className="rounded-full border border-[#e4e7ef] bg-[#f8f9fc] px-3 py-1.5">RGB</span>
+                      <span className="rounded-full border border-[#e4e7ef] bg-[#f8f9fc] px-3 py-1.5">API</span>
                     </div>
-                  ))}
-                </div>
-                <div className="relative flex-1 items-center justify-center p-4">
-                  <div className="relative mx-auto h-full w-auto overflow-hidden rounded-lg border-2 border-[#101426] bg-white shadow-md" style={{ aspectRatio: "4/5", maxWidth: 180 }}>
-                    <Image src="/variaciones/English/1.png" alt="Canvas preview" fill className="object-cover" />
                   </div>
                 </div>
+
+                <div className="rounded-[20px] bg-[#111629] p-3.5 shadow-[0_16px_35px_rgba(17,22,41,.18)]">
+                  <div className="mb-3 flex items-center justify-between px-1">
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-white/45">{language === "es" ? "Formatos de salida" : "Output formats"}</span>
+                    <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.12em] text-[#c9ff5a]"><span className="size-1.5 rounded-full bg-[#c9ff5a] shadow-[0_0_10px_#c9ff5a]" />{language === "es" ? "Listo" : "Ready"}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {["JPEG", "PNG", "WebP"].map((format, index) => (
+                      <div key={format} className="rounded-xl border border-white/10 bg-white/[.06] px-3 py-3 text-center">
+                        <FileImage className={`mx-auto size-5 ${index === 0 ? "text-[#ff9a70]" : index === 1 ? "text-[#a995ff]" : "text-[#73a0ff]"}`} />
+                        <div className="mt-2 text-[11px] font-black text-white">{format}</div>
+                        <div className="mt-0.5 text-[8px] font-bold uppercase tracking-wider text-white/30">HD</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2.5 flex items-center justify-between rounded-xl bg-black/15 px-3 py-2 font-mono text-[9px] text-white/35"><span>2160 × 2700</span><span className="font-black text-[#c9ff5a]">200 OK</span></div>
+                </div>
               </div>
-              <div className="absolute -bottom-12 -right-12 size-48 rounded-full bg-[#c9ff5a] opacity-70 blur-3xl" />
             </article>
-            <article className="rounded-[28px] border-2 border-[#101426] bg-[#101426] p-7 text-white"><Code2 className="size-10 text-[#c9ff5a]" /><h3 className="mt-8 text-2xl font-black">{c.apiCardTitle}</h3><p className="mt-3 text-sm leading-relaxed text-white/60">{c.apiCardText}</p><div className="mt-6 rounded-xl bg-white/5 p-3 font-mono text-[10px] text-[#ad94ff]">POST <span className="text-white">/api/render</span> <span className="text-[#c9ff5a]">→ 200</span></div></article>
-            <article className="rounded-[28px] border-2 border-[#101426] bg-[#ffd166] p-7"><CirclePlay className="size-10" /><h3 className="mt-8 text-2xl font-black">{c.playgroundTitle}</h3><p className="mt-3 text-sm leading-relaxed text-[#101426]/65">{c.playgroundText}</p><Link href="/playground" className="mt-6 inline-flex items-center gap-1 text-sm font-black underline decoration-2 underline-offset-4">Playground <ChevronRight className="size-4" /></Link></article>
-            <article className="rounded-[28px] border-2 border-[#101426] bg-[#ffb7aa] p-7"><Blocks className="size-10" /><h3 className="mt-8 text-2xl font-black">{c.automationTitle}</h3><p className="mt-3 text-sm leading-relaxed text-[#101426]/65">{c.automationText}</p><div className="mt-6 flex gap-2">{["n8n", "Make", "Zapier"].map(x => <span key={x} className="rounded-full border border-[#101426]/20 bg-white/50 px-2.5 py-1 text-[10px] font-black">{x}</span>)}</div></article>
-            <article className="rounded-[28px] border-2 border-[#101426] bg-white p-7 lg:col-span-2"><FileImage className="size-10 text-[#5b35d5]" /><div className="mt-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-end"><div><h3 className="text-2xl font-black">{c.formatsTitle}</h3><p className="mt-3 max-w-md text-sm leading-relaxed text-[#101426]/60">{c.formatsText}</p></div><div className="flex gap-2">{["JPEG", "PNG", "WebP"].map(x => <span key={x} className="rounded-xl border-2 border-[#101426] bg-[#f6f5ef] px-4 py-3 text-xs font-black">{x}</span>)}</div></div></article>
           </div>
         </div>
       </section>
 
-      <section className="border-y border-[#101426]/10 bg-[#fafafe] py-24 text-[#101426] lg:py-32">
-        <div className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-12">
-          <div className="mb-14 max-w-3xl">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-[#5b35d5]">{c.scaleKicker}</p>
-            <h2 className="mt-5 text-4xl font-black leading-[0.98] tracking-[-0.045em] sm:text-6xl">{c.scaleTitle}</h2>
-            <p className="mt-6 max-w-xl text-lg leading-relaxed text-[#101426]/55">{c.scaleText}</p>
+      <section className="relative overflow-hidden border-y border-[#101426]/8 bg-[#f7f8fc] py-24 text-[#101426] lg:py-32">
+        <div className="pointer-events-none absolute -left-40 top-24 size-[420px] rounded-full bg-[#dfe8ff]/70 blur-[110px]" />
+        <div className="pointer-events-none absolute -right-44 bottom-0 size-[440px] rounded-full bg-[#e6dcff]/55 blur-[120px]" />
+        <div className="relative mx-auto max-w-[1320px] px-5 sm:px-8 lg:px-12">
+          <div className="mb-14 grid items-end gap-7 lg:grid-cols-[1fr_.72fr]">
+            <div className="max-w-3xl">
+              <h2 className="text-4xl font-black leading-[0.98] tracking-[-0.05em] sm:text-6xl">{c.scaleTitle}</h2>
+            </div>
+            <p className="max-w-xl text-base leading-relaxed text-[#596174] lg:justify-self-end lg:text-lg">{c.scaleText}</p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-5 md:grid-cols-2">
             {[
-              [Users, c.scaleTeamTitle, c.scaleTeamText, "bg-[#5b35d5]"],
-              [Zap, c.scaleSpeedTitle, c.scaleSpeedText, "bg-[#c9ff5a] text-[#101426]"],
-              [Server, c.scaleInfraTitle, c.scaleInfraText, "bg-white text-[#101426]"],
-              [Lock, c.scaleSecureTitle, c.scaleSecureText, "bg-[#ffb7aa] text-[#101426]"],
-            ].map(([Icon, title, text, color]) => {
-              const CardIcon = Icon as typeof Users;
-              return (
-                <article key={String(title)} className={`rounded-[22px] border-2 border-[#101426] p-6 ${String(color)}`}>
-                  <CardIcon className="size-8" />
-                  <h3 className="mt-6 text-lg font-black">{String(title)}</h3>
-                  <p className="mt-2 text-sm leading-relaxed opacity-65">{String(text)}</p>
-                </article>
-              );
-            })}
+              { Icon: Users, title: c.scaleTeamTitle, text: c.scaleTeamText, icon: "bg-[#e9e5ff] text-[#5b35d5]" },
+              { Icon: Zap, title: c.scaleSpeedTitle, text: c.scaleSpeedText, icon: "bg-[#e7f0ff] text-[#2161ed]" },
+              { Icon: Server, title: c.scaleInfraTitle, text: c.scaleInfraText, icon: "bg-[#e5f8f1] text-[#14795d]" },
+              { Icon: Lock, title: c.scaleSecureTitle, text: c.scaleSecureText, icon: "bg-[#fff0e8] text-[#d85a26]" },
+            ].map(({ Icon, title, text, icon }) => (
+              <article key={title} className="group relative overflow-hidden rounded-[26px] border border-[#dfe2ec] bg-white p-7 shadow-[0_16px_48px_rgba(43,37,72,.07)] transition duration-300 hover:-translate-y-1 hover:border-[#cfc8ed] hover:shadow-[0_22px_60px_rgba(43,37,72,.11)] sm:p-8">
+                <div className="flex items-start gap-5">
+                  <span className={`flex size-12 shrink-0 items-center justify-center rounded-2xl ${icon}`}><Icon className="size-6" /></span>
+                  <div>
+                    <h3 className="text-xl font-black tracking-[-0.025em] sm:text-2xl">{title}</h3>
+                    <p className="mt-3 max-w-xl text-sm leading-7 text-[#596174] sm:text-[15px]">{text}</p>
+                  </div>
+                </div>
+              </article>
+            ))}
           </div>
 
-          <div className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-[22px] border border-[#101426]/10 bg-[#101426]/10 shadow-[0_14px_38px_rgba(16,20,38,.055)] lg:grid-cols-4">
+          <div className="mt-6 grid grid-cols-2 overflow-hidden rounded-[26px] border border-white/10 bg-[#111629] p-1.5 shadow-[0_22px_60px_rgba(17,22,41,.18)] lg:grid-cols-4">
             {[
               [c.scaleStat1, c.scaleStat1Label],
               [c.scaleStat2, c.scaleStat2Label],
               [c.scaleStat3, c.scaleStat3Label],
               [c.scaleStat4, c.scaleStat4Label],
-            ].map(([value, label]) => (
-              <div key={String(label)} className="bg-white p-6 text-center">
-                <div className="text-4xl font-black text-[#5b35d5]">{value}</div>
-                <div className="mt-2 text-xs font-bold text-[#101426]/40">{label}</div>
+            ].map(([value, label], index) => (
+              <div key={String(label)} className={`rounded-[20px] p-6 text-center sm:p-8 ${index === 0 ? "bg-white/[.06]" : ""}`}>
+                <div className={`text-4xl font-black tracking-[-0.045em] ${index % 2 === 0 ? "text-[#c9ff5a]" : "text-[#a995ff]"}`}>{value}</div>
+                <div className="mt-2 text-xs font-bold text-white/45">{label}</div>
               </div>
             ))}
           </div>
@@ -878,11 +912,11 @@ export default function HomePage() {
       </section>
 
       <section className="border-y border-[#101426]/10 bg-white py-24 lg:py-32">
-        <div className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-12"><div className="mb-14 max-w-3xl"><p className="text-xs font-black uppercase tracking-[0.2em] text-[#5b35d5]">{c.useKicker}</p><h2 className="mt-5 text-4xl font-black leading-none tracking-[-0.045em] sm:text-6xl">{c.useTitle}</h2></div><div className="grid gap-px overflow-hidden rounded-[28px] border border-[#101426]/10 bg-[#101426]/10 shadow-[0_22px_70px_rgba(16,20,38,.06)] md:grid-cols-2 lg:grid-cols-3">{c.uses.map(([title, text], index) => <article key={title} className="group bg-white p-7 transition hover:bg-[#f2efff]"><div className="flex items-start justify-between"><span className="text-xs font-black text-[#5b35d5]">0{index + 1}</span><ArrowRight className="size-5 -rotate-45 transition group-hover:rotate-0" /></div><h3 className="mt-10 text-2xl font-black">{title}</h3><p className="mt-3 text-sm leading-relaxed text-[#101426]/60">{text}</p></article>)}</div></div>
+        <div className="mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-12"><div className="mb-14 max-w-3xl"><h2 className="text-4xl font-black leading-none tracking-[-0.045em] sm:text-6xl">{c.useTitle}</h2></div><div className="grid gap-px overflow-hidden rounded-[28px] border border-[#101426]/10 bg-[#101426]/10 shadow-[0_22px_70px_rgba(16,20,38,.06)] md:grid-cols-2 lg:grid-cols-3">{c.uses.map(([title, text], index) => <article key={title} className="group bg-white p-7 transition hover:bg-[#f2efff]"><div className="flex items-start justify-between"><span className="text-xs font-black text-[#5b35d5]">0{index + 1}</span><ArrowRight className="size-5 -rotate-45 transition group-hover:rotate-0" /></div><h3 className="mt-10 text-2xl font-black">{title}</h3><p className="mt-3 text-sm leading-relaxed text-[#101426]/60">{text}</p></article>)}</div></div>
       </section>
 
       <section id="pricing" className="mx-auto max-w-[1440px] px-5 py-24 sm:px-8 lg:px-12 lg:py-32">
-        <div className="text-center"><p className="text-xs font-black uppercase tracking-[0.2em] text-[#5b35d5]">{c.plansKicker}</p><h2 className="mx-auto mt-5 max-w-4xl text-4xl font-black leading-none tracking-[-0.045em] sm:text-6xl">{c.plansTitle}</h2></div>
+        <div className="text-center"><h2 className="mx-auto max-w-4xl text-4xl font-black leading-none tracking-[-0.045em] sm:text-6xl">{c.plansTitle}</h2></div>
         <div className="mx-auto mt-9 flex w-fit items-center rounded-full border-2 border-[#101426] bg-white p-1 shadow-[4px_4px_0_#101426]">
           <button onClick={() => setYearlyBilling(false)} className={`rounded-full px-5 py-2 text-sm font-black transition ${!yearlyBilling ? "bg-[#101426] text-white" : "text-[#101426]/55"}`}>{c.billingMonthly}</button>
           <button onClick={() => setYearlyBilling(true)} className={`flex items-center gap-2 rounded-full px-5 py-2 text-sm font-black transition ${yearlyBilling ? "bg-[#5b35d5] text-white" : "text-[#101426]/55"}`}>{c.billingYearly}<span className={`rounded-full px-2 py-0.5 text-[9px] ${yearlyBilling ? "bg-[#c9ff5a] text-[#101426]" : "bg-[#e9e5ff] text-[#5b35d5]"}`}>{c.annualDiscount}</span></button>
@@ -896,7 +930,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="px-5 pb-24 sm:px-8 lg:px-12 lg:pb-32"><div className="relative mx-auto max-w-[1344px] overflow-hidden rounded-[36px] border border-[#5b35d5]/10 bg-gradient-to-br from-[#eeeaff] via-white to-[#f7f8ff] px-6 py-16 text-center shadow-[0_30px_90px_rgba(91,53,213,.12)] sm:px-12 lg:py-24"><div className="absolute -left-12 -top-12 size-40 rounded-full bg-[#5b35d5]/10 blur-sm" /><Sparkles className="absolute right-10 top-10 size-10 text-[#5b35d5]" /><h2 className="relative mx-auto max-w-4xl text-4xl font-black leading-[0.95] tracking-[-0.05em] sm:text-6xl lg:text-7xl">{c.ctaTitle}</h2><p className="relative mx-auto mt-6 max-w-2xl text-lg font-semibold text-[#101426]/60 text-balance">{c.ctaText}</p><Link href={primaryHref} className="relative mt-9 inline-flex h-14 items-center gap-2 rounded-full bg-gradient-to-r from-[#5b35d5] to-[#6f4bea] px-7 font-black text-white shadow-[0_14px_35px_rgba(91,53,213,.24)] transition hover:-translate-y-1 hover:brightness-105">{c.ctaButton}<ArrowRight className="size-4" /></Link><p className="relative mt-4 text-sm font-bold text-[#101426]/45">{c.noCard}</p></div></section>
+      <section className="px-5 pb-24 sm:px-8 lg:px-12 lg:pb-32"><div className="relative mx-auto max-w-[1344px] overflow-hidden rounded-[36px] border border-[#5b35d5]/10 bg-gradient-to-br from-[#eeeaff] via-white to-[#f7f8ff] px-6 py-16 text-center shadow-[0_30px_90px_rgba(91,53,213,.12)] sm:px-12 lg:py-24"><div className="absolute -left-12 -top-12 size-40 rounded-full bg-[#5b35d5]/10 blur-sm" /><h2 className="relative mx-auto max-w-4xl text-4xl font-black leading-[0.95] tracking-[-0.05em] sm:text-6xl lg:text-7xl">{c.ctaTitle}</h2><p className="relative mx-auto mt-6 max-w-2xl text-lg font-semibold text-[#101426]/60 text-balance">{c.ctaText}</p><Link href={primaryHref} className="relative mt-9 inline-flex h-14 items-center gap-2 rounded-full bg-gradient-to-r from-[#5b35d5] to-[#6f4bea] px-7 font-black text-white shadow-[0_14px_35px_rgba(91,53,213,.24)] transition hover:-translate-y-1 hover:brightness-105">{c.ctaButton}<ArrowRight className="size-4" /></Link><p className="relative mt-4 text-sm font-bold text-[#101426]/45">{c.noCard}</p></div></section>
 
       <footer className="bg-[#101426] text-white"><div className="mx-auto max-w-[1440px] px-5 py-16 sm:px-8 lg:px-12"><div className="grid gap-12 border-b border-white/10 pb-14 md:grid-cols-2 lg:grid-cols-5"><div className="lg:col-span-2"><BrandMark className="size-12 text-base" /><p className="mt-5 max-w-sm text-sm leading-relaxed text-white/45">{c.footerText}</p></div><div><h3 className="text-xs font-black uppercase tracking-wider text-[#c9ff5a]">{c.product}</h3><div className="mt-5 space-y-3 text-sm text-white/55"><a className="block hover:text-white" href="#product">{c.navProduct}</a><a className="block hover:text-white" href="#templates">{c.navTemplates}</a><a className="block hover:text-white" href="#pricing">{c.navPlans}</a></div></div><div><h3 className="text-xs font-black uppercase tracking-wider text-[#c9ff5a]">{c.resources}</h3><div className="mt-5 space-y-3 text-sm text-white/55"><Link className="block hover:text-white" href="/docs">{c.navDocs}</Link><Link className="block hover:text-white" href="/playground">Playground</Link><Link className="block hover:text-white" href="/dashboard">Dashboard</Link></div></div><div><h3 className="text-xs font-black uppercase tracking-wider text-[#c9ff5a]">{c.legal}</h3><div className="mt-5 space-y-3 text-sm text-white/55"><Link className="block hover:text-white" href="/privacy">{c.privacy}</Link><Link className="block hover:text-white" href="/terms">{c.terms}</Link><Link className="block hover:text-white" href="/security">{c.security}</Link></div></div></div><div className="flex flex-col gap-4 pt-8 text-xs text-white/35 sm:flex-row sm:items-center sm:justify-between"><p>© {new Date().getFullYear()} Dynamic Canvas. {c.rights}</p><div className="flex items-center gap-2"><ShieldCheck className="size-4" /> Secure API infrastructure</div></div></div></footer>
     </main>

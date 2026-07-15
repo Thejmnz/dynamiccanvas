@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
+    <title>Verifica tu identidad — Dynamic Canvas</title>
+    <style>
+      @media only screen and (max-width: 620px) {
+        .email-shell { width: 100% !important; }
+        .email-card { padding: 30px 22px !important; }
+        .headline { font-size: 32px !important; line-height: 36px !important; }
+        .otp-code { font-size: 28px !important; letter-spacing: 5px !important; }
+      }
+    </style>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f5f6fb;color:#101426;font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">Usa este código temporal para verificar tu identidad en Dynamic Canvas.</div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;background-color:#f5f6fb;">
+      <tr><td align="center" style="padding:34px 14px 42px;">
+        <table role="presentation" class="email-shell" width="600" cellspacing="0" cellpadding="0" border="0" style="width:600px;max-width:600px;">
+          <tr><td style="padding:0 4px 22px;"><a href="{{ .SiteURL }}" style="display:inline-block;padding:8px 12px;border:1px solid #e6e7ef;border-radius:16px;background:#ffffff;text-decoration:none;box-shadow:0 8px 24px rgba(16,20,38,.06);"><img src="https://qhfbwqijhefoeebxnota.supabase.co/storage/v1/object/public/media/branding/dynamic-canvas-logo.png" width="190" alt="Dynamic Canvas" style="display:block;width:190px;max-width:100%;height:auto;border:0;"></a></td></tr>
+          <tr><td class="email-card" style="padding:44px 42px 38px;border:1px solid #e5e7ef;border-radius:26px;background:#ffffff;box-shadow:0 24px 70px rgba(16,20,38,.09);">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+              <tr><td><span style="display:inline-block;padding:8px 13px;border-radius:999px;background:#f0edff;color:#5b35d5;font-size:11px;font-weight:900;letter-spacing:1.4px;text-transform:uppercase;">Verificación de seguridad</span></td></tr>
+              <tr><td class="headline" style="padding-top:22px;color:#101426;font-size:42px;font-weight:900;line-height:45px;letter-spacing:-1.8px;">Confirma que<br><span style="color:#5b35d5;">realmente eres tú.</span></td></tr>
+              <tr><td style="padding-top:20px;color:#55596a;font-size:16px;line-height:26px;">Se solicitó una verificación adicional antes de realizar una acción sensible en la cuenta <strong style="color:#101426;">{{ .Email }}</strong>.</td></tr>
+              <tr><td align="center" style="padding-top:28px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #ddd7fb;border-radius:16px;background:#f2efff;"><tr><td align="center" style="padding:23px 16px 21px;">
+                <div style="color:#6c6f80;font-size:11px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;">Código de verificación</div>
+                <div class="otp-code" style="padding-top:9px;color:#101426;font-size:34px;font-weight:900;line-height:40px;letter-spacing:7px;">{{ .Token }}</div>
+              </td></tr></table></td></tr>
+              <tr><td style="padding-top:24px;color:#777a87;font-size:12px;line-height:19px;text-align:center;">No compartas este código. El equipo de Dynamic Canvas nunca te lo pedirá por chat, llamada o correo.</td></tr>
+            </table>
+          </td></tr>
+          <tr><td align="center" style="padding:30px 18px 0;color:#777a87;font-size:11px;line-height:18px;">Si no intentaste realizar una acción sensible, cambia tu contraseña y contacta a soporte.<div style="padding-top:12px;color:#101426;font-weight:800;">Dynamic Canvas &middot; Diseña una vez. Renderiza a escala.</div></td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>

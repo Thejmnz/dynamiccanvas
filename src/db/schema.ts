@@ -278,6 +278,83 @@ export const news = pgTable("news", {
   createdAt: timestamp("createdAt", { mode: "date" }).notNull().$defaultFn(() => new Date()),
 });
 
+// Product feedback board
+export const feedbackPosts = pgTable("feedback_post", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  category: text("category").default("feature").notNull(),
+  status: text("status").default("open").notNull(),
+  moderationStatus: text("moderation_status").default("pending").notNull(),
+  createdAt: timestamp("createdAt", { mode: "date" }).notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const feedbackVotes = pgTable(
+  "feedback_vote",
+  {
+    feedbackId: text("feedback_id")
+      .notNull()
+      .references(() => feedbackPosts.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    value: integer("value").notNull(),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().$defaultFn(() => new Date()),
+    updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().$defaultFn(() => new Date()),
+  },
+  (vote) => ({
+    compoundKey: primaryKey({ columns: [vote.feedbackId, vote.userId] }),
+  }),
+);
+
+export const feedbackComments = pgTable("feedback_comment", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  parentCommentId: text("parent_comment_id"),
+  feedbackId: text("feedback_id")
+    .notNull()
+    .references(() => feedbackPosts.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  body: text("body").notNull(),
+  isAdmin: boolean("is_admin").default(false).notNull(),
+  createdAt: timestamp("createdAt", { mode: "date" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const feedbackActivities = pgTable("feedback_activity", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  feedbackId: text("feedback_id")
+    .notNull()
+    .references(() => feedbackPosts.id, { onDelete: "cascade" }),
+  actorId: text("actor_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  action: text("action").notNull(),
+  fromValue: text("from_value"),
+  toValue: text("to_value"),
+  createdAt: timestamp("createdAt", { mode: "date" }).notNull().$defaultFn(() => new Date()),
+});
+
+export const feedbackSubscriptions = pgTable(
+  "feedback_subscription",
+  {
+    feedbackId: text("feedback_id")
+      .notNull()
+      .references(() => feedbackPosts.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().$defaultFn(() => new Date()),
+  },
+  (subscription) => ({
+    compoundKey: primaryKey({ columns: [subscription.feedbackId, subscription.userId] }),
+  }),
+);
+
 // Admin Designs - Pre-made designs that can be used as templates
 export const designs = pgTable("design", {
   id: text("id")

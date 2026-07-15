@@ -8,6 +8,23 @@ import { supabase } from "@/lib/supabaseClient";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { BrandLoading } from "@/components/brand-loading";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+type TeamMember = {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  status: "active" | "pending";
+  invitedAt: string;
+};
 
 const PLAN_MEMBER_LIMITS: Record<string, number> = {
   free: 1,
@@ -28,6 +45,10 @@ export default function TeamPage() {
   const [savingTeamName, setSavingTeamName] = useState(false);
   const [plan, setPlan] = useState("free");
   const [joinedDate, setJoinedDate] = useState("");
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviting, setInviting] = useState(false);
 
   useEffect(() => {
     fetchAll();
@@ -35,9 +56,10 @@ export default function TeamPage() {
 
   const fetchAll = async () => {
     try {
-      const [{ data: { user } }, creditsRes] = await Promise.all([
+      const [{ data: { user } }, creditsRes, teamRes] = await Promise.all([
         supabase.auth.getUser(),
         fetch("/api/user-credits").then((r) => r.ok ? r.json() : null),
+        fetch("/api/team").then((r) => r.ok ? r.json() : null),
       ]);
       if (user) {
         const displayName = user.user_metadata?.name || user.email?.split("@")[0] || "User";
@@ -53,6 +75,7 @@ export default function TeamPage() {
         }
       }
       if (creditsRes) setPlan(creditsRes.plan || "free");
+      if (teamRes?.members) setMembers(teamRes.members);
     } catch { } finally { setLoading(false); }
   };
 
@@ -76,6 +99,33 @@ export default function TeamPage() {
     }
   };
 
+  const sendInvitation = async () => {
+    const nextEmail = inviteEmail.trim().toLowerCase();
+    if (!nextEmail) return;
+
+    setInviting(true);
+    try {
+      const response = await fetch("/api/team", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: nextEmail, teamName }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not send invitation");
+
+      setMembers((current) => current.some((member) => member.id === result.member.id)
+        ? current
+        : [...current, result.member]);
+      setInviteEmail("");
+      setInviteOpen(false);
+      toast.success(language === "es" ? "Invitación enviada" : "Invitation sent");
+    } catch (inviteError: any) {
+      toast.error(inviteError.message || (language === "es" ? "No se pudo enviar la invitación" : "Could not send invitation"));
+    } finally {
+      setInviting(false);
+    }
+  };
+
   const c = language === "es" ? {
     title: "Gestión de equipo",
     overview: "Resumen",
@@ -88,6 +138,14 @@ export default function TeamPage() {
     you: "Tú", owner: "Propietario",
     seePlans: "Ver planes",
     inviteBtn: "Invitar miembro",
+    inviteTitle: "Invitar miembro",
+    inviteDesc: "Enviaremos un correo para que esta persona se una a tu equipo.",
+    invitePlaceholder: "correo@empresa.com",
+    cancel: "Cancelar",
+    send: "Enviar invitación",
+    member: "Miembro",
+    pending: "Pendiente",
+    active: "Activo",
   } : {
     title: "Team Management",
     overview: "Overview",
@@ -100,6 +158,14 @@ export default function TeamPage() {
     you: "You", owner: "Owner",
     seePlans: "See plans",
     inviteBtn: "Invite member",
+    inviteTitle: "Invite team member",
+    inviteDesc: "We'll email this person an invitation to join your team.",
+    invitePlaceholder: "name@company.com",
+    cancel: "Cancel",
+    send: "Send invitation",
+    member: "Member",
+    pending: "Pending",
+    active: "Active",
   };
 
   if (loading) {
@@ -108,6 +174,8 @@ export default function TeamPage() {
 
   const memberLimit = PLAN_MEMBER_LIMITS[plan] ?? 1;
   const isFree = plan === "free";
+  const currentMemberCount = 1 + members.length;
+  const memberLimitReached = currentMemberCount >= memberLimit;
 
   return (
     <div className="mx-auto max-w-3xl pb-10 pt-6 space-y-5">
@@ -157,8 +225,8 @@ export default function TeamPage() {
           <div>
             <label className="text-xs font-bold uppercase text-[#101426]/40 block mb-1">{c.members}</label>
             <div className="flex items-center justify-between border-2 border-[#101426]/10 rounded-xl px-3 py-2.5 text-sm bg-[#101426]/3">
-              <span className="font-bold">1 / {memberLimit === 999 ? "∞" : memberLimit}</span>
-              {memberLimit <= 1 && <span className="text-[10px] font-black text-[#ff6b57] uppercase">{c.memberLimit}</span>}
+              <span className="font-bold">{currentMemberCount} / {memberLimit === 999 ? "∞" : memberLimit}</span>
+              {memberLimitReached && <span className="text-[10px] font-black text-[#ff6b57] uppercase">{c.memberLimit}</span>}
             </div>
           </div>
         </div>
@@ -173,8 +241,8 @@ export default function TeamPage() {
               <p className="text-xs text-[#101426]/45 mt-0.5">{c.invite}</p>
             </div>
             <button
-              disabled={isFree || memberLimit <= 1}
-              onClick={() => toast.info(language === "es" ? "Próximamente" : "Coming soon")}
+              disabled={isFree || memberLimitReached}
+              onClick={() => setInviteOpen(true)}
               className="flex items-center gap-1.5 rounded-full bg-[#101426] text-white px-4 py-2 text-xs font-black hover:bg-[#5b35d5] transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <UserPlus className="size-3.5" />{c.inviteBtn}
@@ -218,9 +286,58 @@ export default function TeamPage() {
               <td className="px-5 py-4 text-xs text-[#101426]/50">{joinedDate || "—"}</td>
               <td className="px-5 py-4 text-xs text-[#101426]/30">—</td>
             </tr>
+            {members.map((member) => (
+              <tr key={member.id} className="transition hover:bg-[#101426]/2">
+                <td className="px-5 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#eeeaff] text-sm font-black text-[#5b35d5]">
+                      {member.name?.[0]?.toUpperCase() || "M"}
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold">{member.name}</div>
+                      <div className={`text-[10px] font-black uppercase ${member.status === "active" ? "text-emerald-600" : "text-amber-600"}`}>
+                        {member.status === "active" ? c.active : c.pending}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-5 py-4"><div className="flex items-center gap-1 text-xs text-[#101426]/50"><Mail className="size-3" />{member.email}</div></td>
+                <td className="px-5 py-4 text-xs font-bold text-[#101426]/60">{c.member}</td>
+                <td className="px-5 py-4 text-xs text-[#101426]/50">{new Date(member.invitedAt).toLocaleDateString(language === "es" ? "es-CO" : "en-US", { year: "numeric", month: "short", day: "numeric" })}</td>
+                <td className="px-5 py-4 text-xs text-[#101426]/30">—</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </section>
+
+      <Dialog open={inviteOpen} onOpenChange={(open) => !inviting && setInviteOpen(open)}>
+        <DialogContent className="max-w-md rounded-[24px] border border-[#dfe2ec] bg-white p-6 shadow-[0_24px_70px_rgba(16,20,38,.18)]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-2xl font-black tracking-tight"><UserPlus className="size-5 text-[#5b35d5]" />{c.inviteTitle}</DialogTitle>
+            <DialogDescription>{c.inviteDesc}</DialogDescription>
+          </DialogHeader>
+          <div className="py-3">
+            <label className="mb-2 block text-xs font-black uppercase tracking-wider text-[#101426]/45">{c.email}</label>
+            <Input
+              autoFocus
+              type="email"
+              value={inviteEmail}
+              onChange={(event) => setInviteEmail(event.target.value)}
+              onKeyDown={(event) => { if (event.key === "Enter") void sendInvitation(); }}
+              placeholder={c.invitePlaceholder}
+              disabled={inviting}
+              className="h-12 rounded-xl border border-[#dfe2ec] bg-[#f8f9fc] px-4 focus-visible:border-[#5b35d5] focus-visible:ring-0"
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <button type="button" onClick={() => setInviteOpen(false)} disabled={inviting} className="h-11 rounded-xl border border-[#dfe2ec] px-5 text-sm font-black text-[#596174] transition hover:bg-[#f8f9fc]">{c.cancel}</button>
+            <button type="button" onClick={() => void sendInvitation()} disabled={inviting || !inviteEmail.trim()} className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#5b35d5] px-5 text-sm font-black text-white transition hover:bg-[#4825bd] disabled:cursor-not-allowed disabled:opacity-50">
+              {inviting ? <Loader2 className="size-4 animate-spin" /> : <Mail className="size-4" />}{c.send}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

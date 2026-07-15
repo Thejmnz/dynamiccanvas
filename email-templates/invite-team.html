@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light">
     <meta name="supported-color-schemes" content="light">
-    <title>Confirma tu correo — Dynamic Canvas</title>
+    <title>Te invitaron a un equipo — Dynamic Canvas</title>
     <style>
       @media only screen and (max-width: 620px) {
         .email-shell { width: 100% !important; }
@@ -17,7 +17,7 @@
   </head>
   <body style="margin:0;padding:0;background-color:#f5f6fb;color:#101426;font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%;">
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
-      Confirma tu correo y activa tus 50 créditos gratuitos en Dynamic Canvas.
+      {{ if .Data.invited_by }}{{ .Data.invited_by }}{{ else }}Un miembro del equipo{{ end }} te invitó a colaborar en {{ if .Data.team_name }}{{ .Data.team_name }}{{ else }}Dynamic Canvas{{ end }}.
     </div>
 
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;background-color:#f5f6fb;">
@@ -38,19 +38,19 @@
                   <tr>
                     <td>
                       <span style="display:inline-block;padding:8px 13px;border-radius:999px;background:#f0edff;color:#5b35d5;font-size:11px;font-weight:900;letter-spacing:1.4px;text-transform:uppercase;">
-                        Un último paso
+                        Invitación de equipo
                       </span>
                     </td>
                   </tr>
                   <tr>
                     <td class="headline" style="padding-top:22px;color:#101426;font-size:42px;font-weight:900;line-height:45px;letter-spacing:-1.8px;">
-                      Confirma tu correo.<br>
-                      <span style="color:#5b35d5;">Empieza a crear.</span>
+                      Tu equipo te está<br>
+                      <span style="color:#5b35d5;">esperando.</span>
                     </td>
                   </tr>
                   <tr>
                     <td style="padding-top:20px;color:#55596a;font-size:16px;line-height:26px;">
-                      {{ if .Data.name }}Hola <strong style="color:#101426;">{{ .Data.name }}</strong>,{{ else }}¡Hola!{{ end }} Ya casi está todo listo. Confirma <strong style="color:#101426;">{{ .Email }}</strong> para activar tu cuenta de Dynamic Canvas.
+                      <strong style="color:#101426;">{{ if .Data.invited_by }}{{ .Data.invited_by }}{{ else }}Un miembro del equipo{{ end }}</strong> te invitó a unirte a <strong style="color:#101426;">{{ if .Data.team_name }}{{ .Data.team_name }}{{ else }}su equipo{{ end }}</strong> en Dynamic Canvas con la cuenta <strong style="color:#101426;">{{ .Email }}</strong>.
                     </td>
                   </tr>
                   <tr>
@@ -61,8 +61,8 @@
                             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #ddd7fb;border-radius:16px;background:#f2efff;">
                               <tr>
                                 <td style="padding:16px 17px;">
-                                  <div style="color:#101426;font-size:22px;font-weight:900;line-height:24px;">50 créditos</div>
-                                  <div style="padding-top:5px;color:#5f6272;font-size:12px;line-height:17px;">Para tus primeros renders.</div>
+                                  <div style="color:#101426;font-size:19px;font-weight:900;line-height:23px;">Un solo equipo</div>
+                                  <div style="padding-top:5px;color:#5f6272;font-size:12px;line-height:17px;">Entra al espacio al que te invitaron.</div>
                                 </td>
                               </tr>
                             </table>
@@ -71,8 +71,8 @@
                             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e7e8f0;border-radius:16px;background:#f8f9fc;">
                               <tr>
                                 <td style="padding:16px 17px;">
-                                  <div style="color:#101426;font-size:22px;font-weight:900;line-height:24px;">3 plantillas</div>
-                                  <div style="padding-top:5px;color:#55596a;font-size:12px;line-height:17px;">Incluidas en tu cuenta gratuita.</div>
+                                  <div style="color:#101426;font-size:19px;font-weight:900;line-height:23px;">Acceso seguro</div>
+                                  <div style="padding-top:5px;color:#55596a;font-size:12px;line-height:17px;">La invitación está vinculada a tu correo.</div>
                                 </td>
                               </tr>
                             </table>
@@ -84,7 +84,7 @@
                   <tr>
                     <td align="center" style="padding-top:30px;">
                       <a href="{{ .ConfirmationURL }}" style="display:block;padding:17px 24px;border-radius:14px;background-color:#5b35d5;background-image:linear-gradient(135deg,#5b35d5,#7357e8);color:#ffffff;font-size:16px;font-weight:900;line-height:20px;text-align:center;text-decoration:none;box-shadow:0 14px 30px rgba(91,53,213,.24);">
-                        Confirmar mi correo &rarr;
+                        Aceptar invitación &rarr;
                       </a>
                     </td>
                   </tr>
@@ -102,8 +102,8 @@
 
             <tr>
               <td align="center" style="padding:30px 18px 0;color:#777a87;font-size:11px;line-height:18px;">
-                Recibiste este correo porque se creó una cuenta con esta dirección.<br>
-                Si no fuiste tú, puedes ignorarlo de forma segura.
+                Recibiste este correo porque alguien te invitó a un equipo de Dynamic Canvas.<br>
+                Si no esperabas esta invitación, puedes ignorarla de forma segura.
                 <div style="padding-top:12px;color:#101426;font-weight:800;">Dynamic Canvas &middot; Diseña una vez. Renderiza a escala.</div>
               </td>
             </tr>

@@ -25,9 +25,9 @@ export const metadata: Metadata = {
   description: "Automatiza tu flujo de trabajo creativo. Integra herramientas de diseño directamente en tu stack tecnológico y genera visuales dinámicos en segundos.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
   icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
-    shortcut: "/icon.svg",
-    apple: "/dynamic-canvas-logo.png",
+    icon: [{ url: "/favicon.png?v=2", type: "image/png", sizes: "361x361" }],
+    shortcut: "/favicon.png?v=2",
+    apple: [{ url: "/favicon.png?v=2", sizes: "361x361", type: "image/png" }],
   },
   openGraph: {
     title: "Dynamic Canvas",

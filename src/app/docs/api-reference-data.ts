@@ -86,3 +86,12 @@ export const shapeLayerProperties: ApiProperty[] = [
   { name: "cornerRadius", type: "number ≥ 0", defaultValue: "0", description: { es: "Radio de esquina para rectángulos. rx es un alias.", en: "Corner radius for rectangles. rx is an alias." } },
 ];
 
+export const responseProperties: ApiProperty[] = [
+  { name: "status", type: '"success"', description: { es: "Confirma que el render terminó y fue almacenado correctamente.", en: "Confirms that the render completed and was stored successfully." } },
+  { name: "imageUrl", type: "string (URL)", description: { es: "URL pública del archivo generado. Guárdala si necesitas conservar una referencia al render.", en: "Public URL of the generated file. Store it if you need to keep a reference to the render." } },
+  { name: "width", type: "integer", description: { es: "Ancho final del archivo en píxeles, después de aplicar pixelRatio.", en: "Final file width in pixels after pixelRatio is applied." } },
+  { name: "height", type: "integer", description: { es: "Alto final del archivo en píxeles, después de aplicar pixelRatio.", en: "Final file height in pixels after pixelRatio is applied." } },
+  { name: "pixelRatio", type: "number", description: { es: "Escala realmente aplicada. Puede ser menor que la solicitada si entra en efecto el límite seguro de resolución.", en: "Scale actually applied. It can be lower than requested when the safe resolution cap takes effect." } },
+  { name: "totalTimeMs", type: "integer", description: { es: "Tiempo total del proceso en milisegundos, incluyendo render, almacenamiento y respuesta.", en: "Total processing time in milliseconds, including rendering, storage, and the response." } },
+  { name: "creditsRemaining", type: "integer", description: { es: "Saldo de créditos después del render exitoso.", en: "Credit balance after the successful render." } },
+];

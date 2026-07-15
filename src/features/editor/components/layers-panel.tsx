@@ -42,6 +42,7 @@ import {
   isFabricObjectLocked,
   setFabricObjectLocked,
 } from "@/features/editor/utils";
+import { useLanguage } from "@/lib/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 
 interface LayersPanelProps {
@@ -81,29 +82,79 @@ const getLayerId = (object: LayerObject) => {
 
 const isLocked = (object: LayerObject) => isFabricObjectLocked(object);
 
-const getTypeLabel = (type?: string) => {
+type EditorLanguage = "en" | "es";
+
+const TYPE_LABELS: Record<EditorLanguage, Record<string, string>> = {
+  en: {
+    text: "Text",
+    image: "Image",
+    rect: "Rectangle",
+    circle: "Circle",
+    triangle: "Triangle",
+    path: "Path",
+    element: "Element",
+  },
+  es: {
+    text: "Texto",
+    image: "Imagen",
+    rect: "Rectángulo",
+    circle: "Círculo",
+    triangle: "Triángulo",
+    path: "Trazo",
+    element: "Elemento",
+  },
+};
+
+const getTypeLabel = (type: string | undefined, language: EditorLanguage) => {
+  const labels = TYPE_LABELS[language];
   switch (type) {
     case "textbox":
     case "text":
-    case "i-text": return "Texto";
-    case "image": return "Imagen";
-    case "rect": return "Rectángulo";
-    case "circle": return "Círculo";
-    case "triangle": return "Triángulo";
-    case "path": return "Trazo";
-    default: return "Elemento";
+    case "i-text": return labels.text;
+    case "image": return labels.image;
+    case "rect": return labels.rect;
+    case "circle": return labels.circle;
+    case "triangle": return labels.triangle;
+    case "path": return labels.path;
+    default: return labels.element;
   }
 };
 
-const getLayerLabel = (object: LayerObject, fallbackIndex: number) => {
-  if (object.name) return object.name;
+const localizeGeneratedLayerName = (name: string, language: EditorLanguage) => {
+  const match = name.match(/^(Texto|Text|Imagen|Image|Rectángulo|Rectangle|Círculo|Circle|Triángulo|Triangle|Trazo|Path|Elemento|Element)\s+(\d+)$/i);
+  if (!match) return name;
+
+  const normalized = match[1].toLocaleLowerCase("es");
+  const type = normalized === "texto" || normalized === "text"
+    ? "text"
+    : normalized === "imagen" || normalized === "image"
+      ? "image"
+      : normalized === "rectángulo" || normalized === "rectangle"
+        ? "rect"
+        : normalized === "círculo" || normalized === "circle"
+          ? "circle"
+          : normalized === "triángulo" || normalized === "triangle"
+            ? "triangle"
+            : normalized === "trazo" || normalized === "path"
+              ? "path"
+              : "element";
+
+  return `${TYPE_LABELS[language][type]} ${match[2]}`;
+};
+
+const getLayerLabel = (
+  object: LayerObject,
+  fallbackIndex: number,
+  language: EditorLanguage,
+) => {
+  if (object.name) return localizeGeneratedLayerName(object.name, language);
 
   if (["textbox", "text", "i-text"].includes(object.type || "")) {
     const text = (object as fabric.Text).text?.trim();
     if (text) return text.length > 24 ? `${text.slice(0, 24)}…` : text;
   }
 
-  return `${getTypeLabel(object.type)} ${fallbackIndex}`;
+  return `${getTypeLabel(object.type, language)} ${fallbackIndex}`;
 };
 
 const TypeIcon = ({ type }: { type?: string }) => {
@@ -133,6 +184,7 @@ const LayerRowContent = ({
 }: LayerRowProps & {
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
 }) => {
+  const { language } = useLanguage();
   const locked = isLocked(object);
 
   return (
@@ -147,7 +199,7 @@ const LayerRowContent = ({
     >
       <button
         type="button"
-        aria-label={`Mover ${label}`}
+        aria-label={language === "es" ? `Mover ${label}` : `Move ${label}`}
         className="flex size-6 shrink-0 cursor-grab touch-none items-center justify-center rounded text-slate-300 hover:bg-slate-100 hover:text-slate-500 active:cursor-grabbing"
         onClick={(event) => event.stopPropagation()}
         {...dragHandleProps}
@@ -195,7 +247,9 @@ const LayerRowContent = ({
       <button
         type="button"
         className="flex size-6 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-        title={object.visible === false ? "Mostrar" : "Ocultar"}
+        title={object.visible === false
+          ? (language === "es" ? "Mostrar" : "Show")
+          : (language === "es" ? "Ocultar" : "Hide")}
         onClick={(event) => {
           event.stopPropagation();
           onToggleVisibility();
@@ -209,7 +263,9 @@ const LayerRowContent = ({
       <button
         type="button"
         className="flex size-6 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-        title={locked ? "Desbloquear" : "Bloquear"}
+        title={locked
+          ? (language === "es" ? "Desbloquear" : "Unlock")
+          : (language === "es" ? "Bloquear" : "Lock")}
         onClick={(event) => {
           event.stopPropagation();
           onToggleLock();
@@ -223,7 +279,7 @@ const LayerRowContent = ({
       <button
         type="button"
         className="flex size-6 items-center justify-center rounded text-slate-400 hover:bg-red-50 hover:text-red-600"
-        title="Eliminar"
+        title={language === "es" ? "Eliminar" : "Delete"}
         onClick={(event) => {
           event.stopPropagation();
           onDelete();
@@ -264,6 +320,7 @@ const SortableLayerRow = (props: LayerRowProps) => {
 };
 
 export const LayersPanel = ({ editor }: LayersPanelProps) => {
+  const { language } = useLanguage();
   const [revision, setRevision] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
@@ -423,7 +480,7 @@ export const LayersPanel = ({ editor }: LayersPanelProps) => {
 
   const rowProps = (object: LayerObject, index: number): LayerRowProps => {
     const id = getLayerId(object);
-    const label = getLayerLabel(object, objects.length - index);
+    const label = getLayerLabel(object, objects.length - index, language);
 
     return {
       object,
@@ -471,14 +528,16 @@ export const LayersPanel = ({ editor }: LayersPanelProps) => {
         <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 px-3 py-2">
           <h3 className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
             <Layers3 className="size-3.5" />
-            Capas
+            {language === "es" ? "Capas" : "Layers"}
           </h3>
           <span className="text-[10px] text-slate-400">{objects.length}</span>
         </div>
 
         <div className="max-h-[min(400px,calc(100vh-150px))] space-y-0.5 overflow-y-auto p-1">
           {objects.length === 0 && (
-            <p className="px-3 py-7 text-center text-xs text-slate-400">Sin elementos</p>
+            <p className="px-3 py-7 text-center text-xs text-slate-400">
+              {language === "es" ? "Sin elementos" : "No elements"}
+            </p>
           )}
           <SortableContext items={visibleOrder} strategy={verticalListSortingStrategy}>
             {objects.map((object, index) => (
@@ -488,7 +547,9 @@ export const LayersPanel = ({ editor }: LayersPanelProps) => {
         </div>
 
         <p className="border-t border-slate-200 bg-slate-50/80 px-2 py-1 text-center text-[10px] text-slate-400">
-          Arrastra para ordenar · doble clic para renombrar
+          {language === "es"
+            ? "Arrastra para ordenar · doble clic para renombrar"
+            : "Drag to reorder · double-click to rename"}
         </p>
       </div>
 

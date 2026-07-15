@@ -54,6 +54,21 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     );
   }
 
+  if (
+    pathname === "/feedback"
+    || pathname.startsWith("/feedback/")
+    || pathname === "/roadmap"
+    || pathname.startsWith("/roadmap/")
+    || pathname === "/changelog"
+    || pathname.startsWith("/changelog/")
+  ) {
+    return (
+      <div className="min-h-screen bg-[#f7f8fc] text-[#101426]">
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#fafafe] text-[#101426]">
       <Sidebar />
