@@ -1,6 +1,5 @@
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabaseClient";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 
 export const useDeleteProject = () => {
@@ -9,14 +8,10 @@ export const useDeleteProject = () => {
 
   const mutation = useMutation({
     mutationFn: async ({ id }: { id: string }) => {
-      const { error } = await supabase
-        .from('dynamic_canvas_templates')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error("Delete project error:", error);
-        throw new Error("Failed to delete project");
+      const response = await fetch(`/api/user-templates/${id}`, { method: "DELETE" });
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || "Failed to delete project");
       }
 
       return { id };

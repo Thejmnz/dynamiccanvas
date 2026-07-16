@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabaseClient";
 import { useLanguage } from "@/lib/contexts/LanguageContext";
 
 // Función auxiliar para generar y subir thumbnail a Supabase Storage
@@ -95,17 +94,14 @@ export const useUpdateProject = (id: string) => {
         updateData.tags = values.tags;
       }
 
-      const { data, error } = await supabase
-        .from('dynamic_canvas_templates')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error("❌ Update error:", error);
-        throw new Error(error.message || "Failed to update project");
-      }
+      const response = await fetch(`/api/user-templates/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateData),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Failed to update project");
+      const data = result.data;
 
       console.log("✅ Save success:", data);
       return data;

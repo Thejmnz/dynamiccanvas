@@ -1,5 +1,4 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabaseClient";
 
 export type ResponseType = {
   id: string;
@@ -37,16 +36,10 @@ export const useGetProject = (id: string) => {
     enabled: !!id,
     queryKey: ["project", { id }],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('dynamic_canvas_templates')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) {
-        console.error("Failed to fetch project:", error);
-        throw new Error("Failed to fetch project");
-      }
+      const response = await fetch(`/api/user-templates/${id}`);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Failed to fetch project");
+      const data = result.data;
 
       // Prepare canvas JSON for the editor
       let canvasJson;

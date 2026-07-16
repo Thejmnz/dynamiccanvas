@@ -10,6 +10,20 @@ export const playgroundTemplatesQueryKey = (userId: string) => ["playground-temp
 export const rendersQueryKey = (userId: string) => ["renders", { userId }] as const;
 export const adminOverviewQueryKey = ["admin-overview"] as const;
 
+type DashboardTemplateRow = {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  json: string;
+  elements?: unknown[] | null;
+  background_color?: string | null;
+  lastModified?: string | null;
+  thumbnailUrl?: string | null;
+  thumbnail_url?: string | null;
+  [key: string]: unknown;
+};
+
 export const fetchOrCreateApiKey = async (userId: string) => {
   const { data, error } = await supabase
     .from("user_api_keys")
@@ -33,15 +47,11 @@ export const fetchOrCreateApiKey = async (userId: string) => {
   return apiKey;
 };
 
-export const fetchPlaygroundTemplates = async (userId: string) => {
-  const { data, error } = await supabase
-    .from("dynamic_canvas_templates")
-    .select("*")
-    .eq("user_id", userId)
-    .order("lastModified", { ascending: false });
-
-  if (error) throw error;
-  return data ?? [];
+export const fetchPlaygroundTemplates = async (userId: string): Promise<DashboardTemplateRow[]> => {
+  const response = await fetch("/api/user-templates?offset=0&limit=101");
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || "Failed to load templates");
+  return (result.data ?? []) as DashboardTemplateRow[];
 };
 
 export const fetchRenders = async () => {

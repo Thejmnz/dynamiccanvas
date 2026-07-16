@@ -982,7 +982,7 @@ function ApiIntegrationContent() {
 
                 if (templatesData && templatesData.length > 0) {
                     const typedTemplates = templatesData.map(t => {
-                        let elements = [];
+                        let elements: any[] = [];
 
                         if (t.json) {
                             try {
