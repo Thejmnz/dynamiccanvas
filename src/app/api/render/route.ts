@@ -1189,7 +1189,7 @@ export async function POST(req: NextRequest) {
     const dataURL = stage.toDataURL({
       mimeType,
       pixelRatio,
-      quality: outputFormat === 'png' ? 1 : 0.92,
+      quality: outputFormat === 'png' ? 1 : 0.86,
     });
     const base64Data = dataURL.replace(/^data:image\/[a-z]+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
